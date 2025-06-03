@@ -347,3 +347,7 @@ FodyWeavers.xsd
 # Custom additions
 INSTRUCTOR_GUIDE
 *.zip
+
+# Test scripts and helper utilities
+test-scripts/
+*.bak
