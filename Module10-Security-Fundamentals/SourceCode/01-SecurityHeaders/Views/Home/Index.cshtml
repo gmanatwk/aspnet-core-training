@@ -1,0 +1,100 @@
+@{
+    ViewData["Title"] = "Security Headers Demo";
+}
+
+<div style="text-align: center; margin-bottom: 40px;">
+    <h1>🛡️ ASP.NET Core Security Headers</h1>
+    <p style="font-size: 1.2em; color: #666;">
+        Comprehensive security implementation with modern security headers
+    </p>
+</div>
+
+<div class="alert alert-info">
+    <strong>🔒 Security Features Enabled:</strong>
+    <ul>
+        <li>Content Security Policy (CSP)</li>
+        <li>X-Frame-Options (Clickjacking Protection)</li>
+        <li>X-Content-Type-Options (MIME Sniffing Protection)</li>
+        <li>X-XSS-Protection</li>
+        <li>Referrer Policy</li>
+        <li>Permissions Policy</li>
+        <li>HTTPS Redirection</li>
+        <li>HSTS (HTTP Strict Transport Security)</li>
+    </ul>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0;">
+    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <h3>🔍 How to Test</h3>
+        <ol>
+            <li>Open browser developer tools (F12)</li>
+            <li>Go to the Network tab</li>
+            <li>Refresh this page</li>
+            <li>Click on any request and check Response Headers</li>
+            <li>Look for security headers like X-Frame-Options, CSP, etc.</li>
+        </ol>
+    </div>
+    
+    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <h3>🛠️ Security Tools</h3>
+        <ul>
+            <li><strong>OWASP ZAP:</strong> Security scanning</li>
+            <li><strong>Security Headers:</strong> Online header checker</li>
+            <li><strong>SSL Labs:</strong> SSL/TLS configuration testing</li>
+            <li><strong>Mozilla Observatory:</strong> Website security assessment</li>
+        </ul>
+    </div>
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <a href="/Home/SecurityTest" class="btn" style="margin: 0 10px;">
+        🧪 Test Security Features
+    </a>
+    <a href="https://securityheaders.com/" target="_blank" class="btn" style="margin: 0 10px;">
+        🔗 Check Security Headers Online
+    </a>
+</div>
+
+<div class="security-headers">
+    <h3>📋 Security Implementation Checklist</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <h4>✅ Headers Implemented:</h4>
+            <ul>
+                <li>✅ Content-Security-Policy</li>
+                <li>✅ X-Frame-Options</li>
+                <li>✅ X-Content-Type-Options</li>
+                <li>✅ X-XSS-Protection</li>
+                <li>✅ Referrer-Policy</li>
+                <li>✅ Permissions-Policy</li>
+            </ul>
+        </div>
+        <div>
+            <h4>🔧 Additional Security:</h4>
+            <ul>
+                <li>✅ HTTPS Redirection</li>
+                <li>✅ HSTS Implementation</li>
+                <li>✅ Secure Cookie Settings</li>
+                <li>✅ Anti-forgery Tokens</li>
+                <li>✅ Security Logging</li>
+                <li>✅ Server Header Removal</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Demonstrate CSP-compliant JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Security headers demo loaded successfully!');
+            
+            // Log current security status
+            if (location.protocol === 'https:') {
+                console.log('✅ HTTPS is enabled');
+            } else {
+                console.log('⚠️ HTTPS is not enabled');
+            }
+        });
+    </script>
+}

@@ -1,0 +1,337 @@
+# Module 4: Authentication and Authorization in ASP.NET Core
+
+## 🎯 Learning Objectives
+
+By the end of this module, students will be able to:
+- ✅ Understand the difference between authentication and authorization
+- ✅ Implement JWT-based authentication in ASP.NET Core
+- ✅ Configure and use ASP.NET Core Identity
+- ✅ Implement role-based and policy-based authorization
+- ✅ Secure Web APIs with proper authentication schemes
+- ✅ Handle OAuth and OpenID Connect integration
+- ✅ Implement custom authorization requirements
+
+## 📖 Module Overview
+
+**Duration**: 3 hours  
+**Skill Level**: Intermediate  
+**Prerequisites**: Modules 1-3 completed, understanding of Web APIs
+
+### Topics Covered:
+1. **Authentication vs Authorization Fundamentals**
+2. **JWT (JSON Web Tokens) Implementation**
+3. **ASP.NET Core Identity Setup and Configuration**
+4. **Role-Based Authorization**
+5. **Policy-Based Authorization**
+6. **OAuth 2.0 and OpenID Connect**
+7. **API Security Best Practices**
+8. **Custom Authentication Handlers**
+
+## 🏗️ Project Structure
+
+```
+Module04-Authentication-and-Authorization/
+├── README.md (this file)
+├── SourceCode/
+│   ├── JwtAuthenticationAPI/        # JWT implementation
+│   ├── IdentityApp/                 # ASP.NET Core Identity
+│   ├── PolicyBasedAuth/             # Custom policies
+│   ├── OAuthIntegration/            # OAuth examples
+│   └── CustomAuthHandlers/          # Custom implementations
+├── Exercises/
+│   ├── Exercise01/                  # JWT setup
+│   ├── Exercise02/                  # Role-based auth
+│   ├── Exercise03/                  # Policy creation
+│   └── Solutions/                   # Exercise solutions
+└── Resources/
+    ├── security-cheatsheet.md       # Security quick reference
+    ├── jwt-guide.md                 # JWT implementation guide
+    └── oauth-setup.md               # OAuth configuration
+```
+
+## 🔐 Key Security Concepts
+
+### Authentication vs Authorization
+
+**Authentication** ("Who are you?")
+- Verifies the identity of a user
+- Confirms credentials (username/password, tokens, etc.)
+- Results in a claims-based identity
+
+**Authorization** ("What can you do?")
+- Determines what resources a user can access
+- Based on roles, policies, or custom logic
+- Happens after authentication
+
+### JWT (JSON Web Tokens)
+- Self-contained tokens with encoded user information
+- Stateless authentication mechanism
+- Structure: Header.Payload.Signature
+- Benefits: Scalable, cross-domain, mobile-friendly
+
+### ASP.NET Core Identity
+- Complete membership system for .NET applications
+- User management, password hashing, role management
+- Two-factor authentication support
+- External login providers (Google, Facebook, etc.)
+
+## 🛠️ Implementation Examples
+
+### 1. JWT Authentication Setup
+
+**Program.cs Configuration:**
+```csharp
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
+
+builder.Services.AddAuthorization();
+```
+
+### 2. Role-Based Authorization
+```csharp
+[Authorize(Roles = "Admin")]
+public class AdminController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult GetAdminData()
+    {
+        return Ok("This is admin-only data");
+    }
+}
+```
+
+### 3. Policy-Based Authorization
+```csharp
+// Policy configuration
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("MinimumAge", policy =>
+        policy.Requirements.Add(new MinimumAgeRequirement(18)));
+    
+    options.AddPolicy("EditPolicy", policy =>
+        policy.RequireRole("Editor", "Admin")
+              .RequireClaim("Department", "IT"));
+});
+
+// Usage in controller
+[Authorize(Policy = "MinimumAge")]
+public IActionResult RestrictedContent()
+{
+    return Ok("Age-restricted content");
+}
+```
+
+## 🚀 Getting Started
+
+### 1. Environment Setup
+Ensure you have:
+- ✅ .NET 8.0 SDK
+- ✅ SQL Server (for Identity database)
+- ✅ Postman or similar API testing tool
+
+### 2. Run the JWT Example
+```bash
+cd SourceCode/JwtAuthenticationAPI
+dotnet run
+```
+
+### 3. Test Authentication Endpoints
+1. POST `/auth/login` - Get JWT token
+2. GET `/auth/protected` - Access protected resource
+
+## 📝 Quick Implementation Checklist
+
+### JWT Implementation:
+- [ ] Install required NuGet packages
+- [ ] Configure JWT in Program.cs
+- [ ] Create token generation service
+- [ ] Implement login endpoint
+- [ ] Add [Authorize] attributes to protected endpoints
+- [ ] Test with Postman
+
+### Identity Implementation:
+- [ ] Add Entity Framework and Identity packages
+- [ ] Configure DbContext for Identity
+- [ ] Set up Identity services
+- [ ] Create registration/login pages
+- [ ] Configure password policies
+- [ ] Add role management
+
+### Authorization Policies:
+- [ ] Define custom requirements
+- [ ] Create authorization handlers
+- [ ] Register policies in Program.cs
+- [ ] Apply policies to controllers/actions
+- [ ] Test policy enforcement
+
+## 💡 Security Best Practices
+
+### 1. JWT Security
+- ✅ Use strong, random signing keys
+- ✅ Set appropriate token expiration times
+- ✅ Implement token refresh mechanisms
+- ✅ Store sensitive data securely (not in JWT payload)
+- ✅ Validate all token parameters
+
+### 2. Password Security
+- ✅ Enforce strong password policies
+- ✅ Use proper password hashing (Identity handles this)
+- ✅ Implement account lockout after failed attempts
+- ✅ Consider two-factor authentication
+
+### 3. API Security
+- ✅ Always use HTTPS in production
+- ✅ Implement proper CORS policies
+- ✅ Use rate limiting to prevent abuse
+- ✅ Log security events for monitoring
+- ✅ Validate all input data
+
+## 🔧 Common Configuration Patterns
+
+### appsettings.json JWT Configuration:
+```json
+{
+  "Jwt": {
+    "Key": "your-secret-key-here-must-be-long-enough",
+    "Issuer": "your-app-name",
+    "Audience": "your-app-users",
+    "ExpiryMinutes": 60
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=AuthApp;Trusted_Connection=true"
+  }
+}
+```
+
+### Identity Configuration:
+```csharp
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 8;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.AllowedUserNameCharacters =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = false;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+```
+
+## 🎯 Hands-On Exercises
+
+### Exercise 1: JWT Implementation (45 minutes)
+**Objective**: Create a secure JWT authentication system
+- Set up JWT configuration
+- Create login endpoint
+- Implement token generation
+- Secure API endpoints
+- Test with Postman
+
+### Exercise 2: Role-Based Authorization (30 minutes)
+**Objective**: Implement user roles and permissions
+- Create user roles (Admin, Editor, Viewer)
+- Assign roles to users
+- Protect endpoints with role requirements
+- Test role-based access
+
+### Exercise 3: Custom Authorization Policy (45 minutes)
+**Objective**: Create custom authorization logic
+- Define custom requirements
+- Implement authorization handlers
+- Create complex policies
+- Apply to controllers
+
+## ❓ Knowledge Check Questions
+
+1. What is the difference between authentication and authorization?
+2. What are the three parts of a JWT token?
+3. How do you configure JWT authentication in ASP.NET Core?
+4. What's the difference between role-based and policy-based authorization?
+5. Name three JWT security best practices.
+
+## 🔍 Troubleshooting Guide
+
+### Common Issues:
+
+**JWT Token Not Accepted:**
+- Check token expiration
+- Verify signing key configuration
+- Ensure proper Authorization header format: `Bearer {token}`
+
+**401 Unauthorized Errors:**
+- Verify authentication middleware order
+- Check if [Authorize] attribute is properly applied
+- Confirm user credentials and token validity
+
+**Identity Database Issues:**
+- Run `dotnet ef database update`
+- Check connection string
+- Verify Entity Framework packages
+
+## 📚 Advanced Topics
+
+### Custom Authentication Schemes
+- Creating custom authentication handlers
+- Multiple authentication schemes
+- Authentication scheme selection
+
+### OAuth 2.0 Integration
+- External identity providers
+- Google, Microsoft, Facebook authentication
+- Custom OAuth providers
+
+### Advanced Security Features
+- Two-factor authentication
+- Account confirmation via email
+- Password reset functionality
+- Security logging and monitoring
+
+## 📖 Additional Resources
+
+- 📚 [ASP.NET Core Authentication Documentation](https://docs.microsoft.com/aspnet/core/security/authentication/)
+- 📚 [ASP.NET Core Authorization Documentation](https://docs.microsoft.com/aspnet/core/security/authorization/)
+- 🔐 [JWT.io - JWT Debugger](https://jwt.io/)
+- 📝 [OWASP Authentication Cheat Sheet](https://owasp.org/www-project-cheat-sheets/cheatsheets/Authentication_Cheat_Sheet.html)
+- 🛡️ [Security Best Practices](https://docs.microsoft.com/aspnet/core/security/)
+
+## 🔗 Next Module
+
+Continue your learning journey:
+**[Module 5: Entity Framework Core](../Module05-Entity-Framework-Core/README.md)**
+
+## 🆘 Need Help?
+
+- 💬 Ask questions during the live session
+- 📧 Email: training-support@example.com
+- 📚 Check the Resources folder for detailed guides
+- 🔍 Review example implementations in SourceCode folder
+
+---
+
+**Security Note**: Never store sensitive information in JWT tokens. Always use HTTPS in production. Regularly update your authentication libraries and follow security best practices.
+
+**Happy Securing! 🔐**

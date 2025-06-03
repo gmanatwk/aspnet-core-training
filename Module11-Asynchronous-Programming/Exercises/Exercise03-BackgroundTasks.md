@@ -1,0 +1,497 @@
+# Exercise 3: Background Tasks and Services
+
+## Objective
+Build a comprehensive background task processing system using ASP.NET Core hosted services, demonstrating queue-based processing, file monitoring, and scheduled tasks.
+
+## Prerequisites
+- Completed Exercises 1 and 2
+- Understanding of ASP.NET Core hosted services
+- Basic knowledge of file system operations
+
+## Scenario
+You're building a document processing system that needs to:
+- Process uploaded files in the background
+- Monitor a folder for new files
+- Generate reports on a schedule
+- Send email notifications
+- Clean up old processed files
+
+## Instructions
+
+### Part 1: Create the Base Project
+
+1. Create a new ASP.NET Core Web API project called `BackgroundTasksExercise`
+2. Add required NuGet packages:
+   - `Microsoft.EntityFrameworkCore.InMemory`
+   - `Swashbuckle.AspNetCore`
+
+### Part 2: Data Models
+
+Create the following models:
+
+```csharp
+public class ProcessingJob
+{
+    public int Id { get; set; }
+    public string JobType { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public JobStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? ResultData { get; set; }
+    public int Progress { get; set; } // 0-100
+}
+
+public enum JobStatus
+{
+    Queued,
+    Processing,
+    Completed,
+    Failed,
+    Cancelled
+}
+
+public class ProcessingResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public Dictionary<string, object> Metadata { get; set; } = new();
+}
+```
+
+### Part 3: Background Task Queue
+
+Implement a robust task queue system:
+
+```csharp
+public interface IBackgroundTaskQueue
+{
+    void QueueBackgroundWorkItem(BackgroundWorkItem workItem);
+    Task<BackgroundWorkItem> DequeueAsync(CancellationToken cancellationToken);
+    int Count { get; }
+}
+
+public class BackgroundWorkItem
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string JobType { get; set; } = string.Empty;
+    public Func<IServiceProvider, CancellationToken, Task> WorkItem { get; set; } = null!;
+    public DateTime QueuedAt { get; set; } = DateTime.UtcNow;
+    public int Priority { get; set; } = 0; // Higher number = higher priority
+}
+
+public class PriorityBackgroundTaskQueue : IBackgroundTaskQueue
+{
+    // TODO: Implement with priority queue functionality
+    // Use SortedSet or priority queue data structure
+    // Thread-safe operations
+    // Dequeue highest priority items first
+}
+```
+
+### Part 4: Background Services
+
+#### 1. Queue Processor Service
+
+```csharp
+public class QueueProcessorService : BackgroundService
+{
+    private readonly IBackgroundTaskQueue _taskQueue;
+    private readonly ILogger<QueueProcessorService> _logger;
+    private readonly IServiceProvider _serviceProvider;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // TODO: Implement queue processing
+        // - Process items concurrently (max 3 concurrent tasks)
+        // - Handle exceptions gracefully
+        // - Log progress and completion
+        // - Support graceful shutdown
+    }
+}
+```
+
+#### 2. File Monitor Service
+
+```csharp
+public class FileMonitorService : BackgroundService
+{
+    // TODO: Implement file system monitoring
+    // - Watch multiple folders for different file types
+    // - Automatically queue processing jobs for new files
+    // - Handle file locked scenarios
+    // - Support configuration for watch patterns
+}
+```
+
+#### 3. Scheduled Report Service
+
+```csharp
+public class ScheduledReportService : BackgroundService
+{
+    // TODO: Implement scheduled reporting
+    // - Generate daily processing reports
+    // - Clean up old files (older than 30 days)
+    // - Send summary emails
+    // - Run every hour
+}
+```
+
+#### 4. Health Monitor Service
+
+```csharp
+public class HealthMonitorService : BackgroundService
+{
+    // TODO: Implement system health monitoring
+    // - Check disk space
+    // - Monitor queue size
+    // - Check external dependencies
+    // - Alert when thresholds exceeded
+}
+```
+
+### Part 5: File Processing Services
+
+Create processors for different file types:
+
+```csharp
+public interface IFileProcessor
+{
+    Task<ProcessingResult> ProcessAsync(string filePath, CancellationToken cancellationToken, IProgress<int>? progress = null);
+    bool CanProcess(string fileName);
+}
+
+public class TextFileProcessor : IFileProcessor
+{
+    // TODO: Implement text file processing
+    // - Count words, lines, characters
+    // - Extract keywords
+    // - Generate summary
+}
+
+public class ImageFileProcessor : IFileProcessor
+{
+    // TODO: Implement image file processing
+    // - Extract metadata (dimensions, format, etc.)
+    // - Generate thumbnails
+    // - Simulate AI analysis
+}
+
+public class CsvFileProcessor : IFileProcessor
+{
+    // TODO: Implement CSV file processing
+    // - Parse and validate data
+    // - Generate statistics
+    // - Create processed output file
+}
+```
+
+### Part 6: API Controllers
+
+#### Jobs Controller
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class JobsController : ControllerBase
+{
+    // GET /api/jobs - List all jobs with filtering
+    [HttpGet]
+    public async Task<IActionResult> GetJobs(
+        [FromQuery] JobStatus? status = null,
+        [FromQuery] string? jobType = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        // TODO: Implement with async pagination
+    }
+
+    // GET /api/jobs/{id} - Get job details
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetJob(int id)
+    {
+        // TODO: Implement
+    }
+
+    // POST /api/jobs/upload - Upload file for processing
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string jobType = "auto")
+    {
+        // TODO: Implement file upload and queue processing
+        // - Validate file size and type
+        // - Save to processing folder
+        // - Queue background job
+        // - Return job ID
+    }
+
+    // POST /api/jobs/batch-upload - Upload multiple files
+    [HttpPost("batch-upload")]
+    public async Task<IActionResult> BatchUpload(List<IFormFile> files)
+    {
+        // TODO: Process multiple files concurrently
+    }
+
+    // DELETE /api/jobs/{id} - Cancel job
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> CancelJob(int id)
+    {
+        // TODO: Implement job cancellation
+    }
+
+    // GET /api/jobs/{id}/download - Download processed file
+    [HttpGet("{id}/download")]
+    public async Task<IActionResult> DownloadResult(int id)
+    {
+        // TODO: Implement file download
+    }
+}
+```
+
+#### System Controller
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class SystemController : ControllerBase
+{
+    // GET /api/system/status - System health and stats
+    [HttpGet("status")]
+    public async Task<IActionResult> GetSystemStatus()
+    {
+        // TODO: Return queue size, active jobs, disk space, etc.
+    }
+
+    // POST /api/system/cleanup - Manual cleanup
+    [HttpPost("cleanup")]
+    public async Task<IActionResult> TriggerCleanup()
+    {
+        // TODO: Queue cleanup job
+    }
+
+    // GET /api/system/metrics - Performance metrics
+    [HttpGet("metrics")]
+    public async Task<IActionResult> GetMetrics([FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        // TODO: Return processing metrics over time
+    }
+}
+```
+
+### Part 7: Advanced Features
+
+#### 1. Progress Tracking
+
+```csharp
+public interface IProgressTracker
+{
+    Task UpdateProgressAsync(string jobId, int percentage, string? message = null);
+    Task<JobProgress?> GetProgressAsync(string jobId);
+}
+
+public class JobProgress
+{
+    public int Percentage { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public DateTime LastUpdated { get; set; }
+}
+```
+
+#### 2. Real-time Updates with SignalR
+
+```csharp
+public class JobProgressHub : Hub
+{
+    // TODO: Implement SignalR hub for real-time job progress
+}
+```
+
+#### 3. Retry Logic
+
+```csharp
+public class RetryableBackgroundService : BackgroundService
+{
+    // TODO: Implement retry logic with exponential backoff
+    // - Retry failed jobs up to 3 times
+    // - Increase delay between retries
+    // - Dead letter queue for permanently failed jobs
+}
+```
+
+#### 4. Configuration
+
+```json
+{
+  "BackgroundTasks": {
+    "MaxConcurrentJobs": 3,
+    "QueueCapacity": 1000,
+    "FileProcessing": {
+      "InputFolder": "C:/temp/input",
+      "OutputFolder": "C:/temp/output",
+      "ArchiveFolder": "C:/temp/archive",
+      "MaxFileSizeMB": 100,
+      "SupportedExtensions": [".txt", ".csv", ".jpg", ".png"]
+    },
+    "Cleanup": {
+      "RetentionDays": 30,
+      "ScheduleHours": 2
+    },
+    "Reports": {
+      "GenerationInterval": "01:00:00",
+      "EmailRecipients": ["admin@yourdomain.com"]
+    }
+  }
+}
+```
+
+### Part 8: Testing Requirements
+
+Create comprehensive tests:
+
+#### 1. Unit Tests
+
+```csharp
+public class BackgroundTaskQueueTests
+{
+    [Fact]
+    public async Task DequeueAsync_ShouldReturnHighestPriorityItem()
+    {
+        // TODO: Test priority queue functionality
+    }
+
+    [Fact]
+    public async Task QueueBackgroundWorkItem_ShouldBeThreadSafe()
+    {
+        // TODO: Test concurrent queue operations
+    }
+}
+```
+
+#### 2. Integration Tests
+
+```csharp
+public class FileProcessingIntegrationTests
+{
+    [Fact]
+    public async Task ProcessTextFile_ShouldCompleteSuccessfully()
+    {
+        // TODO: Test end-to-end file processing
+    }
+
+    [Fact]
+    public async Task ConcurrentFileProcessing_ShouldHandleMultipleFiles()
+    {
+        // TODO: Test concurrent processing
+    }
+}
+```
+
+#### 3. Load Tests
+
+```csharp
+[Fact]
+public async Task HighVolumeProcessing_ShouldMaintainPerformance()
+{
+    // TODO: Test system under load
+    // - Queue 1000 jobs simultaneously
+    // - Verify all complete successfully
+    // - Check memory usage doesn't grow indefinitely
+}
+```
+
+### Part 9: Monitoring and Observability
+
+#### 1. Metrics Collection
+
+```csharp
+public class ProcessingMetrics
+{
+    // TODO: Implement metrics collection
+    // - Job completion rates
+    // - Processing times
+    // - Error rates
+    // - Queue sizes over time
+}
+```
+
+#### 2. Logging
+
+Implement structured logging throughout:
+
+```csharp
+_logger.LogInformation("Job {JobId} started processing file {FileName}", jobId, fileName);
+_logger.LogWarning("Job {JobId} failed with error: {Error}", jobId, error);
+_logger.LogInformation("Job {JobId} completed in {Duration}ms", jobId, duration);
+```
+
+#### 3. Health Checks
+
+```csharp
+public class BackgroundTaskHealthCheck : IHealthCheck
+{
+    // TODO: Implement health check
+    // - Check if services are running
+    // - Verify queue is processing
+    // - Check disk space
+}
+```
+
+## Sample Workflows
+
+### 1. File Upload and Processing
+
+```
+1. POST /api/jobs/upload (file: document.txt)
+   → Response: { "jobId": "abc123", "status": "Queued" }
+
+2. File saved to input folder
+3. Job queued for processing
+4. Background service picks up job
+5. TextFileProcessor processes file
+6. Results saved to output folder
+7. Job status updated to "Completed"
+8. Client polls GET /api/jobs/abc123 for status
+9. GET /api/jobs/abc123/download to get results
+```
+
+### 2. Batch Processing
+
+```
+1. POST /api/jobs/batch-upload (files: [file1.txt, file2.csv, file3.jpg])
+   → Response: { "jobIds": ["abc123", "def456", "ghi789"] }
+
+2. All files processed concurrently
+3. Progress tracked individually
+4. Results available as each completes
+```
+
+## Success Criteria
+
+- ✅ **Queue Processing**: Priority queue processes jobs efficiently
+- ✅ **Concurrency**: Multiple jobs process simultaneously without conflicts
+- ✅ **File Monitoring**: New files automatically trigger processing
+- ✅ **Error Handling**: Failed jobs retry appropriately
+- ✅ **Performance**: System handles 100+ concurrent jobs
+- ✅ **Monitoring**: Comprehensive logging and metrics
+- ✅ **Graceful Shutdown**: All services stop cleanly
+- ✅ **Resource Management**: No memory leaks or resource exhaustion
+
+## Bonus Features
+
+1. **Distributed Processing**: Support multiple worker instances
+2. **Job Dependencies**: Jobs that depend on other jobs completing
+3. **Scheduling**: Cron-like job scheduling
+4. **Webhooks**: Notify external systems when jobs complete
+5. **Admin UI**: Web interface for job management
+
+## Common Challenges
+
+1. **Thread Safety**: Ensure queue operations are thread-safe
+2. **Resource Cleanup**: Properly dispose of resources
+3. **Error Recovery**: Handle transient failures gracefully
+4. **Performance**: Optimize for high throughput
+5. **Testing**: Mock file system operations in tests
+
+This exercise comprehensively covers background task processing patterns commonly used in production applications!

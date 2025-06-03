@@ -1,0 +1,126 @@
+@{
+    ViewData["Title"] = "Security Test";
+}
+
+<h1>🧪 Security Headers Test</h1>
+
+<div class="alert alert-info">
+    <strong>Test Instructions:</strong> Use your browser's developer tools to inspect the response headers for this page.
+    All security headers should be present and properly configured.
+</div>
+
+@if (ViewBag.Headers != null)
+{
+    <div class="security-headers">
+        <h3>📋 Current Security Headers</h3>
+        @foreach (var header in ViewBag.Headers as Dictionary<string, string>)
+        {
+            <div class="header-item">
+                <div class="header-name">@header.Key</div>
+                <div class="header-value">@header.Value</div>
+            </div>
+        }
+    </div>
+}
+
+<div style="margin: 30px 0;">
+    <h3>🔒 CSRF Protection Test</h3>
+    <p>This form includes anti-forgery token protection. Try submitting without the token to see the protection in action.</p>
+    
+    <form method="post" action="/Home/TestForm">
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label for="message">Test Message:</label>
+            <input type="text" name="message" id="message" class="form-control" 
+                   placeholder="Enter a test message (try including <script> tags to test XSS protection)" />
+        </div>
+        <button type="submit" class="btn">Submit Test</button>
+    </form>
+    
+    @if (ViewBag.ProcessedMessage != null)
+    {
+        <div class="alert alert-info" style="margin-top: 20px;">
+            <strong>✅ Message processed safely:</strong><br />
+            <code>@ViewBag.ProcessedMessage</code>
+            <br /><small>Notice how any HTML/script tags are encoded for security.</small>
+        </div>
+    }
+</div>
+
+<div style="margin: 30px 0;">
+    <h3>🔍 Security Testing Tools</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="padding: 20px; background: #f8f9fa; border-radius: 5px;">
+            <h4>Browser Tools</h4>
+            <ul>
+                <li><strong>Developer Tools (F12):</strong> Check Network → Response Headers</li>
+                <li><strong>Security Tab:</strong> View certificate and connection info</li>
+                <li><strong>Console:</strong> Check for CSP violations</li>
+            </ul>
+        </div>
+        <div style="padding: 20px; background: #f8f9fa; border-radius: 5px;">
+            <h4>Online Tools</h4>
+            <ul>
+                <li><a href="https://securityheaders.com/" target="_blank">Security Headers Scanner</a></li>
+                <li><a href="https://observatory.mozilla.org/" target="_blank">Mozilla Observatory</a></li>
+                <li><a href="https://www.ssllabs.com/ssltest/" target="_blank">SSL Labs Test</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="security-headers">
+    <h3>🛡️ Security Header Explanations</h3>
+    
+    <div class="header-item">
+        <div class="header-name">Content-Security-Policy (CSP)</div>
+        <div class="header-value">
+            Prevents XSS attacks by controlling which resources can be loaded.
+            <br />Our policy only allows scripts and styles from trusted sources.
+        </div>
+    </div>
+    
+    <div class="header-item">
+        <div class="header-name">X-Frame-Options</div>
+        <div class="header-value">
+            Set to 'DENY' to prevent this page from being embedded in frames/iframes.
+            <br />This protects against clickjacking attacks.
+        </div>
+    </div>
+    
+    <div class="header-item">
+        <div class="header-name">X-Content-Type-Options</div>
+        <div class="header-value">
+            Set to 'nosniff' to prevent browsers from MIME-type sniffing.
+            <br />This prevents content-type confusion attacks.
+        </div>
+    </div>
+    
+    <div class="header-item">
+        <div class="header-name">Referrer-Policy</div>
+        <div class="header-value">
+            Controls how much referrer information is sent with requests.
+            <br />Set to 'strict-origin-when-cross-origin' for privacy protection.
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Test CSP compliance - this script should work because it's inline and allowed
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔒 Security test page loaded');
+            
+            // Check if CSP is working by looking for violations in console
+            document.addEventListener('securitypolicyviolation', function(e) {
+                console.log('🚨 CSP Violation detected:', e.violatedDirective);
+            });
+            
+            // Display current page security info
+            console.log('📊 Page Security Info:');
+            console.log('- Protocol:', location.protocol);
+            console.log('- Host:', location.host);
+            console.log('- Secure Context:', window.isSecureContext);
+        });
+    </script>
+}

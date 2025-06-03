@@ -1,0 +1,578 @@
+# Exercise 3: Encryption Implementation
+
+## 🎯 Objective
+Implement comprehensive encryption and key management solutions in an ASP.NET Core application using the Data Protection API and Azure Key Vault.
+
+## 📋 Requirements
+
+### Part 1: Data Protection API Implementation
+1. **Configure Data Protection API** with proper key management
+2. **Implement field-level encryption** for sensitive data
+3. **Create purpose-specific protectors** for different data types
+4. **Handle key rotation** and migration scenarios
+
+### Part 2: Azure Key Vault Integration
+5. **Set up Azure Key Vault** for centralized key management
+6. **Implement secret management** for application configurations
+7. **Configure certificate management** for SSL/TLS
+8. **Implement HSM-backed encryption** for high-security scenarios
+
+### Part 3: Database Encryption
+9. **Implement transparent data encryption** (TDE) for SQL Server
+10. **Create encrypted columns** for sensitive fields
+11. **Implement column-level encryption** with Entity Framework
+12. **Handle encrypted data querying** and indexing
+
+### Part 4: Transport Security
+13. **Configure perfect forward secrecy** for HTTPS
+14. **Implement certificate pinning** for API clients
+15. **Set up mutual TLS authentication** for service-to-service communication
+16. **Configure secure communication protocols**
+
+## 🛠️ Implementation Steps
+
+### Step 1: Data Protection API Setup
+
+```csharp
+// Program.cs - Configure Data Protection
+public void ConfigureDataProtection(IServiceCollection services, IConfiguration configuration)
+{
+    var keyVaultUri = configuration["KeyVault:Uri"];
+    var keyIdentifier = configuration["KeyVault:DataProtectionKey"];
+
+    services.AddDataProtection(options =>
+    {
+        options.ApplicationDiscriminator = "SecureApp";
+    })
+    .SetApplicationName("YourSecureApplication")
+    .SetDefaultKeyLifetime(TimeSpan.FromDays(90)) // Rotate keys every 90 days
+    .PersistKeysToAzureKeyVault(new Uri(keyVaultUri), new DefaultAzureCredential())
+    .ProtectKeysWithAzureKeyVault(new Uri(keyIdentifier), new DefaultAzureCredential())
+    .AddKeyEscrowSink(services.BuildServiceProvider().GetService<IXmlEncryptor>());
+}
+
+// Create specialized encryption services
+services.AddSingleton<IPersonalDataProtector, PersonalDataProtector>();
+services.AddSingleton<IFinancialDataProtector, FinancialDataProtector>();
+services.AddSingleton<IHealthDataProtector, HealthDataProtector>();
+```
+
+### Step 2: Implement Encryption Services
+
+```csharp
+// Base encryption service
+public interface IDataProtector<T>
+{
+    string Protect(T data);
+    T Unprotect(string protectedData);
+    bool TryUnprotect(string protectedData, out T data);
+}
+
+public class PersonalDataProtector : IPersonalDataProtector
+{
+    private readonly IDataProtector _protector;
+    private readonly ILogger<PersonalDataProtector> _logger;
+
+    public PersonalDataProtector(IDataProtectionProvider provider, ILogger<PersonalDataProtector> logger)
+    {
+        _protector = provider.CreateProtector("PersonalData.v1");
+        _logger = logger;
+    }
+
+    public string ProtectPersonalInfo(string personalInfo)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(personalInfo))
+                return personalInfo;
+
+            // TODO: Implement encryption with audit logging
+            var encrypted = _protector.Protect(personalInfo);
+            
+            _logger.LogInformation("Personal data encrypted. Length: {Length}", personalInfo.Length);
+            return encrypted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to encrypt personal data");
+            throw new EncryptionException("Personal data encryption failed", ex);
+        }
+    }
+
+    public string UnprotectPersonalInfo(string encryptedInfo)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(encryptedInfo))
+                return encryptedInfo;
+
+            // TODO: Implement decryption with audit logging
+            var decrypted = _protector.Unprotect(encryptedInfo);
+            
+            _logger.LogInformation("Personal data decrypted");
+            return decrypted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to decrypt personal data");
+            throw new DecryptionException("Personal data decryption failed", ex);
+        }
+    }
+}
+```
+
+### Step 3: Entity Framework Encryption
+
+```csharp
+// Encrypted entity model
+public class User
+{
+    public int Id { get; set; }
+    
+    [Required]
+    public string Email { get; set; } = string.Empty;
+    
+    // Encrypted fields
+    [PersonalData]
+    public string FirstName { get; set; } = string.Empty;
+    
+    [PersonalData]
+    public string LastName { get; set; } = string.Empty;
+    
+    [SensitiveData]
+    public string SocialSecurityNumber { get; set; } = string.Empty;
+    
+    [FinancialData]
+    public string CreditCardNumber { get; set; } = string.Empty;
+    
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// DbContext with encryption
+public class EncryptedDbContext : DbContext
+{
+    private readonly IPersonalDataProtector _personalDataProtector;
+    private readonly IFinancialDataProtector _financialDataProtector;
+
+    public EncryptedDbContext(
+        DbContextOptions<EncryptedDbContext> options,
+        IPersonalDataProtector personalDataProtector,
+        IFinancialDataProtector financialDataProtector) : base(options)
+    {
+        _personalDataProtector = personalDataProtector;
+        _financialDataProtector = financialDataProtector;
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // TODO: Configure encryption converters
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(e => e.FirstName)
+                .HasConversion(
+                    v => _personalDataProtector.ProtectPersonalInfo(v),
+                    v => _personalDataProtector.UnprotectPersonalInfo(v));
+
+            entity.Property(e => e.LastName)
+                .HasConversion(
+                    v => _personalDataProtector.ProtectPersonalInfo(v),
+                    v => _personalDataProtector.UnprotectPersonalInfo(v));
+
+            entity.Property(e => e.SocialSecurityNumber)
+                .HasConversion(
+                    v => _personalDataProtector.ProtectPersonalInfo(v),
+                    v => _personalDataProtector.UnprotectPersonalInfo(v));
+
+            entity.Property(e => e.CreditCardNumber)
+                .HasConversion(
+                    v => _financialDataProtector.ProtectFinancialData(v),
+                    v => _financialDataProtector.UnprotectFinancialData(v));
+        });
+
+        base.OnModelCreating(modelBuilder);
+    }
+}
+```
+
+### Step 4: Azure Key Vault Integration
+
+```csharp
+// Key Vault configuration service
+public interface IKeyVaultService
+{
+    Task<string> GetSecretAsync(string secretName);
+    Task SetSecretAsync(string secretName, string secretValue);
+    Task<X509Certificate2> GetCertificateAsync(string certificateName);
+    Task<string> EncryptAsync(string keyName, string plaintext);
+    Task<string> DecryptAsync(string keyName, string ciphertext);
+}
+
+public class KeyVaultService : IKeyVaultService
+{
+    private readonly SecretClient _secretClient;
+    private readonly CertificateClient _certificateClient;
+    private readonly CryptographyClient _cryptographyClient;
+    private readonly ILogger<KeyVaultService> _logger;
+
+    public KeyVaultService(IConfiguration configuration, ILogger<KeyVaultService> logger)
+    {
+        var keyVaultUri = configuration["KeyVault:Uri"];
+        var credential = new DefaultAzureCredential();
+
+        _secretClient = new SecretClient(new Uri(keyVaultUri), credential);
+        _certificateClient = new CertificateClient(new Uri(keyVaultUri), credential);
+        
+        var keyUri = configuration["KeyVault:EncryptionKey"];
+        _cryptographyClient = new CryptographyClient(new Uri(keyUri), credential);
+        
+        _logger = logger;
+    }
+
+    public async Task<string> GetSecretAsync(string secretName)
+    {
+        try
+        {
+            // TODO: Implement secret retrieval with caching
+            var response = await _secretClient.GetSecretAsync(secretName);
+            
+            _logger.LogInformation("Retrieved secret: {SecretName}", secretName);
+            return response.Value.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve secret: {SecretName}", secretName);
+            throw;
+        }
+    }
+
+    public async Task<string> EncryptAsync(string keyName, string plaintext)
+    {
+        try
+        {
+            // TODO: Implement HSM-backed encryption
+            var data = Encoding.UTF8.GetBytes(plaintext);
+            var encryptResult = await _cryptographyClient.EncryptAsync(EncryptionAlgorithm.RsaOaep, data);
+            
+            return Convert.ToBase64String(encryptResult.Ciphertext);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to encrypt data with key: {KeyName}", keyName);
+            throw;
+        }
+    }
+}
+```
+
+## 🧪 Testing Scenarios
+
+### 1. Encryption/Decryption Testing
+```csharp
+[Test]
+public void TestPersonalDataEncryption()
+{
+    // Arrange
+    var originalData = "John Doe";
+    var protector = new PersonalDataProtector(_dataProtectionProvider, _logger);
+
+    // Act
+    var encrypted = protector.ProtectPersonalInfo(originalData);
+    var decrypted = protector.UnprotectPersonalInfo(encrypted);
+
+    // Assert
+    Assert.AreNotEqual(originalData, encrypted); // Data should be encrypted
+    Assert.AreEqual(originalData, decrypted);    // Decryption should restore original
+    Assert.IsTrue(encrypted.Length > originalData.Length); // Encrypted data should be longer
+}
+
+[Test]
+public async Task TestKeyRotationScenario()
+{
+    // Arrange
+    var originalData = "Sensitive Information";
+    var protector = new PersonalDataProtector(_dataProtectionProvider, _logger);
+
+    // Act - Encrypt with current key
+    var encrypted = protector.ProtectPersonalInfo(originalData);
+
+    // Simulate key rotation
+    await SimulateKeyRotation();
+
+    // Act - Try to decrypt with new key infrastructure
+    var decrypted = protector.UnprotectPersonalInfo(encrypted);
+
+    // Assert - Should still be able to decrypt old data
+    Assert.AreEqual(originalData, decrypted);
+}
+```
+
+### 2. Performance Testing
+```csharp
+[Test]
+public void TestEncryptionPerformance()
+{
+    // TODO: Test encryption performance under load
+    var protector = new PersonalDataProtector(_dataProtectionProvider, _logger);
+    var testData = GenerateTestData(1000); // 1000 records
+    
+    var stopwatch = Stopwatch.StartNew();
+    
+    foreach (var data in testData)
+    {
+        var encrypted = protector.ProtectPersonalInfo(data);
+        var decrypted = protector.UnprotectPersonalInfo(encrypted);
+    }
+    
+    stopwatch.Stop();
+    
+    // Assert performance requirements
+    Assert.IsTrue(stopwatch.ElapsedMilliseconds < 5000); // Should complete in under 5 seconds
+}
+```
+
+### 3. Security Testing
+```csharp
+[Test]
+public void TestEncryptionRandomness()
+{
+    // Arrange
+    var data = "Test Data";
+    var protector = new PersonalDataProtector(_dataProtectionProvider, _logger);
+    var encryptedValues = new HashSet<string>();
+
+    // Act - Encrypt same data multiple times
+    for (int i = 0; i < 100; i++)
+    {
+        var encrypted = protector.ProtectPersonalInfo(data);
+        encryptedValues.Add(encrypted);
+    }
+
+    // Assert - Each encryption should produce different output (nonce/IV)
+    Assert.AreEqual(100, encryptedValues.Count);
+}
+```
+
+## 📝 Implementation Requirements
+
+### 1. Data Classification System
+```csharp
+// Data classification attributes
+[AttributeUsage(AttributeTargets.Property)]
+public class PersonalDataAttribute : Attribute
+{
+    public string Purpose { get; set; } = "PersonalIdentification";
+    public bool RequireAuditLog { get; set; } = true;
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class SensitiveDataAttribute : Attribute
+{
+    public string DataType { get; set; } = "Sensitive";
+    public bool RequireHSM { get; set; } = true;
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class FinancialDataAttribute : Attribute
+{
+    public bool RequirePCICompliance { get; set; } = true;
+    public string RegulationType { get; set; } = "PCI-DSS";
+}
+```
+
+### 2. Audit Logging for Encryption
+```csharp
+public class EncryptionAuditService
+{
+    private readonly ILogger<EncryptionAuditService> _logger;
+    
+    public void LogEncryptionEvent(string dataType, string operation, string userId, bool success)
+    {
+        var auditEvent = new
+        {
+            Timestamp = DateTime.UtcNow,
+            DataType = dataType,
+            Operation = operation,
+            UserId = userId,
+            Success = success,
+            EventType = "EncryptionOperation"
+        };
+
+        if (success)
+        {
+            _logger.LogInformation("Encryption operation successful: {@AuditEvent}", auditEvent);
+        }
+        else
+        {
+            _logger.LogWarning("Encryption operation failed: {@AuditEvent}", auditEvent);
+        }
+    }
+}
+```
+
+### 3. Key Management Strategy
+```csharp
+public interface IKeyManagementService
+{
+    Task<string> GetCurrentKeyVersionAsync(string purpose);
+    Task<bool> RotateKeyAsync(string purpose);
+    Task<bool> IsKeyValidAsync(string keyVersion);
+    Task<List<string>> GetValidKeyVersionsAsync(string purpose);
+}
+
+public class KeyManagementService : IKeyManagementService
+{
+    private readonly IKeyVaultService _keyVaultService;
+    private readonly ILogger<KeyManagementService> _logger;
+
+    public async Task<bool> RotateKeyAsync(string purpose)
+    {
+        try
+        {
+            // TODO: Implement key rotation strategy
+            // 1. Generate new key
+            // 2. Update key vault
+            // 3. Update application configuration
+            // 4. Verify new key works
+            // 5. Schedule old key for deletion (after grace period)
+            
+            _logger.LogInformation("Key rotation completed for purpose: {Purpose}", purpose);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Key rotation failed for purpose: {Purpose}", purpose);
+            return false;
+        }
+    }
+}
+```
+
+## 🎯 Validation Criteria
+
+### ✅ Basic Requirements (40 points)
+- [ ] Data Protection API is properly configured
+- [ ] Sensitive data is encrypted at rest
+- [ ] Azure Key Vault integration works
+- [ ] Encryption/decryption operations are successful
+
+### ✅ Advanced Requirements (40 points)
+- [ ] Multiple encryption purposes are implemented
+- [ ] Key rotation mechanism works
+- [ ] Database encryption is implemented
+- [ ] Performance requirements are met
+
+### ✅ Security Best Practices (20 points)
+- [ ] Encryption audit logging is implemented
+- [ ] Error handling doesn't leak sensitive information
+- [ ] Key management follows security principles
+- [ ] Code follows secure development practices
+
+## 🧪 Testing Checklist
+
+### Functional Testing
+- [ ] Data can be encrypted and decrypted successfully
+- [ ] Different data types use appropriate encryption
+- [ ] Key rotation doesn't break existing encrypted data
+- [ ] Azure Key Vault operations work correctly
+
+### Security Testing
+- [ ] Encrypted data looks random (no patterns)
+- [ ] Same plaintext produces different ciphertext (nonce/IV)
+- [ ] Encryption keys are not exposed in logs
+- [ ] Invalid keys/data are handled securely
+
+### Performance Testing
+- [ ] Encryption operations meet performance requirements
+- [ ] Database operations with encryption are acceptable
+- [ ] Key Vault operations don't cause timeouts
+- [ ] Memory usage is reasonable
+
+### Integration Testing
+- [ ] Application startup with encryption works
+- [ ] Entity Framework encryption converters work
+- [ ] API operations with encrypted data work
+- [ ] Background services can access encrypted data
+
+## 🚨 Common Security Issues
+
+### 1. Key Management
+- **Problem**: Hardcoded encryption keys
+- **Solution**: Use Azure Key Vault or secure key storage
+
+### 2. Plaintext Leakage
+- **Problem**: Sensitive data logged in plaintext
+- **Solution**: Implement secure logging practices
+
+### 3. Performance Impact
+- **Problem**: Encryption causing significant slowdown
+- **Solution**: Optimize encryption usage and caching
+
+### 4. Key Rotation
+- **Problem**: Unable to decrypt old data after key rotation
+- **Solution**: Implement proper key versioning and migration
+
+## 🎯 Bonus Challenges
+
+### 1. Homomorphic Encryption (Bonus: 15 points)
+Implement computation on encrypted data without decryption:
+- Research homomorphic encryption libraries
+- Implement basic mathematical operations on encrypted data
+- Create use cases for encrypted data processing
+
+### 2. Zero-Knowledge Proofs (Bonus: 15 points)
+Implement authentication without revealing secrets:
+- Research zero-knowledge proof concepts
+- Implement a simple ZKP authentication system
+- Demonstrate knowledge verification without secret sharing
+
+### 3. Quantum-Resistant Encryption (Bonus: 10 points)
+Prepare for quantum computing threats:
+- Research post-quantum cryptography
+- Implement quantum-resistant algorithms
+- Create migration strategy for quantum readiness
+
+## 📚 Resources
+
+### Cryptography Libraries
+- [Microsoft Data Protection API](https://docs.microsoft.com/aspnet/core/security/data-protection/)
+- [Azure Key Vault](https://docs.microsoft.com/azure/key-vault/)
+- [Bouncy Castle .NET](https://www.bouncycastle.org/csharp/)
+
+### Standards and Guidelines
+- [NIST Cryptographic Standards](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines)
+- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
+- [RFC 7518 - JSON Web Algorithms](https://tools.ietf.org/html/rfc7518)
+
+### Azure Documentation
+- [Azure Key Vault Developer Guide](https://docs.microsoft.com/azure/key-vault/general/developers-guide)
+- [Azure SQL Database Encryption](https://docs.microsoft.com/azure/azure-sql/database/transparent-data-encryption-tde-overview)
+- [Azure Disk Encryption](https://docs.microsoft.com/azure/security/fundamentals/azure-disk-encryption-vms-vmss)
+
+## 💡 Pro Tips
+
+1. **Start with Data Classification**: Understand what data needs encryption
+2. **Use Purpose-Specific Keys**: Different data types should use different keys
+3. **Plan for Key Rotation**: Design your system to handle key rotation
+4. **Monitor Performance**: Encryption adds overhead - measure and optimize
+5. **Audit Everything**: Log all encryption/decryption operations
+6. **Test Recovery Scenarios**: Ensure you can recover from key loss/corruption
+7. **Stay Current**: Cryptographic standards evolve - keep up with best practices
+
+## 🔒 Security Reminders
+
+- **Never store encryption keys with encrypted data**
+- **Use authenticated encryption (AES-GCM) when possible**
+- **Implement proper key derivation for passwords**
+- **Use secure random number generation**
+- **Validate all cryptographic operations**
+- **Handle encryption failures securely**
+- **Keep cryptographic libraries updated**
+
+---
+
+**Estimated Time**: 6-8 hours  
+**Difficulty**: Advanced  
+**Prerequisites**: Understanding of cryptographic concepts and Azure services
+
+**Remember**: Cryptography is hard - use well-established libraries and standards! 🔐

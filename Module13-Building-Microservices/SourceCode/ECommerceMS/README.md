@@ -1,0 +1,299 @@
+# E-Commerce Microservices Demo
+
+## 🎯 Overview
+This is a complete microservices implementation demonstrating the concepts covered in Module 13. The system includes:
+
+- **Product Service** - Manages products with CRUD operations
+- **Order Service** - Handles order processing and management
+- **Customer Service** - Manages customer accounts
+- **API Gateway** - Single entry point using YARP for routing
+- **Shared Library** - Common models and utilities
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Web Client    │    │  Mobile Client  │    │  Admin Panel    │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │                      │                      │
+          └──────────────────────┼──────────────────────┘
+                                 │
+                    ┌────────────▼──────────────┐
+                    │      API Gateway          │
+                    │   (YARP, Routing,         │
+                    │   Health Checks)          │
+                    └────────────┬──────────────┘
+                                 │
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                     │
+    ┌──────▼──────┐       ┌─────▼──────┐       ┌─────▼──────┐
+    │   Product   │       │   Order    │       │  Customer  │
+    │   Service   │       │  Service   │       │  Service   │
+    └──────┬──────┘       └─────┬──────┘       └─────┬──────┘
+           │                     │                     │
+    ┌──────▼──────┐       ┌─────▼──────┐       ┌─────▼──────┐
+    │  InMemory   │       │  InMemory  │       │  InMemory  │
+    │  Database   │       │  Database  │       │  Database  │
+    └─────────────┘       └─────────────┘       └─────────────┘
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- .NET 8.0 SDK (for local development)
+
+### Run with Docker Compose
+```bash
+# Clone the repository
+git clone [repository-url]
+cd ECommerceMS
+
+# Start all services
+docker-compose up -d
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f [service-name]
+```
+
+### Service URLs
+- **API Gateway**: http://localhost:5000
+- **Product Service**: http://localhost:5001
+- **Order Service**: http://localhost:5002
+- **Customer Service**: http://localhost:5003
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+
+## 🛠️ Development Setup
+
+### Local Development
+```bash
+# Build the solution
+dotnet build
+
+# Run services individually
+cd ProductService
+dotnet run
+
+cd ../OrderService
+dotnet run
+
+cd ../CustomerService
+dotnet run
+
+cd ../ApiGateway
+dotnet run
+```
+
+## 📋 API Documentation
+
+Each service has Swagger UI available at the root URL when running in development mode.
+
+### Via API Gateway
+
+#### Product Endpoints
+- `GET /products` - List all products
+- `GET /products/{id}` - Get product by ID
+- `GET /products/category/{category}` - Get products by category
+- `POST /products` - Create new product
+- `PUT /products/{id}` - Update product
+- `DELETE /products/{id}` - Delete product
+- `PATCH /products/{id}/stock` - Update product stock
+
+#### Order Endpoints
+- `GET /orders` - List all orders
+- `GET /orders/{id}` - Get order by ID
+- `GET /orders/customer/{customerId}` - Get orders by customer
+- `GET /orders/number/{orderNumber}` - Get order by order number
+- `POST /orders` - Create new order
+- `PATCH /orders/{id}/status` - Update order status
+- `DELETE /orders/{id}` - Delete order (pending/cancelled only)
+
+#### Customer Endpoints
+- `GET /customers` - List all customers
+- `GET /customers/{id}` - Get customer by ID
+- `GET /customers/email/{email}` - Get customer by email
+- `POST /customers` - Create new customer
+- `PUT /customers/{id}` - Update customer
+- `DELETE /customers/{id}` - Delete customer
+- `GET /customers/{id}/exists` - Check if customer exists
+
+## 📊 Data Models
+
+### Product
+```json
+{
+  "id": 1,
+  "name": "Laptop",
+  "description": "High-performance laptop",
+  "price": 1299.99,
+  "stockQuantity": 50,
+  "category": "Electronics"
+}
+```
+
+### Order
+```json
+{
+  "id": 1,
+  "customerId": 1,
+  "orderNumber": "ORD-2024-001",
+  "orderDate": "2024-01-15T10:30:00Z",
+  "status": "Processing",
+  "totalAmount": 1339.98,
+  "shippingAddress": "123 Main St",
+  "items": [
+    {
+      "productId": 1,
+      "productName": "Laptop",
+      "quantity": 1,
+      "unitPrice": 1299.99,
+      "totalPrice": 1299.99
+    }
+  ]
+}
+```
+
+### Customer
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "user@domain.com",
+  "phone": "+1-555-1234",
+  "address": "123 Main St",
+  "city": "New York",
+  "country": "USA",
+  "postalCode": "10001"
+}
+```
+
+## 🔍 Features Implemented
+
+### Microservices Patterns
+- **API Gateway**: Single entry point using YARP
+- **Service Discovery**: Docker networking for service communication
+- **Health Checks**: All services expose /health endpoints
+- **Shared Library**: Common models and middleware
+- **Database per Service**: Each service has its own InMemory database
+
+### Error Handling
+- Global exception middleware in SharedLibrary
+- Standardized API responses
+- Proper HTTP status codes
+- Detailed error messages
+
+### Cross-Service Communication
+- OrderService calls ProductService to validate products
+- HTTP client with error handling
+- Service-to-service authentication ready
+
+### Docker Support
+- Multi-stage Dockerfiles for optimized images
+- Docker Compose for orchestration
+- Health checks for all services
+- Container networking
+
+## 🧪 Testing
+
+### Manual Testing with cURL
+
+Create a product:
+```bash
+curl -X POST http://localhost:5000/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Product",
+    "description": "Test product",
+    "price": 99.99,
+    "stockQuantity": 100,
+    "category": "Test"
+  }'
+```
+
+Create a customer:
+```bash
+curl -X POST http://localhost:5000/customers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "test@domain.com",
+    "phone": "+1-555-0000",
+    "address": "123 Test St",
+    "city": "Test City",
+    "country": "Test Country",
+    "postalCode": "12345"
+  }'
+```
+
+Create an order:
+```bash
+curl -X POST http://localhost:5000/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "items": [
+      {
+        "productId": 1,
+        "quantity": 2
+      }
+    ],
+    "shippingAddress": "123 Test St"
+  }'
+```
+
+## 🚀 Production Considerations
+
+### For Production Deployment
+1. Replace InMemory databases with PostgreSQL/SQL Server
+2. Add authentication/authorization (JWT)
+3. Implement distributed caching (Redis)
+4. Add message queuing (RabbitMQ/Azure Service Bus)
+5. Implement circuit breakers (Polly)
+6. Add centralized logging (Serilog + ELK)
+7. Implement distributed tracing (OpenTelemetry)
+8. Add API rate limiting
+9. Implement HTTPS/TLS
+10. Add comprehensive monitoring
+
+### Scaling Considerations
+- Services are stateless and can be scaled horizontally
+- Use load balancers for multiple instances
+- Implement database connection pooling
+- Add caching layers for performance
+- Consider CQRS for read/write separation
+
+## 📚 Learning Objectives Demonstrated
+
+This implementation covers:
+1. **Service Decomposition**: Separate services for different business domains
+2. **API Gateway Pattern**: YARP for routing and aggregation
+3. **Shared Libraries**: Common code without tight coupling
+4. **Docker Containerization**: All services are containerized
+5. **Service Communication**: HTTP-based inter-service calls
+6. **Health Monitoring**: Health check endpoints
+7. **Error Handling**: Consistent error responses
+8. **Development Workflow**: Docker Compose for local development
+
+## 🎯 Next Steps
+
+1. **Add Authentication**: Implement JWT authentication in API Gateway
+2. **Add Messaging**: Implement event-driven communication
+3. **Add Persistence**: Replace InMemory with real databases
+4. **Add Caching**: Implement distributed caching
+5. **Add Monitoring**: Integrate with Prometheus/Grafana
+6. **Add Testing**: Unit and integration tests
+7. **Add CI/CD**: GitHub Actions or Azure DevOps
+
+## 📄 License
+
+This example is provided for educational purposes as part of the ASP.NET Core training curriculum.
+
+---
+
+**Happy microservices learning! 🚀**

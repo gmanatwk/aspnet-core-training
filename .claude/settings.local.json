@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(ls:*)",
+      "Bash(dotnet add package:*)",
+      "Bash(dotnet build)",
+      "Bash(find:*)",
+      "Bash(timeout:*)",
+      "Bash(true)",
+      "Bash(dotnet test:*)",
+      "Bash(rm:*)",
+      "Bash(grep:*)",
+      "Bash(chmod:*)",
+      "Bash(./check-exercises.sh:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": false
+}

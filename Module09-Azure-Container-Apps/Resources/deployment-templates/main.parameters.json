@@ -1,0 +1,39 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "containerAppName": {
+            "value": "productapi"
+        },
+        "containerImage": {
+            "value": "myregistry.azurecr.io/productapi:latest"
+        },
+        "environmentName": {
+            "value": "env-containerapp-demo"
+        },
+        "acrLoginServer": {
+            "value": "myregistry.azurecr.io"
+        },
+        "acrUsername": {
+            "value": "myregistry"
+        },
+        "acrPassword": {
+            "value": "your-acr-password"
+        },
+        "enableApplicationInsights": {
+            "value": true
+        },
+        "minReplicas": {
+            "value": 1
+        },
+        "maxReplicas": {
+            "value": 5
+        },
+        "cpu": {
+            "value": "0.25"
+        },
+        "memory": {
+            "value": "0.5Gi"
+        }
+    }
+}

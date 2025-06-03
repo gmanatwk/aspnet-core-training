@@ -1,0 +1,25 @@
+# Development Dockerfile with hot reload
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS development
+WORKDIR /app
+EXPOSE 8080
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy project file and restore dependencies
+COPY ["ProductApi.csproj", "."]
+RUN dotnet restore
+
+# Copy source code
+COPY . .
+
+# Set environment for development
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl --fail http://localhost:8080/health || exit 1
+
+# Start with hot reload
+CMD ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:8080"]
