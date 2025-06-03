@@ -35,7 +35,8 @@ if (app.Environment.IsDevelopment())
     app.UseCors("DevelopmentPolicy");
 }
 
-app.UseHttpsRedirection();
+// HTTPS redirection disabled for development
+// app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 if (!app.Environment.IsDevelopment())
