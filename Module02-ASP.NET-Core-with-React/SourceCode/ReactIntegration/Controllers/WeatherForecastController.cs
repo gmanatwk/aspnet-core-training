@@ -21,8 +21,6 @@ public class WeatherForecastController : ControllerBase
     [HttpGet]
     public IEnumerable<WeatherForecast> Get()
     {
-        _logger.LogInformation("Getting weather forecast data");
-        
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
             Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -30,22 +28,6 @@ public class WeatherForecastController : ControllerBase
             Summary = Summaries[Random.Shared.Next(Summaries.Length)]
         })
         .ToArray();
-    }
-
-    [HttpGet("{id}")]
-    public ActionResult<WeatherForecast> GetById(int id)
-    {
-        if (id < 1 || id > 5)
-        {
-            return NotFound();
-        }
-
-        return new WeatherForecast
-        {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(id)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-        };
     }
 }
 

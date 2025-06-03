@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,19 +5,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add SPA static files
-builder.Services.AddSpaStaticFiles(configuration =>
-{
-    configuration.RootPath = "ClientApp/build";
-});
-
-// Configure CORS for development
+// Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevelopmentPolicy",
+    options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:3000")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -32,32 +24,20 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseCors("DevelopmentPolicy");
 }
 
-// HTTPS redirection disabled for development
-// app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseHttpsRedirection();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseSpaStaticFiles();
-}
+app.UseCors("AllowReactApp");
 
-app.UseRouting();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Configure SPA
-app.UseSpa(spa =>
-{
-    spa.Options.SourcePath = "ClientApp";
+// Serve static files from wwwroot
+app.UseStaticFiles();
 
-    if (app.Environment.IsDevelopment())
-    {
-        spa.UseReactDevelopmentServer(npmScript: "start");
-    }
-});
+// Fallback to index.html for client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();
