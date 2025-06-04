@@ -25,7 +25,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
 
 2. **Create ASP.NET Core Web API**:
    ```bash
-   dotnet new webapi -n TodoApi
+   dotnet new webapi -n TodoApi --framework net8.0
    cd TodoApi
    ```
 
