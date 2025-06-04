@@ -119,6 +119,166 @@ else
     echo -e "${GREEN}✓${NC}"
 fi
 
+# Step 2.5: Create foundational models for exercises that build on previous ones
+if [ "$EXERCISE_NAME" = "exercise03-documentation" ]; then
+    echo -n "2.5. Creating foundational models from Exercises 1 & 2... "
+
+    # Create Models directory
+    mkdir -p Models Models/Auth Data Controllers
+
+    # Create Book model from Exercise 1
+    cat > Models/Book.cs << 'EOF'
+namespace LibraryAPI.Models
+{
+    public class Book
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string ISBN { get; set; } = string.Empty;
+        public int PublicationYear { get; set; }
+        public int NumberOfPages { get; set; }
+        public string Summary { get; set; } = string.Empty;
+
+        // Navigation properties
+        public int AuthorId { get; set; }
+        public Author? Author { get; set; }
+
+        public int CategoryId { get; set; }
+        public Category? Category { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+}
+EOF
+
+    # Create Author model
+    cat > Models/Author.cs << 'EOF'
+namespace LibraryAPI.Models
+{
+    public class Author
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Biography { get; set; } = string.Empty;
+        public DateTime? DateOfBirth { get; set; }
+        public string Nationality { get; set; } = string.Empty;
+
+        // Navigation properties
+        public ICollection<Book> Books { get; set; } = new List<Book>();
+
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+}
+EOF
+
+    # Create Category model
+    cat > Models/Category.cs << 'EOF'
+namespace LibraryAPI.Models
+{
+    public class Category
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+
+        // Navigation properties
+        public ICollection<Book> Books { get; set; } = new List<Book>();
+
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+}
+EOF
+
+    # Create User model from Exercise 2
+    cat > Models/Auth/User.cs << 'EOF'
+using Microsoft.AspNetCore.Identity;
+
+namespace LibraryAPI.Models.Auth
+{
+    public class User : IdentityUser
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}
+EOF
+
+    # Create LibraryContext from Exercises 1 & 2
+    cat > Data/LibraryContext.cs << 'EOF'
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using LibraryAPI.Models;
+using LibraryAPI.Models.Auth;
+
+namespace LibraryAPI.Data
+{
+    public class LibraryContext : IdentityDbContext<User>
+    {
+        public LibraryContext(DbContextOptions<LibraryContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Book> Books => Set<Book>();
+        public DbSet<Author> Authors => Set<Author>();
+        public DbSet<Category> Categories => Set<Category>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure Book entity
+            modelBuilder.Entity<Book>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ISBN).IsRequired().HasMaxLength(14);
+                entity.HasIndex(e => e.ISBN).IsUnique();
+
+                entity.HasOne(e => e.Author)
+                    .WithMany(a => a.Books)
+                    .HasForeignKey(e => e.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Category)
+                    .WithMany(c => c.Books)
+                    .HasForeignKey(e => e.CategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure Author entity
+            modelBuilder.Entity<Author>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Biography).HasMaxLength(2000);
+                entity.Property(e => e.Nationality).HasMaxLength(100);
+            });
+
+            // Configure Category entity
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.Property(e => e.Description).HasMaxLength(500);
+            });
+        }
+    }
+}
+EOF
+
+    echo -e "${GREEN}✓${NC}"
+fi
+
 # Step 3: Restore packages
 echo -n "3. Restoring packages... "
 if dotnet restore > /dev/null 2>&1; then
