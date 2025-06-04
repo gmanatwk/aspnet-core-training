@@ -90,3 +90,138 @@ button:focus-visible {
     color: #1a1a1a;
   }
 }
+
+/* Todo List Styles */
+.todo-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.todo-container h1 {
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.add-todo-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.todo-input {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.todo-input:focus {
+  border-color: #646cff;
+}
+
+.add-button {
+  padding: 0.75rem 1.5rem;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.add-button:hover {
+  background-color: #5858d6;
+}
+
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.todo-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.todo-item input[type="checkbox"] {
+  margin-right: 1rem;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.todo-item span {
+  flex: 1;
+  font-size: 1rem;
+  color: #333;
+}
+
+.todo-item.completed span {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.delete-button {
+  padding: 0.5rem 1rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.3s;
+}
+
+.delete-button:hover {
+  background-color: #c82333;
+}
+
+@media (prefers-color-scheme: dark) {
+  .todo-container {
+    background: #2a2a2a;
+    color: #fff;
+  }
+  
+  .todo-container h1 {
+    color: #fff;
+  }
+  
+  .todo-item {
+    background: #3a3a3a;
+  }
+  
+  .todo-item span {
+    color: #fff;
+  }
+  
+  .todo-item.completed span {
+    color: #666;
+  }
+  
+  .todo-input {
+    background: #3a3a3a;
+    color: #fff;
+    border-color: #555;
+  }
+}

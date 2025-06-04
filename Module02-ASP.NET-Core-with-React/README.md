@@ -38,6 +38,7 @@ Module02-ASP.NET-Core-with-React/
 │   ├── Exercise01/           # Set up React with ASP.NET Core
 │   ├── Exercise02/           # Implement routing and state
 │   ├── Exercise03/           # API integration
+│   ├── Exercise04/           # Docker containerization
 │   └── Solutions/            # Exercise solutions
 └── Resources/
     ├── react-cheatsheet.md   # React quick reference
@@ -243,6 +244,12 @@ const App: React.FC = () => {
 3. Implement navigation
 4. Add route parameters
 
+### Activity 4: Docker Integration (40 minutes)
+1. Create Dockerfiles for React and ASP.NET Core
+2. Set up docker-compose for development
+3. Build and test containerized applications
+4. Optimize for production deployment
+
 ## 💡 Best Practices
 
 ### **Performance Optimization:**
@@ -330,17 +337,22 @@ const App: React.FC = () => {
 ### Exercise 1: Basic Integration
 **Objective**: Set up React with ASP.NET Core
 **Time**: 45 minutes
-**Instructions**: See `Exercises/Exercise01/README.md`
+**Instructions**: See `Exercises/Exercise01-Basic-Integration.md`
 
 ### Exercise 2: State and Routing
 **Objective**: Implement state management and routing
 **Time**: 40 minutes
-**Instructions**: See `Exercises/Exercise02/README.md`
+**Instructions**: See `Exercises/Exercise02-State-Management-Routing.md`
 
 ### Exercise 3: API Integration
 **Objective**: Connect React frontend to ASP.NET Core API
 **Time**: 35 minutes
-**Instructions**: See `Exercises/Exercise03/README.md`
+**Instructions**: See `Exercises/Exercise03-API-Integration-Performance.md`
+
+### Exercise 4: Docker Integration
+**Objective**: Containerize React and ASP.NET Core applications
+**Time**: 40 minutes
+**Instructions**: See `Exercises/Exercise04-Docker-Integration.md`
 
 ## 📖 Additional Resources
 

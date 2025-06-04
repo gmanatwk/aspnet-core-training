@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { Logger, networkLogger, lifecycleLogger } from './utils/logger'
 import { DevTools } from './components/DevTools'
+import TodoList from './components/TodoList'
 
 interface WeatherForecast {
   date: string
@@ -117,6 +118,10 @@ function App() {
         <p className="read-the-docs">
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
+      </div>
+
+      <div className="container">
+        <TodoList />
       </div>
       
       <DevTools />
