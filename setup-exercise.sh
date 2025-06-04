@@ -103,8 +103,8 @@ else
             dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
             dotnet add package Swashbuckle.AspNetCore --version 6.8.1 > /dev/null 2>&1
             dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1 > /dev/null 2>&1
-            dotnet add package Microsoft.AspNetCore.Mvc.Versioning --version 5.1.0 > /dev/null 2>&1
-            dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer --version 5.1.0 > /dev/null 2>&1
+            dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
+            dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
             dotnet add package AspNetCore.HealthChecks.UI --version 8.0.2 > /dev/null 2>&1
             dotnet add package AspNetCore.HealthChecks.UI.Client --version 8.0.2 > /dev/null 2>&1
             dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage --version 8.0.2 > /dev/null 2>&1

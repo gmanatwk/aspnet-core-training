@@ -4,7 +4,7 @@
 Enhance your Library API with comprehensive documentation using Swagger/OpenAPI, implement API versioning, and add advanced features like health checks and API analytics.
 
 ## ⏱️ Estimated Time
-35 minutes
+40 minutes
 
 ## 📋 Prerequisites
 - .NET 8.0 SDK installed
@@ -29,9 +29,325 @@ cd LibraryAPI
 dotnet build
 ```
 
-### Part 1: Enhanced Swagger Documentation (10 minutes)
+### Part 1: Create Required DTOs and Models (5 minutes)
 
-**Note**: If you used Option A above, you manually added the required packages. If you used Option B (setup script), all packages are already installed with correct versions.
+First, create the data transfer objects and models needed for the exercise:
+
+**Models/DTOs/BookDto.cs**:
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace LibraryAPI.Models.DTOs
+{
+    /// <summary>
+    /// Book data transfer object for API responses
+    /// </summary>
+    public class BookDto
+    {
+        /// <summary>
+        /// Unique identifier for the book
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Book title
+        /// </summary>
+        public string Title { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Book author
+        /// </summary>
+        public string Author { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Book category/genre
+        /// </summary>
+        public string Category { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Publication year
+        /// </summary>
+        public int PublicationYear { get; set; }
+
+        /// <summary>
+        /// ISBN number
+        /// </summary>
+        public string ISBN { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Number of available copies
+        /// </summary>
+        public int AvailableCopies { get; set; }
+    }
+
+    /// <summary>
+    /// Enhanced book DTO for API version 2
+    /// </summary>
+    public class BookDtoV2 : BookDto
+    {
+        /// <summary>
+        /// Book description
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Publisher information
+        /// </summary>
+        public string Publisher { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Book rating (1-5 stars)
+        /// </summary>
+        public decimal Rating { get; set; }
+
+        /// <summary>
+        /// Number of pages
+        /// </summary>
+        public int PageCount { get; set; }
+
+        /// <summary>
+        /// Book language
+        /// </summary>
+        public string Language { get; set; } = "English";
+
+        /// <summary>
+        /// Tags associated with the book
+        /// </summary>
+        public List<string> Tags { get; set; } = new();
+    }
+
+    /// <summary>
+    /// DTO for creating new books
+    /// </summary>
+    public class CreateBookDto
+    {
+        /// <summary>
+        /// Book title
+        /// </summary>
+        [Required]
+        [StringLength(200)]
+        public string Title { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Book author
+        /// </summary>
+        [Required]
+        [StringLength(100)]
+        public string Author { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Book category
+        /// </summary>
+        [Required]
+        [StringLength(50)]
+        public string Category { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Publication year
+        /// </summary>
+        [Range(1000, 2030)]
+        public int PublicationYear { get; set; }
+
+        /// <summary>
+        /// ISBN number
+        /// </summary>
+        [Required]
+        [RegularExpression(@"^(?:ISBN(?:-1[03])?:? )?(?=[0-9X]{10}$|(?=(?:[0-9]+[- ]){3})[- 0-9X]{13}$|97[89][0-9]{10}$|(?=(?:[0-9]+[- ]){4})[- 0-9]{17}$)(?:97[89][- ]?)?[0-9]{1,5}[- ]?[0-9]+[- ]?[0-9]+[- ]?[0-9X]$")]
+        public string ISBN { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Number of copies
+        /// </summary>
+        [Range(0, 1000)]
+        public int AvailableCopies { get; set; }
+    }
+}
+```
+
+**Models/DTOs/PaginationDto.cs**:
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace LibraryAPI.Models.DTOs
+{
+    /// <summary>
+    /// Pagination parameters for API requests
+    /// </summary>
+    public class PaginationParams
+    {
+        /// <summary>
+        /// Page number (1-based)
+        /// </summary>
+        [Range(1, int.MaxValue)]
+        public int PageNumber { get; set; } = 1;
+
+        /// <summary>
+        /// Number of items per page
+        /// </summary>
+        [Range(1, 100)]
+        public int PageSize { get; set; } = 10;
+    }
+
+    /// <summary>
+    /// Paginated response wrapper
+    /// </summary>
+    /// <typeparam name="T">Type of data being paginated</typeparam>
+    public class PaginatedResponse<T>
+    {
+        /// <summary>
+        /// Current page number
+        /// </summary>
+        public int PageNumber { get; set; }
+
+        /// <summary>
+        /// Number of items per page
+        /// </summary>
+        public int PageSize { get; set; }
+
+        /// <summary>
+        /// Total number of items
+        /// </summary>
+        public int TotalCount { get; set; }
+
+        /// <summary>
+        /// Total number of pages
+        /// </summary>
+        public int TotalPages { get; set; }
+
+        /// <summary>
+        /// Whether there is a previous page
+        /// </summary>
+        public bool HasPreviousPage { get; set; }
+
+        /// <summary>
+        /// Whether there is a next page
+        /// </summary>
+        public bool HasNextPage { get; set; }
+
+        /// <summary>
+        /// The actual data items
+        /// </summary>
+        public List<T> Data { get; set; } = new();
+
+        /// <summary>
+        /// Create a paginated response
+        /// </summary>
+        public static PaginatedResponse<T> Create(List<T> data, int pageNumber, int pageSize, int totalCount)
+        {
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            return new PaginatedResponse<T>
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasPreviousPage = pageNumber > 1,
+                HasNextPage = pageNumber < totalPages,
+                Data = data
+            };
+        }
+    }
+
+    /// <summary>
+    /// Filter parameters for book searches
+    /// </summary>
+    public class BookFilterDto
+    {
+        /// <summary>
+        /// Filter by category
+        /// </summary>
+        public string? Category { get; set; }
+
+        /// <summary>
+        /// Filter by author
+        /// </summary>
+        public string? Author { get; set; }
+
+        /// <summary>
+        /// Filter by publication year
+        /// </summary>
+        public int? Year { get; set; }
+
+        /// <summary>
+        /// Search in title and description
+        /// </summary>
+        public string? SearchTerm { get; set; }
+
+        /// <summary>
+        /// Minimum rating filter
+        /// </summary>
+        [Range(1, 5)]
+        public decimal? MinRating { get; set; }
+
+        /// <summary>
+        /// Filter by language
+        /// </summary>
+        public string? Language { get; set; }
+
+        /// <summary>
+        /// Filter by tags
+        /// </summary>
+        public List<string>? Tags { get; set; }
+    }
+
+    /// <summary>
+    /// Result of bulk operations
+    /// </summary>
+    public class BulkOperationResult
+    {
+        /// <summary>
+        /// Number of items successfully processed
+        /// </summary>
+        public int SuccessCount { get; set; }
+
+        /// <summary>
+        /// Number of items that failed processing
+        /// </summary>
+        public int FailureCount { get; set; }
+
+        /// <summary>
+        /// Total number of items processed
+        /// </summary>
+        public int TotalCount { get; set; }
+
+        /// <summary>
+        /// List of errors that occurred
+        /// </summary>
+        public List<BulkOperationError> Errors { get; set; } = new();
+
+        /// <summary>
+        /// IDs of successfully created items
+        /// </summary>
+        public List<int> CreatedIds { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Error information for bulk operations
+    /// </summary>
+    public class BulkOperationError
+    {
+        /// <summary>
+        /// Index of the item that failed
+        /// </summary>
+        public int Index { get; set; }
+
+        /// <summary>
+        /// Error message
+        /// </summary>
+        public string Message { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The item that failed (optional)
+        /// </summary>
+        public object? Item { get; set; }
+    }
+}
+```
+
+### Part 2: Enhanced Swagger Documentation (10 minutes)
+
+**Note**: All required packages are already installed by the setup script with correct versions.
 
 2. **Create custom Swagger configuration** in `Configuration/`:
 
@@ -269,7 +585,7 @@ dotnet build
    }
    ```
 
-### Part 2: Implement API Versioning (10 minutes)
+### Part 3: Implement API Versioning (10 minutes)
 
 1. **Configure API versioning** in Program.cs:
 
@@ -303,8 +619,10 @@ dotnet build
 
    **Controllers/V1/BooksController.cs**:
    ```csharp
+   using Asp.Versioning;
    using Microsoft.AspNetCore.Mvc;
    using Swashbuckle.AspNetCore.Annotations;
+   using LibraryAPI.Models.DTOs;
 
    namespace LibraryAPI.Controllers.V1
    {
@@ -366,6 +684,10 @@ dotnet build
 
    **Controllers/V2/BooksController.cs**:
    ```csharp
+   using Asp.Versioning;
+   using Microsoft.AspNetCore.Mvc;
+   using LibraryAPI.Models.DTOs;
+
    namespace LibraryAPI.Controllers.V2
    {
        /// <summary>
@@ -404,7 +726,7 @@ dotnet build
    }
    ```
 
-### Part 3: Add Health Checks and Monitoring (10 minutes)
+### Part 4: Add Health Checks and Monitoring (10 minutes)
 
 1. **Create custom health checks** (packages already installed by setup script):
 
@@ -548,7 +870,7 @@ dotnet build
    });
    ```
 
-### Part 4: Add API Analytics and Metrics (5 minutes)
+### Part 5: Add API Analytics and Metrics (5 minutes)
 
 1. **Create middleware for API analytics**:
 
@@ -644,7 +966,14 @@ dotnet build
 
    **Controllers/AnalyticsController.cs**:
    ```csharp
-   [ApiController]
+   using Asp.Versioning;
+   using Microsoft.AspNetCore.Authorization;
+   using Microsoft.AspNetCore.Mvc;
+   using LibraryAPI.Middleware;
+
+   namespace LibraryAPI.Controllers
+   {
+       [ApiController]
    [ApiVersion("1.0")]
    [Route("api/v{version:apiVersion}/[controller]")]
    [Authorize(Roles = "Admin")]
@@ -714,9 +1043,10 @@ dotnet build
        public int Count { get; set; }
        public double AverageResponseTime { get; set; }
    }
+   }
    ```
 
-### Part 5: Test Your Enhanced API (5 minutes)
+### Part 6: Test Your Enhanced API (5 minutes)
 
 1. **Update Program.cs** to use the middleware:
    ```csharp
