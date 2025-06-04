@@ -36,7 +36,18 @@ This comprehensive ASP.NET Core training covers 13 modules designed to take stud
    - Node.js (for React modules)
    - SQL Server Express (optional)
 
-3. **Navigate to Module Folders**: Each module contains:
+3. **For Students - Exercise Setup**:
+   📖 **Read the [Student Setup Guide](STUDENT-SETUP-GUIDE.md)** for exercise instructions
+
+   **Quick Start for Exercises:**
+   ```bash
+   # For each exercise, run:
+   ./setup-exercise.sh <exercise-name>
+   cd LibraryAPI
+   # Follow exercise instructions
+   ```
+
+4. **Navigate to Module Folders**: Each module contains:
    - 📖 **README.md** - Learning objectives and instructions
    - 💻 **SourceCode/** - Complete working examples
    - 🏋️ **Exercises/** - Hands-on practice activities
