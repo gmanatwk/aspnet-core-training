@@ -210,15 +210,16 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    npm create vite@latest todo-frontend -- --template react-ts
    cd todo-frontend
    npm install axios
+   npm install --save-dev @types/node
    ```
 
 2. **Create Todo service** in `src/services/todoService.ts`:
    ```typescript
    import axios from 'axios';
 
-   const API_BASE_URL = process.env.NODE_ENV === 'production' 
-     ? '/api/todo' 
-     : 'http://localhost:5000/api/todo';
+   const API_BASE_URL = import.meta.env.PROD
+     ? '/api/todo'
+     : 'http://localhost:5001/api/todo';
 
    export interface Todo {
      id?: number;
@@ -795,6 +796,9 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
 
 **Issue**: .NET SDK version mismatch in Docker
 **Solution**: Ensure the project targets .NET 8.0 by using `--framework net8.0` when creating the project, or verify the `<TargetFramework>net8.0</TargetFramework>` in the .csproj file matches the Docker image version.
+
+**Issue**: TypeScript error "Cannot find name 'process'"
+**Solution**: Install Node.js types with `npm install --save-dev @types/node` or use Vite's `import.meta.env.PROD` instead of `process.env.NODE_ENV`.
 
 **Issue**: Containers can't communicate
 **Solution**: Ensure both containers are on the same Docker network and use service names for communication.
