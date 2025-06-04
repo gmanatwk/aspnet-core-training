@@ -17,9 +17,9 @@ Secure your Library API with JWT authentication, implement role-based authorizat
 
 1. **Install required packages**:
    ```bash
-   dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
-   dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
-   dotnet add package System.IdentityModel.Tokens.Jwt
+   dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11
+   dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
+   dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2
    ```
 
 2. **Create authentication models** in `Models/Auth/`:
@@ -789,9 +789,9 @@ if (app.Environment.IsDevelopment())
 // Security headers
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Add("X-Frame-Options", "DENY");
-    context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers.Remove("Server");
     await next();
 });
@@ -980,6 +980,9 @@ public class BooksController : ControllerBase
 
 ## 🆘 Troubleshooting
 
+**Issue**: 'AuthorizeAttribute' could not be found
+**Solution**: Add `using Microsoft.AspNetCore.Authorization;` to the top of your controller file. Ensure you have the correct package references for ASP.NET Core 8.0.
+
 **Issue**: 401 Unauthorized on all requests
 **Solution**: Ensure you're including the "Bearer " prefix in the Authorization header.
 
@@ -988,6 +991,17 @@ public class BooksController : ControllerBase
 
 **Issue**: CORS errors with authentication
 **Solution**: Ensure AllowCredentials() is set in CORS policy when using authentication.
+
+**Issue**: ASP0019 warnings about Headers.Add
+**Solution**: Use `context.Response.Headers["HeaderName"] = "value"` instead of `Headers.Add()`.
+
+**Issue**: Package version conflicts
+**Solution**: Ensure all authentication packages are using .NET 8.0 compatible versions:
+```bash
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
+dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2
+```
 
 ---
 
