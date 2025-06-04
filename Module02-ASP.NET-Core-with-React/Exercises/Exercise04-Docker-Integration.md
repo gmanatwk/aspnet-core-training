@@ -29,13 +29,18 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    cd TodoApi
    ```
 
-3. **Add necessary packages**:
+3. **Verify target framework** (should show `net8.0`):
+   ```bash
+   cat TodoApi.csproj | grep TargetFramework
+   ```
+
+4. **Add necessary packages**:
    ```bash
    dotnet add package Microsoft.AspNetCore.SpaServices.Extensions
    dotnet add package Swashbuckle.AspNetCore
    ```
 
-4. **Create Todo model and controller** in `Models/Todo.cs`:
+5. **Create Todo model and controller** in `Models/Todo.cs`:
    ```csharp
    namespace TodoApi.Models
    {
@@ -49,7 +54,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    }
    ```
 
-5. **Create TodoController** in `Controllers/TodoController.cs`:
+6. **Create TodoController** in `Controllers/TodoController.cs`:
    ```csharp
    using Microsoft.AspNetCore.Mvc;
    using TodoApi.Models;
@@ -112,7 +117,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    }
    ```
 
-6. **Update Program.cs**:
+7. **Update Program.cs**:
    ```csharp
    var builder = WebApplication.CreateBuilder(args);
 
@@ -148,7 +153,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    app.Run();
    ```
 
-7. **Create Dockerfile for API** in `TodoApi/Dockerfile`:
+8. **Create Dockerfile for API** in `TodoApi/Dockerfile`:
    ```dockerfile
    # Development Dockerfile for ASP.NET Core API
    FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
@@ -181,7 +186,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    ENTRYPOINT ["dotnet", "TodoApi.dll"]
    ```
 
-8. **Create .dockerignore** in `TodoApi/.dockerignore`:
+9. **Create .dockerignore** in `TodoApi/.dockerignore`:
    ```
    **/.dockerignore
    **/.git
@@ -466,7 +471,7 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
    COPY package*.json ./
 
    # Install dependencies
-   RUN npm ci --only=production
+   RUN npm install
 
    # Copy source code
    COPY . .
@@ -787,6 +792,9 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
 5. What strategies would you use for container orchestration at scale?
 
 ## 🆘 Troubleshooting
+
+**Issue**: .NET SDK version mismatch in Docker
+**Solution**: Ensure the project targets .NET 8.0 by using `--framework net8.0` when creating the project, or verify the `<TargetFramework>net8.0</TargetFramework>` in the .csproj file matches the Docker image version.
 
 **Issue**: Containers can't communicate
 **Solution**: Ensure both containers are on the same Docker network and use service names for communication.
