@@ -43,17 +43,17 @@ public class RateLimitingMiddleware
             _logger.LogWarning("Rate limit exceeded for client: {ClientKey}", key);
             
             context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
-            context.Response.Headers.Add("X-RateLimit-Limit", RateLimit.ToString());
-            context.Response.Headers.Add("X-RateLimit-Remaining", "0");
-            context.Response.Headers.Add("X-RateLimit-Reset", GetResetTime().ToString());
+            context.Response.Headers["X-RateLimit-Limit"] = RateLimit.ToString();
+            context.Response.Headers["X-RateLimit-Remaining"] = "0";
+            context.Response.Headers["X-RateLimit-Reset"] = GetResetTime().ToString();
             
             await context.Response.WriteAsync("Rate limit exceeded. Please try again later.");
             return;
         }
 
-        context.Response.Headers.Add("X-RateLimit-Limit", RateLimit.ToString());
-        context.Response.Headers.Add("X-RateLimit-Remaining", (RateLimit - requestCount).ToString());
-        context.Response.Headers.Add("X-RateLimit-Reset", GetResetTime().ToString());
+        context.Response.Headers["X-RateLimit-Limit"] = RateLimit.ToString();
+        context.Response.Headers["X-RateLimit-Remaining"] = (RateLimit - requestCount).ToString();
+        context.Response.Headers["X-RateLimit-Reset"] = GetResetTime().ToString();
 
         await _next(context);
     }

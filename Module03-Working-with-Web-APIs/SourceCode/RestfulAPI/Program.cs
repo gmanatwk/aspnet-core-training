@@ -127,7 +127,7 @@ try
             {
                 if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
                 {
-                    context.Response.Headers.Add("Token-Expired", "true");
+                    context.Response.Headers["Token-Expired"] = "true";
                 }
                 return Task.CompletedTask;
             }
@@ -145,31 +145,42 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
-        // Get API version provider
-        var provider = builder.Services.BuildServiceProvider()
-            .GetRequiredService<IApiVersionDescriptionProvider>();
-
-        // Add a swagger document for each discovered API version
-        foreach (var description in provider.ApiVersionDescriptions)
+        // Configure Swagger for API versioning - will be configured after build
+        options.SwaggerDoc("v1", new OpenApiInfo
         {
-            options.SwaggerDoc(description.GroupName, new OpenApiInfo
+            Title = "Products RESTful API",
+            Version = "v1",
+            Description = "A comprehensive RESTful API for managing products",
+            Contact = new OpenApiContact
             {
-                Title = "Products RESTful API",
-                Version = description.ApiVersion.ToString(),
-                Description = "A comprehensive RESTful API for managing products",
-                Contact = new OpenApiContact
-                {
-                    Name = "API Support",
-                    Email = "api-support@yourdomain.com",
-                    Url = new Uri("https://example.com/support")
-                },
-                License = new OpenApiLicense
-                {
-                    Name = "MIT License",
-                    Url = new Uri("https://opensource.org/licenses/MIT")
-                }
-            });
-        }
+                Name = "API Support",
+                Email = "api-support@yourdomain.com",
+                Url = new Uri("https://example.com/support")
+            },
+            License = new OpenApiLicense
+            {
+                Name = "MIT License",
+                Url = new Uri("https://opensource.org/licenses/MIT")
+            }
+        });
+
+        options.SwaggerDoc("v2", new OpenApiInfo
+        {
+            Title = "Products RESTful API",
+            Version = "v2",
+            Description = "A comprehensive RESTful API for managing products",
+            Contact = new OpenApiContact
+            {
+                Name = "API Support",
+                Email = "api-support@yourdomain.com",
+                Url = new Uri("https://example.com/support")
+            },
+            License = new OpenApiLicense
+            {
+                Name = "MIT License",
+                Url = new Uri("https://opensource.org/licenses/MIT")
+            }
+        });
 
         // Add JWT Authentication to Swagger
         options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -298,16 +309,23 @@ try
         app.UseHsts();
         app.Use(async (context, next) =>
         {
-            context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
-            context.Response.Headers.Add("X-Frame-Options", "DENY");
-            context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
-            context.Response.Headers.Add("Referrer-Policy", "no-referrer");
-            context.Response.Headers.Add("Content-Security-Policy", "default-src 'self'");
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            context.Response.Headers["X-Frame-Options"] = "DENY";
+            context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
+            context.Response.Headers["Content-Security-Policy"] = "default-src 'self'";
             await next();
         });
     }
 
-    app.UseHttpsRedirection();
+    // Only use HTTPS redirection in production
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
+    // Enable static files
+    app.UseStaticFiles();
 
     // Use CORS
     if (app.Environment.IsDevelopment())

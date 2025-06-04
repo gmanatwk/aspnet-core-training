@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products RESTful API</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        .api-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .api-link {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            text-decoration: none;
+            color: #495057;
+            transition: all 0.3s ease;
+        }
+        .api-link:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .api-link h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .api-link p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+        .features {
+            text-align: left;
+            margin: 30px 0;
+        }
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        .features li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .version-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Products RESTful API</h1>
+        <p class="subtitle">A comprehensive ASP.NET Core Web API for managing products</p>
+        
+        <div class="api-links">
+            <a href="/swagger" class="api-link">
+                <h3>📚 API Documentation</h3>
+                <p>Interactive Swagger UI for testing API endpoints</p>
+            </a>
+            
+            <a href="/api/products" class="api-link">
+                <h3>📦 Products API</h3>
+                <p>RESTful endpoints for product management</p>
+            </a>
+            
+            <a href="/api/minimal/products" class="api-link">
+                <h3>⚡ Minimal API</h3>
+                <p>Lightweight endpoints using minimal APIs</p>
+            </a>
+            
+            <a href="/health" class="api-link">
+                <h3>💚 Health Check</h3>
+                <p>Application health status and diagnostics</p>
+            </a>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 API Features</h3>
+            <ul>
+                <li>RESTful API design with proper HTTP methods</li>
+                <li>API versioning support <span class="version-badge">v1</span> <span class="version-badge">v2</span></li>
+                <li>Comprehensive input validation and error handling</li>
+                <li>JWT authentication and authorization</li>
+                <li>Response caching and compression</li>
+                <li>CORS configuration for cross-origin requests</li>
+                <li>Health checks and monitoring</li>
+                <li>Structured logging with Serilog</li>
+                <li>Entity Framework Core with SQLite</li>
+                <li>Swagger/OpenAPI documentation</li>
+                <li>Minimal APIs for lightweight endpoints</li>
+                <li>Global exception handling middleware</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 0.9em;">
+            <p>Built with ASP.NET Core 8.0 | Module 3: Working with Web APIs</p>
+        </div>
+    </div>
+</body>
+</html>
