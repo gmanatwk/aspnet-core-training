@@ -194,6 +194,8 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
        if (app.Environment.IsDevelopment())
        {
+           // This is the correct configuration for Vite with .NET 8
+           // Make sure you have Microsoft.AspNetCore.SpaServices.Extensions version 8.0.0 or higher
            spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
        }
    });
