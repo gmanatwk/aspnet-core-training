@@ -196,7 +196,7 @@ public class OrderItem
 ### Step 1: Create Order Service Structure
 ```bash
 cd src/OrderManagement.Service
-dotnet new webapi -n OrderManagement.Service
+dotnet new webapi -n OrderManagement.Service --framework net8.0
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 dotnet add package Microsoft.EntityFrameworkCore.Design
 dotnet add package RabbitMQ.Client

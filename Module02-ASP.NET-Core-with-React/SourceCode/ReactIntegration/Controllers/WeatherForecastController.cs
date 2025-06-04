@@ -21,13 +21,26 @@ public class WeatherForecastController : ControllerBase
     [HttpGet]
     public IEnumerable<WeatherForecast> Get()
     {
-        return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        _logger.LogInformation("Generating weather forecast data");
+        
+        var forecasts = Enumerable.Range(1, 5).Select(index => 
         {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+            var forecast = new WeatherForecast
+            {
+                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                TemperatureC = Random.Shared.Next(-20, 55),
+                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+            };
+            
+            _logger.LogDebug("Generated forecast for {Date}: {Temp}°C, {Summary}", 
+                forecast.Date, forecast.TemperatureC, forecast.Summary);
+                
+            return forecast;
         })
         .ToArray();
+        
+        _logger.LogInformation("Returning {Count} weather forecasts", forecasts.Length);
+        return forecasts;
     }
 }
 

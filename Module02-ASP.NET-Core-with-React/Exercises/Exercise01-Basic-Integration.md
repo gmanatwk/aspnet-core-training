@@ -116,17 +116,45 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
 1. **Create React app in the project root**:
    ```bash
-   npx create-react-app clientapp --template typescript
+   npm create vite@latest clientapp -- --template react-ts
    ```
 
 2. **Install additional dependencies**:
    ```bash
    cd clientapp
    npm install axios react-router-dom @types/react-router-dom
+   ```
+
+3. **Configure Vite for ASP.NET Core integration**. Update `clientapp/vite.config.ts`:
+   ```typescript
+   import { defineConfig } from 'vite'
+   import react from '@vitejs/plugin-react'
+
+   // https://vite.dev/config/
+   export default defineConfig({
+     plugins: [react()],
+     server: {
+       port: 3000,
+       proxy: {
+         '/api': {
+           target: 'https://localhost:7000',
+           changeOrigin: true,
+           secure: false
+         }
+       }
+     },
+     build: {
+       outDir: 'dist'
+     }
+   })
+   ```
+
+4. **Return to project root**:
+   ```bash
    cd ..
    ```
 
-3. **Configure ASP.NET Core to serve React app**. Update `Program.cs`:
+5. **Configure ASP.NET Core to serve React app**. Update `Program.cs`:
    ```csharp
    var builder = WebApplication.CreateBuilder(args);
 
@@ -138,7 +166,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    // Add SPA static files
    builder.Services.AddSpaStaticFiles(configuration =>
    {
-       configuration.RootPath = "clientapp/build";
+       configuration.RootPath = "clientapp/dist";
    });
 
    var app = builder.Build();
@@ -166,7 +194,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
        if (app.Environment.IsDevelopment())
        {
-           spa.UseReactDevelopmentServer(npmScript: "start");
+           spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
        }
    });
 
@@ -437,19 +465,27 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
 ### Part 4: Test the Application (5 minutes)
 
-1. **Run the application**:
+1. **Important**: Check your ASP.NET Core port in `Properties/launchSettings.json` and update the Vite proxy target accordingly.
+
+2. **Start the Vite development server** (in a separate terminal):
+   ```bash
+   cd clientapp
+   npm run dev
+   ```
+
+3. **Run the ASP.NET Core application** (in another terminal):
    ```bash
    dotnet run
    ```
 
-2. **Test the features**:
+4. **Test the features**:
    - The app should open at https://localhost:[port]
    - Add new todos
    - Toggle completion status
    - Delete todos
    - Check that API calls work in the Network tab
 
-3. **Test the API directly**:
+5. **Test the API directly**:
    - Navigate to https://localhost:[port]/swagger
    - Test the API endpoints
 
@@ -496,11 +532,30 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 **Issue**: React app not loading
 **Solution**: Check that Node.js is installed and `npm install` was run in the clientapp folder.
 
-**Issue**: API calls failing
-**Solution**: Check the browser console and ensure the API is running on the correct port.
+**Issue**: API calls failing (404 errors)
+**Solution**:
+1. Check the browser console and ensure the API is running on the correct port
+2. Verify the Vite proxy configuration matches your ASP.NET Core port
+3. Check `Properties/launchSettings.json` for the correct HTTPS port
+4. Update `vite.config.ts` proxy target to match
+
+**Issue**: Vite dev server not starting
+**Solution**:
+1. Ensure you're in the clientapp directory when running npm commands
+2. Check that all dependencies are installed: `npm install`
+3. Verify Node.js version is 18+ with `node --version`
+
+**Issue**: Build files not found (dist folder)
+**Solution**:
+1. Run `npm run build` in the clientapp folder first
+2. Ensure the ASP.NET Core configuration points to `clientapp/dist` not `clientapp/build`
 
 **Issue**: Hot reload not working
-**Solution**: Make sure you're running in Development mode and the React dev server is running.
+**Solution**:
+1. Make sure you're running `dotnet run` from the project root
+2. The SPA middleware should automatically start the Vite dev server
+3. Check that the npmScript is set to "dev" not "start"
+4. Ensure you're running in Development mode
 
 ---
 

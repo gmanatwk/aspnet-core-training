@@ -23,15 +23,15 @@ By completing this exercise, you will:
 ### Task 1: Project Setup (10 minutes)
 1. **Create a new Web API project**:
    ```bash
-   dotnet new webapi -n JwtAuthExercise
+   dotnet new webapi -n JwtAuthExercise --framework net8.0
    cd JwtAuthExercise
    ```
 
 2. **Install required NuGet packages**:
    ```bash
-   dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
-   dotnet add package System.IdentityModel.Tokens.Jwt
-   dotnet add package Microsoft.IdentityModel.Tokens
+   dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.0
+   dotnet add package System.IdentityModel.Tokens.Jwt --version 8.12.0
+   dotnet add package Microsoft.IdentityModel.Tokens --version 8.12.0
    ```
 
 3. **Configure appsettings.json**:

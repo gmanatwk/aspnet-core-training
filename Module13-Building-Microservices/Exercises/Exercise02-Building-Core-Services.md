@@ -47,7 +47,7 @@ Create a shared library for common models and utilities:
 
 ```bash
 cd src/SharedLibraries
-dotnet new classlib -n ECommerceMS.Shared
+dotnet new classlib -n ECommerceMS.Shared --framework net8.0
 dotnet add ECommerceMS.Shared package Microsoft.Extensions.Logging
 dotnet add ECommerceMS.Shared package System.ComponentModel.DataAnnotations
 ```
@@ -93,7 +93,7 @@ public abstract class BaseEvent
 ### Step 1: Create the Product Catalog Service
 ```bash
 cd src/ProductCatalog.Service
-dotnet new webapi -n ProductCatalog.Service
+dotnet new webapi -n ProductCatalog.Service --framework net8.0
 dotnet add ProductCatalog.Service package Microsoft.EntityFrameworkCore.SqlServer
 dotnet add ProductCatalog.Service package Microsoft.EntityFrameworkCore.Design
 dotnet add ProductCatalog.Service package Microsoft.EntityFrameworkCore.Tools

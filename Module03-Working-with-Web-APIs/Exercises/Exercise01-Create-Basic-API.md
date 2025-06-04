@@ -18,9 +18,7 @@ Build a complete RESTful API for managing a library system with books, authors, 
 
 1. **Create a new Web API project**:
    ```bash
-  - Updated dotnet new command
-  - Updated dotnet new command with existing flags
-dotnet new   --framework net8.0
+   dotnet new webapi -n LibraryAPI --framework net8.0
    cd LibraryAPI
    ```
 

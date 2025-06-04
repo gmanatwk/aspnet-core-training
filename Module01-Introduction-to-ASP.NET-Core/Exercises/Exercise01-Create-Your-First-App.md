@@ -19,7 +19,7 @@ Create and run your first ASP.NET Core web application, explore its structure, a
 2. Navigate to your desired project directory
 3. Create a new ASP.NET Core Web App:
    ```bash
-   dotnet new webapp -n MyFirstWebApp
+   dotnet new webapp -n MyFirstWebApp --framework net8.0
    cd MyFirstWebApp
    ```
 

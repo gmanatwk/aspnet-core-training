@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import { Logger, networkLogger, lifecycleLogger } from './utils/logger'
+import { DevTools } from './components/DevTools'
 
 interface WeatherForecast {
   date: string
@@ -8,31 +10,55 @@ interface WeatherForecast {
   summary: string
 }
 
+const componentLogger = new Logger('WeatherApp')
+
 function App() {
   const [forecasts, setForecasts] = useState<WeatherForecast[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    lifecycleLogger.info('WeatherApp component mounted')
     fetchWeatherData()
+    
+    return () => {
+      lifecycleLogger.info('WeatherApp component unmounting')
+    }
   }, [])
 
   const fetchWeatherData = async () => {
     try {
+      networkLogger.info('Starting weather data fetch...')
       setLoading(true)
+      
+      networkLogger.time('API Call')
       const response = await fetch('/api/weatherforecast')
+      networkLogger.timeEnd('API Call')
+      
+      networkLogger.group('Response Details')
+      networkLogger.debug('Status:', response.status)
+      networkLogger.debug('Status Text:', response.statusText)
+      networkLogger.debug('Headers:', Object.fromEntries(response.headers.entries()))
+      networkLogger.groupEnd()
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
       const data = await response.json()
+      componentLogger.info('Weather data received:')
+      componentLogger.table(data)
+      
       setForecasts(data)
       setError(null)
+      componentLogger.info('State updated successfully')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      componentLogger.error('Failed to fetch weather data:', err)
+      setError(errorMessage)
     } finally {
       setLoading(false)
+      lifecycleLogger.debug('Loading state set to false')
     }
   }
 
@@ -46,13 +72,22 @@ function App() {
     })
   }
 
+  lifecycleLogger.debug('Rendering WeatherApp', { 
+    loading, 
+    hasError: !!error, 
+    forecastCount: forecasts.length 
+  })
+
   return (
     <>
       <div className="container">
         <h1>React + ASP.NET Core</h1>
         <div className="card">
           <h2>Weather Forecast</h2>
-          <button onClick={fetchWeatherData}>
+          <button onClick={() => {
+            componentLogger.info('Refresh button clicked by user')
+            fetchWeatherData()
+          }}>
             Refresh Data
           </button>
         </div>
@@ -83,6 +118,8 @@ function App() {
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
       </div>
+      
+      <DevTools />
     </>
   )
 }
