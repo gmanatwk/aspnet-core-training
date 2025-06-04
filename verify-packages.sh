@@ -24,6 +24,12 @@ EXPECTED_PACKAGES=(
     "Microsoft.EntityFrameworkCore.Tools:8.0.11"
     "System.IdentityModel.Tokens.Jwt:8.0.2"
     "Swashbuckle.AspNetCore:6.8.1"
+    "Swashbuckle.AspNetCore.Annotations:6.8.1"
+    "Microsoft.AspNetCore.Mvc.Versioning:5.1.0"
+    "Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer:5.1.0"
+    "AspNetCore.HealthChecks.UI:8.0.2"
+    "AspNetCore.HealthChecks.UI.Client:8.0.2"
+    "AspNetCore.HealthChecks.UI.InMemory.Storage:8.0.2"
 )
 
 # Check if project file exists

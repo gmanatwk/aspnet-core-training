@@ -15,14 +15,26 @@ NC='\033[0m' # No Color
 if [ $# -eq 0 ]; then
     echo -e "${RED}❌ Usage: $0 <exercise-name>${NC}"
     echo "Available exercises:"
-    echo "  - exercise01-basic-api"
-    echo "  - exercise02-authentication"
-    echo "  - exercise03-documentation"
+    echo "  Module 3:"
+    echo "    - exercise01-basic-api"
+    echo "    - exercise02-authentication"
+    echo "    - exercise03-documentation"
+    echo "  Module 4:"
+    echo "    - module04-exercise01-jwt"
     exit 1
 fi
 
 EXERCISE_NAME=$1
-PROJECT_NAME="LibraryAPI"
+
+# Set project name based on exercise
+case $EXERCISE_NAME in
+    "module04-exercise01-jwt")
+        PROJECT_NAME="JwtAuthExercise"
+        ;;
+    *)
+        PROJECT_NAME="LibraryAPI"
+        ;;
+esac
 
 echo -e "${BLUE}🚀 Setting up $EXERCISE_NAME${NC}"
 echo "=================================="
@@ -40,8 +52,33 @@ cd "$PROJECT_NAME"
 
 # Step 2: Copy the correct project file template
 echo -n "2. Applying package versions... "
-if [ -f "../Module03-Working-with-Web-APIs/Templates/LibraryAPI.csproj" ]; then
-    cp "../Module03-Working-with-Web-APIs/Templates/LibraryAPI.csproj" "./LibraryAPI.csproj"
+
+# Determine template path based on exercise
+TEMPLATE_PATH=""
+case $EXERCISE_NAME in
+    "module04-exercise01-jwt")
+        TEMPLATE_PATH="../Module04-Authentication-and-Authorization/Templates/JwtAuthExercise.csproj"
+        ;;
+    *)
+        TEMPLATE_PATH="../Module03-Working-with-Web-APIs/Templates/LibraryAPI.csproj"
+        ;;
+esac
+
+if [ -f "$TEMPLATE_PATH" ]; then
+    cp "$TEMPLATE_PATH" "./$PROJECT_NAME.csproj"
+
+    # Copy appsettings.json if it exists for this exercise
+    APPSETTINGS_PATH=""
+    case $EXERCISE_NAME in
+        "module04-exercise01-jwt")
+            APPSETTINGS_PATH="../Module04-Authentication-and-Authorization/Templates/appsettings.json"
+            ;;
+    esac
+
+    if [ -f "$APPSETTINGS_PATH" ]; then
+        cp "$APPSETTINGS_PATH" "./appsettings.json"
+    fi
+
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${YELLOW}⚠️  Template not found, using manual package installation${NC}"
@@ -65,8 +102,18 @@ else
             dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11 > /dev/null 2>&1
             dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
             dotnet add package Swashbuckle.AspNetCore --version 6.8.1 > /dev/null 2>&1
+            dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1 > /dev/null 2>&1
             dotnet add package Microsoft.AspNetCore.Mvc.Versioning --version 5.1.0 > /dev/null 2>&1
             dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer --version 5.1.0 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI --version 8.0.2 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI.Client --version 8.0.2 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage --version 8.0.2 > /dev/null 2>&1
+            ;;
+        "module04-exercise01-jwt")
+            dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11 > /dev/null 2>&1
+            dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
+            dotnet add package Microsoft.IdentityModel.Tokens --version 8.0.2 > /dev/null 2>&1
+            dotnet add package Swashbuckle.AspNetCore --version 6.8.1 > /dev/null 2>&1
             ;;
     esac
     echo -e "${GREEN}✓${NC}"

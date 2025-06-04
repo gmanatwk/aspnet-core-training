@@ -20,22 +20,26 @@ By completing this exercise, you will:
 
 ## 📝 Tasks
 
-### Task 1: Project Setup (10 minutes)
-1. **Create a new Web API project**:
-   ```bash
-   dotnet new webapi -n JwtAuthExercise --framework net8.0
-   cd JwtAuthExercise
-   ```
+### Task 1: Project Setup (2 minutes)
 
-2. **Install required NuGet packages**:
-   ```bash
-   dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.0
-   dotnet add package System.IdentityModel.Tokens.Jwt --version 8.12.0
-   dotnet add package Microsoft.IdentityModel.Tokens --version 8.12.0
-   ```
+**Run the setup script:**
+```bash
+# From the aspnet-core-training directory
+./setup-exercise.sh module04-exercise01-jwt
+cd JwtAuthExercise
+```
 
-3. **Configure appsettings.json**:
-   Add JWT configuration section with your own secret key.
+**Verify setup:**
+```bash
+../verify-packages.sh
+dotnet build
+```
+
+**Note**: All required packages are pre-installed with correct versions:
+- `Microsoft.AspNetCore.Authentication.JwtBearer`
+- `System.IdentityModel.Tokens.Jwt`
+- `Microsoft.IdentityModel.Tokens`
+- JWT configuration is pre-configured in appsettings.json
 
 ### Task 2: JWT Service Implementation (15 minutes)
 1. **Create Models folder** and add:

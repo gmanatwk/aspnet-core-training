@@ -7,21 +7,31 @@ Enhance your Library API with comprehensive documentation using Swagger/OpenAPI,
 35 minutes
 
 ## 📋 Prerequisites
-- Completed Exercises 1 and 2
 - .NET 8.0 SDK installed
-- Understanding of API documentation
+- Understanding of API documentation concepts
 - Basic knowledge of versioning strategies
+- Familiarity with Exercises 1 and 2 concepts (setup script provides complete project)
 
 ## 📝 Instructions
 
+### Part 0: Project Setup (2 minutes)
+
+**Run the setup script:**
+```bash
+# From the aspnet-core-training directory
+./setup-exercise.sh exercise03-documentation
+cd LibraryAPI
+```
+
+**Verify setup:**
+```bash
+../verify-packages.sh
+dotnet build
+```
+
 ### Part 1: Enhanced Swagger Documentation (10 minutes)
 
-1. **Install additional packages**:
-   ```bash
-   dotnet add package Swashbuckle.AspNetCore.Annotations
-   dotnet add package Microsoft.AspNetCore.Mvc.Versioning
-   dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer
-   ```
+**Note**: If you used Option A above, you manually added the required packages. If you used Option B (setup script), all packages are already installed with correct versions.
 
 2. **Create custom Swagger configuration** in `Configuration/`:
 
@@ -396,14 +406,7 @@ Enhance your Library API with comprehensive documentation using Swagger/OpenAPI,
 
 ### Part 3: Add Health Checks and Monitoring (10 minutes)
 
-1. **Install health check packages**:
-   ```bash
-   dotnet add package AspNetCore.HealthChecks.UI
-   dotnet add package AspNetCore.HealthChecks.UI.Client
-   dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage
-   ```
-
-2. **Create custom health checks**:
+1. **Create custom health checks** (packages already installed by setup script):
 
    **HealthChecks/DatabaseHealthCheck.cs**:
    ```csharp
