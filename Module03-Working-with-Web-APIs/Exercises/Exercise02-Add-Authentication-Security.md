@@ -13,29 +13,19 @@ Secure your Library API with JWT authentication, implement role-based authorizat
 
 ## 📝 Instructions
 
-### Part 0: Project Setup (5 minutes)
+### Part 0: Project Setup (2 minutes)
 
-**Option A: Use Setup Script (Recommended)**
+**Run the setup script:**
 ```bash
 # From the aspnet-core-training directory
 ./setup-exercise.sh exercise02-authentication
 cd LibraryAPI
 ```
 
-**Option B: Manual Setup**
+**Verify setup:**
 ```bash
-# Create project (if not done in Exercise 1)
-dotnet new webapi -n LibraryAPI --framework net8.0
-cd LibraryAPI
-
-# Install required packages with specific versions
-dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11
-dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
-dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2
-dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11
-
-# Verify package versions
 ../verify-packages.sh
+dotnet build
 ```
 
 ### Part 1: Add Authentication Models and Services (10 minutes)

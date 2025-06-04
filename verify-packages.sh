@@ -15,24 +15,23 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🔍 Verifying Package Versions${NC}"
 echo "=================================="
 
-# Expected versions
-declare -A EXPECTED_VERSIONS=(
-    ["Microsoft.AspNetCore.Authentication.JwtBearer"]="8.0.11"
-    ["Microsoft.AspNetCore.Identity.EntityFrameworkCore"]="8.0.11"
-    ["Microsoft.AspNetCore.OpenApi"]="8.0.11"
-    ["Microsoft.EntityFrameworkCore.InMemory"]="8.0.11"
-    ["Microsoft.EntityFrameworkCore.Tools"]="8.0.11"
-    ["System.IdentityModel.Tokens.Jwt"]="8.0.2"
-    ["Swashbuckle.AspNetCore"]="6.8.1"
+# Expected versions (package:version format)
+EXPECTED_PACKAGES=(
+    "Microsoft.AspNetCore.Authentication.JwtBearer:8.0.11"
+    "Microsoft.AspNetCore.Identity.EntityFrameworkCore:8.0.11"
+    "Microsoft.AspNetCore.OpenApi:8.0.11"
+    "Microsoft.EntityFrameworkCore.InMemory:8.0.11"
+    "Microsoft.EntityFrameworkCore.Tools:8.0.11"
+    "System.IdentityModel.Tokens.Jwt:8.0.2"
+    "Swashbuckle.AspNetCore:6.8.1"
 )
 
 # Check if project file exists
-if [ ! -f "*.csproj" ]; then
+PROJECT_FILE=$(ls *.csproj 2>/dev/null | head -1)
+if [ -z "$PROJECT_FILE" ]; then
     echo -e "${RED}❌ No .csproj file found in current directory${NC}"
     exit 1
 fi
-
-PROJECT_FILE=$(ls *.csproj | head -1)
 echo -e "📁 Checking project: ${BLUE}$PROJECT_FILE${NC}"
 echo ""
 
@@ -70,8 +69,11 @@ echo ""
 echo -e "${BLUE}📦 Checking Package Versions${NC}"
 all_correct=true
 
-for package in "${!EXPECTED_VERSIONS[@]}"; do
-    if ! check_package "$package" "${EXPECTED_VERSIONS[$package]}"; then
+for package_entry in "${EXPECTED_PACKAGES[@]}"; do
+    package_name=$(echo "$package_entry" | cut -d':' -f1)
+    expected_version=$(echo "$package_entry" | cut -d':' -f2)
+
+    if ! check_package "$package_name" "$expected_version"; then
         all_correct=false
     fi
 done
@@ -87,8 +89,10 @@ else
     echo ""
     echo -e "${YELLOW}💡 To fix package versions, run:${NC}"
     echo ""
-    for package in "${!EXPECTED_VERSIONS[@]}"; do
-        echo "dotnet add package $package --version ${EXPECTED_VERSIONS[$package]}"
+    for package_entry in "${EXPECTED_PACKAGES[@]}"; do
+        package_name=$(echo "$package_entry" | cut -d':' -f1)
+        expected_version=$(echo "$package_entry" | cut -d':' -f2)
+        echo "dotnet add package $package_name --version $expected_version"
     done
     echo ""
     exit 1

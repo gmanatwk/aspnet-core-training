@@ -98,7 +98,7 @@ dotnet build
 # Check SDK version
 dotnet --version
 
-# Should be 8.0.x - if not, install .NET 8.0 SDK
+# Should be 8.0.410 or compatible - if not, install .NET 8.0 SDK
 ```
 
 ## 📋 For Instructors

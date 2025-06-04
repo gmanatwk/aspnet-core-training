@@ -14,33 +14,22 @@ Build a complete RESTful API for managing a library system with books, authors, 
 
 ## 📝 Instructions
 
-### Part 1: Create the API Project (10 minutes)
+### Part 0: Project Setup (2 minutes)
 
-**Option A: Use the Setup Script (Recommended)**
+**Run the setup script:**
 ```bash
-# From the training root directory
+# From the aspnet-core-training directory
 ./setup-exercise.sh exercise01-basic-api
 cd LibraryAPI
 ```
 
-**Option B: Manual Setup**
-1. **Create a new Web API project**:
-   ```bash
-   dotnet new webapi -n LibraryAPI --framework net8.0
-   cd LibraryAPI
-   ```
+**Verify setup:**
+```bash
+../verify-packages.sh
+dotnet build
+```
 
-2. **Add required packages with specific versions**:
-   ```bash
-   dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11
-   dotnet add package Swashbuckle.AspNetCore --version 6.8.1
-   ```
-
-3. **Verify package versions**:
-   ```bash
-   # From the training root directory
-   ../verify-packages.sh
-   ```
+### Part 1: Create the API Models and Controllers (10 minutes)
 
 3. **Create the domain models** in `Models/`:
 
