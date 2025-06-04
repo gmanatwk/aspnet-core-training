@@ -1,0 +1,6 @@
+@ReactTodoApp_HostAddress = http://localhost:5052
+
+GET {{ReactTodoApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

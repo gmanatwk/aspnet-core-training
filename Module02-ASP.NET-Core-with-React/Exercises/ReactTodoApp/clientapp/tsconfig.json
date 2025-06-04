@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "compilerOptions": {
+    "outDir": "./dist/out-tsc",
+    "types": [],
+    "target": "es2015",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "downlevelIteration": true
+  },
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

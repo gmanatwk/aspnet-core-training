@@ -1,0 +1,53 @@
+version: '3.8'
+
+networks:
+  todo-network:
+    driver: bridge
+
+services:
+  # ASP.NET Core API (Production)
+  todo-api:
+    build:
+      context: ./TodoApi
+      dockerfile: Dockerfile
+    container_name: todo-api-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - todo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/todo"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend (Production)
+  todo-frontend:
+    build:
+      context: ./todo-frontend
+      dockerfile: Dockerfile
+    container_name: todo-frontend-prod
+    ports:
+      - "80:80"
+    networks:
+      - todo-network
+    depends_on:
+      todo-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nginx Load Balancer (Optional)
+  nginx-lb:
+    image: nginx:alpine
+    container_name: nginx-lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - todo-network
+    depends_on:
+      - todo-frontend
+    restart: unless-stopped
