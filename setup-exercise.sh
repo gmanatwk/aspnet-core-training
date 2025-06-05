@@ -28,6 +28,15 @@ EXERCISE_NAME=$1
 
 # Set project name based on exercise
 case $EXERCISE_NAME in
+    "exercise01-basic-api")
+        PROJECT_NAME="RestfulAPI"
+        ;;
+    "exercise02-authentication")
+        PROJECT_NAME="RestfulAPI"
+        ;;
+    "exercise03-documentation")
+        PROJECT_NAME="RestfulAPI"
+        ;;
     "module04-exercise01-jwt")
         PROJECT_NAME="JwtAuthenticationAPI"
         ;;
@@ -77,6 +86,9 @@ echo -n "2. Applying package versions... "
 # Determine template path based on exercise
 TEMPLATE_PATH=""
 case $EXERCISE_NAME in
+    "exercise01-basic-api"|"exercise02-authentication"|"exercise03-documentation")
+        TEMPLATE_PATH="../Module03-Working-with-Web-APIs/SourceCode/RestfulAPI/RestfulAPI.csproj"
+        ;;
     "module04-exercise01-jwt")
         TEMPLATE_PATH="../Module04-Authentication-and-Authorization/Templates/JwtAuthExercise.csproj"
         ;;
@@ -180,7 +192,7 @@ if [ "$EXERCISE_NAME" = "exercise03-documentation" ]; then
 
     # Create Book model from Exercise 1
     cat > Models/Book.cs << 'EOF'
-namespace LibraryAPI.Models
+namespace RestfulAPI.Models
 {
     public class Book
     {
@@ -206,7 +218,7 @@ EOF
 
     # Create Author model
     cat > Models/Author.cs << 'EOF'
-namespace LibraryAPI.Models
+namespace RestfulAPI.Models
 {
     public class Author
     {
@@ -228,7 +240,7 @@ EOF
 
     # Create Category model
     cat > Models/Category.cs << 'EOF'
-namespace LibraryAPI.Models
+namespace RestfulAPI.Models
 {
     public class Category
     {
@@ -249,7 +261,7 @@ EOF
     cat > Models/Auth/User.cs << 'EOF'
 using Microsoft.AspNetCore.Identity;
 
-namespace LibraryAPI.Models.Auth
+namespace RestfulAPI.Models.Auth
 {
     public class User : IdentityUser
     {
@@ -262,18 +274,18 @@ namespace LibraryAPI.Models.Auth
 }
 EOF
 
-    # Create LibraryContext from Exercises 1 & 2
-    cat > Data/LibraryContext.cs << 'EOF'
+    # Create ApplicationDbContext from Exercises 1 & 2
+    cat > Data/ApplicationDbContext.cs << 'EOF'
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using LibraryAPI.Models;
-using LibraryAPI.Models.Auth;
+using RestfulAPI.Models;
+using RestfulAPI.Models.Auth;
 
-namespace LibraryAPI.Data
+namespace RestfulAPI.Data
 {
-    public class LibraryContext : IdentityDbContext<User>
+    public class ApplicationDbContext : IdentityDbContext<User>
     {
-        public LibraryContext(DbContextOptions<LibraryContext> options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
