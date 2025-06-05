@@ -1,13 +1,13 @@
 # Exercise 2: Add Authentication and Security to Your API
 
 ## 🎯 Objective
-Secure your Library API with JWT authentication, implement role-based authorization, and add security best practices.
+Secure your RESTful API with JWT authentication, implement role-based authorization, and add security best practices.
 
 ## ⏱️ Estimated Time
 40 minutes
 
 ## 📋 Prerequisites
-- Completed Exercise 1
+- Completed Exercise 1 (or using the setup script which provides base project)
 - Basic understanding of JWT tokens
 - Knowledge of authentication vs authorization
 
@@ -30,13 +30,108 @@ dotnet build
 
 ### Part 1: Add Authentication Models and Services (10 minutes)
 
+1. **Create domain models** in `Models/`:
+
+   **Book.cs**:
+   ```csharp
+   using System.ComponentModel.DataAnnotations;
+
+   namespace RestfulAPI.Models
+   {
+       public class Book
+       {
+           public int Id { get; set; }
+
+           [Required]
+           [StringLength(300)]
+           public string Title { get; set; } = string.Empty;
+
+           [Required]
+           [StringLength(20)]
+           public string ISBN { get; set; } = string.Empty;
+
+           public int PublicationYear { get; set; }
+
+           public int NumberOfPages { get; set; }
+
+           [StringLength(2000)]
+           public string Summary { get; set; } = string.Empty;
+
+           // Foreign Keys
+           public int AuthorId { get; set; }
+           public Author? Author { get; set; }
+
+           public int CategoryId { get; set; }
+           public Category? Category { get; set; }
+
+           public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+           public DateTime? UpdatedAt { get; set; }
+       }
+   }
+   ```
+
+   **Author.cs**:
+   ```csharp
+   using System.ComponentModel.DataAnnotations;
+
+   namespace RestfulAPI.Models
+   {
+       public class Author
+       {
+           public int Id { get; set; }
+
+           [Required]
+           [StringLength(100)]
+           public string FirstName { get; set; } = string.Empty;
+
+           [Required]
+           [StringLength(100)]
+           public string LastName { get; set; } = string.Empty;
+
+           [StringLength(100)]
+           public string? Nationality { get; set; }
+
+           public DateTime? DateOfBirth { get; set; }
+
+           [StringLength(1000)]
+           public string? Biography { get; set; }
+
+           // Navigation property
+           public ICollection<Book> Books { get; set; } = new List<Book>();
+       }
+   }
+   ```
+
+   **Category.cs**:
+   ```csharp
+   using System.ComponentModel.DataAnnotations;
+
+   namespace RestfulAPI.Models
+   {
+       public class Category
+       {
+           public int Id { get; set; }
+
+           [Required]
+           [StringLength(100)]
+           public string Name { get; set; } = string.Empty;
+
+           [StringLength(500)]
+           public string? Description { get; set; }
+
+           // Navigation property
+           public ICollection<Book> Books { get; set; } = new List<Book>();
+       }
+   }
+   ```
+
 2. **Create authentication models** in `Models/Auth/`:
 
    **User.cs**:
    ```csharp
    using Microsoft.AspNetCore.Identity;
 
-   namespace LibraryAPI.Models.Auth
+   namespace RestfulAPI.Models.Auth
    {
        public class User : IdentityUser
        {
@@ -53,7 +148,7 @@ dotnet build
    ```csharp
    using System.ComponentModel.DataAnnotations;
 
-   namespace LibraryAPI.Models.Auth
+   namespace RestfulAPI.Models.Auth
    {
        public class RegisterModel
        {
@@ -139,11 +234,11 @@ dotnet build
    using System.Security.Claims;
    using System.Security.Cryptography;
    using System.Text;
-   using LibraryAPI.Models.Auth;
+   using RestfulAPI.Models.Auth;
    using Microsoft.AspNetCore.Identity;
    using Microsoft.IdentityModel.Tokens;
 
-   namespace LibraryAPI.Services
+   namespace RestfulAPI.Services
    {
        public interface IJwtService
        {
@@ -253,18 +348,18 @@ dotnet build
 
 ### Part 2: Update Data Context and Create Auth Controller (10 minutes)
 
-1. **Update LibraryContext.cs** to inherit from IdentityDbContext:
+1. **Update ApplicationDbContext.cs** to inherit from IdentityDbContext (or create it if starting from Exercise 2):
    ```csharp
    using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
    using Microsoft.EntityFrameworkCore;
-   using LibraryAPI.Models;
-   using LibraryAPI.Models.Auth;
+   using RestfulAPI.Models;
+   using RestfulAPI.Models.Auth;
 
-   namespace LibraryAPI.Data
+   namespace RestfulAPI.Data
    {
-       public class LibraryContext : IdentityDbContext<User>
+       public class ApplicationDbContext : IdentityDbContext<User>
        {
-           public LibraryContext(DbContextOptions<LibraryContext> options)
+           public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
                : base(options)
            {
            }
@@ -313,11 +408,11 @@ dotnet build
    using Microsoft.AspNetCore.Identity;
    using Microsoft.AspNetCore.Mvc;
    using Microsoft.EntityFrameworkCore;
-   using LibraryAPI.Data;
-   using LibraryAPI.Models.Auth;
-   using LibraryAPI.Services;
+   using RestfulAPI.Data;
+   using RestfulAPI.Models.Auth;
+   using RestfulAPI.Services;
 
-   namespace LibraryAPI.Controllers
+   namespace RestfulAPI.Controllers
    {
        [ApiController]
        [Route("api/[controller]")]
@@ -327,14 +422,14 @@ dotnet build
            private readonly UserManager<User> _userManager;
            private readonly SignInManager<User> _signInManager;
            private readonly IJwtService _jwtService;
-           private readonly LibraryContext _context;
+           private readonly ApplicationDbContext _context;
            private readonly ILogger<AuthController> _logger;
 
            public AuthController(
                UserManager<User> userManager,
                SignInManager<User> signInManager,
                IJwtService jwtService,
-               LibraryContext context,
+               ApplicationDbContext context,
                ILogger<AuthController> logger)
            {
                _userManager = userManager;
@@ -596,9 +691,9 @@ Update **Program.cs** with authentication configuration:
 
 ```csharp
 using System.Text;
-using LibraryAPI.Data;
-using LibraryAPI.Models.Auth;
-using LibraryAPI.Services;
+using RestfulAPI.Data;
+using RestfulAPI.Models.Auth;
+using RestfulAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -616,9 +711,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Library API",
+        Title = "RESTful API",
         Version = "v1",
-        Description = "A secure API for managing a library system"
+        Description = "A secure API for managing products with authentication"
     });
 
     // Add JWT Authentication
@@ -653,7 +748,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add Entity Framework
-builder.Services.AddDbContext<LibraryContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseInMemoryDatabase("LibraryDb"));
 
 // Add Identity
@@ -677,7 +772,7 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
     options.User.RequireUniqueEmail = true;
 })
-.AddEntityFrameworkStores<LibraryContext>()
+.AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
 // Add JWT Authentication
@@ -747,7 +842,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<LibraryContext>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
     var userManager = services.GetRequiredService<UserManager<User>>();
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
@@ -790,7 +885,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Library API V1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "RESTful API V1");
     });
 }
 
@@ -815,66 +910,66 @@ app.Run();
 
 ### Part 4: Secure Your API Endpoints (5 minutes)
 
-1. **Update BooksController** to add authorization:
+1. **Update ProductsController** (from Exercise 1) to add authorization:
 
 ```csharp
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Authorize] // Require authentication for all endpoints
-public class BooksController : ControllerBase
+public class ProductsController : ControllerBase
 {
     // ... existing code ...
 
     /// <summary>
-    /// Create a new book (Librarian or Admin only)
+    /// Create a new product (Librarian or Admin only)
     /// </summary>
     [HttpPost]
     [Authorize(Policy = "RequireLibrarianRole")]
     [ProducesResponseType(typeof(BookDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BookDto>> CreateBook([FromBody] CreateBookDto createBookDto)
+    public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto createProductDto)
     {
         // ... existing code ...
     }
 
     /// <summary>
-    /// Update an existing book (Librarian or Admin only)
+    /// Update an existing product (Librarian or Admin only)
     /// </summary>
     [HttpPut("{id:int}")]
     [Authorize(Policy = "RequireLibrarianRole")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> UpdateBook(int id, [FromBody] UpdateBookDto updateBookDto)
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateProductDto)
     {
         // ... existing code ...
     }
 
     /// <summary>
-    /// Delete a book (Admin only)
+    /// Delete a product (Admin only)
     /// </summary>
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> DeleteBook(int id)
+    public async Task<IActionResult> DeleteProduct(int id)
     {
-        _logger.LogInformation("Admin {UserId} deleting book with ID: {BookId}", 
+        _logger.LogInformation("Admin {UserId} deleting product with ID: {ProductId}", 
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value, id);
         
         // ... existing code ...
     }
 
     /// <summary>
-    /// Get all books (public endpoint)
+    /// Get all products (public endpoint)
     /// </summary>
     [HttpGet]
     [AllowAnonymous] // Override controller-level authorization
     [ProducesResponseType(typeof(IEnumerable<BookDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<BookDto>>> GetBooks(
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
         [FromQuery] string? category = null,
         [FromQuery] string? author = null,
         [FromQuery] int? year = null)
@@ -897,8 +992,8 @@ public class BooksController : ControllerBase
   "AllowedHosts": "*",
   "Jwt": {
     "Key": "ThisIsAVerySecretKeyForJWTTokensThatShouldBeAtLeast32CharactersLong!",
-    "Issuer": "LibraryAPI",
-    "Audience": "LibraryAPIUsers"
+    "Issuer": "RestfulAPI",
+    "Audience": "RestfulAPIUsers"
   }
 }
 ```
@@ -937,7 +1032,7 @@ public class BooksController : ControllerBase
 
    c. **Use the token** (copy from login response):
    ```bash
-   curl -X GET https://localhost:5001/api/books \
+   curl -X GET https://localhost:5001/api/products \
      -H "Authorization: Bearer YOUR_TOKEN_HERE"
    ```
 

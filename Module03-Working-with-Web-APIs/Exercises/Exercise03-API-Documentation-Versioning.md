@@ -1,7 +1,7 @@
 # Exercise 3: API Documentation and Versioning
 
 ## 🎯 Objective
-Enhance your Library API with comprehensive documentation using Swagger/OpenAPI, implement API versioning, and add advanced features like health checks and API analytics.
+Enhance your RESTful API with comprehensive documentation using Swagger/OpenAPI, implement API versioning, and add advanced features like health checks and API analytics.
 
 ## ⏱️ Estimated Time
 40 minutes
@@ -47,7 +47,7 @@ First, create the data transfer objects and models needed for the exercise:
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
-namespace LibraryAPI.Models.DTOs
+namespace RestfulAPI.Models.DTOs
 {
     /// <summary>
     /// Book data transfer object for API responses
@@ -190,7 +190,7 @@ namespace LibraryAPI.Models.DTOs
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
-namespace LibraryAPI.Models.DTOs
+namespace RestfulAPI.Models.DTOs
 {
     /// <summary>
     /// Pagination parameters for API requests
@@ -543,7 +543,7 @@ namespace LibraryAPI.Models.DTOs
 
    Add comprehensive documentation to your DTOs:
    ```csharp
-   namespace LibraryAPI.DTOs
+   namespace RestfulAPI.DTOs
    {
        /// <summary>
        /// Represents a book in the library system
@@ -645,8 +645,8 @@ namespace LibraryAPI.Models.DTOs
    builder.Services.AddEndpointsApiExplorer();
 
    // Add Entity Framework
-   builder.Services.AddDbContext<LibraryContext>(options =>
-       options.UseInMemoryDatabase("LibraryDb"));
+   builder.Services.AddDbContext<ApplicationDbContext>(options =>
+       options.UseInMemoryDatabase("RestfulApiDb"));
 
    // Add Identity
    builder.Services.AddIdentity<User, IdentityRole>(options =>
@@ -659,13 +659,13 @@ namespace LibraryAPI.Models.DTOs
        options.Password.RequiredUniqueChars = 1;
        options.User.RequireUniqueEmail = true;
    })
-   .AddEntityFrameworkStores<LibraryContext>()
+   .AddEntityFrameworkStores<ApplicationDbContext>()
    .AddDefaultTokenProviders();
 
    // Add JWT Authentication
    var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsAVerySecretKeyForJWTTokensThatShouldBeAtLeast32CharactersLong!";
-   var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "LibraryAPI";
-   var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "LibraryAPIUsers";
+   var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestfulAPI";
+   var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestfulAPIUsers";
 
    builder.Services.AddAuthentication(options =>
    {
@@ -735,7 +735,7 @@ namespace LibraryAPI.Models.DTOs
    {
        options.SetEvaluationTimeInSeconds(30);
        options.MaximumHistoryEntriesPerEndpoint(50);
-       options.AddHealthCheckEndpoint("Library API", "/health");
+       options.AddHealthCheckEndpoint("RESTful API", "/health");
    })
    .AddInMemoryStorage();
 
@@ -749,7 +749,7 @@ namespace LibraryAPI.Models.DTOs
    using (var scope = app.Services.CreateScope())
    {
        var services = scope.ServiceProvider;
-       var context = services.GetRequiredService<LibraryContext>();
+       var context = services.GetRequiredService<ApplicationDbContext>();
        var userManager = services.GetRequiredService<UserManager<User>>();
        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
@@ -854,7 +854,7 @@ namespace LibraryAPI.Models.DTOs
            {
                c.SwaggerEndpoint(
                    $"/swagger/{description.GroupName}/swagger.json",
-                   $"Library API {description.GroupName.ToUpperInvariant()}");
+                   $"RESTful API {description.GroupName.ToUpperInvariant()}");
            }
        });
    }
@@ -916,9 +916,9 @@ namespace LibraryAPI.Models.DTOs
    using Asp.Versioning;
    using Microsoft.AspNetCore.Mvc;
    using Swashbuckle.AspNetCore.Annotations;
-   using LibraryAPI.Models.DTOs;
+   using RestfulAPI.Models.DTOs;
 
-   namespace LibraryAPI.Controllers.V1
+   namespace RestfulAPI.Controllers.V1
    {
        /// <summary>
        /// Manages library books (Version 1)
@@ -930,10 +930,10 @@ namespace LibraryAPI.Models.DTOs
        [SwaggerTag("Create, read, update and delete books")]
        public class BooksController : ControllerBase
        {
-           private readonly LibraryContext _context;
+           private readonly ApplicationDbContext _context;
            private readonly ILogger<BooksController> _logger;
 
-           public BooksController(LibraryContext context, ILogger<BooksController> logger)
+           public BooksController(ApplicationDbContext context, ILogger<BooksController> logger)
            {
                _context = context;
                _logger = logger;
@@ -1099,10 +1099,10 @@ namespace LibraryAPI.Models.DTOs
        [SwaggerTag("Enhanced book management with advanced features")]
        public class BooksController : ControllerBase
        {
-           private readonly LibraryContext _context;
+           private readonly ApplicationDbContext _context;
            private readonly ILogger<BooksController> _logger;
 
-           public BooksController(LibraryContext context, ILogger<BooksController> logger)
+           public BooksController(ApplicationDbContext context, ILogger<BooksController> logger)
            {
                _context = context;
                _logger = logger;

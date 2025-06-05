@@ -107,6 +107,11 @@ dotnet build
            /// Last update timestamp
            /// </summary>
            public DateTime? UpdatedAt { get; set; }
+
+           /// <summary>
+           /// Soft delete flag
+           /// </summary>
+           public bool IsDeleted { get; set; } = false;
        }
    }
    ```
