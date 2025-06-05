@@ -376,6 +376,7 @@ namespace LibraryAPI.Models.DTOs
    **Configuration/ConfigureSwaggerOptions.cs**:
    ```csharp
    using System;
+   using System.Linq;
    using Asp.Versioning.ApiExplorer;
    using Microsoft.Extensions.Options;
    using Microsoft.OpenApi.Models;
@@ -404,7 +405,12 @@ namespace LibraryAPI.Models.DTOs
                options.OperationFilter<SwaggerDefaultValues>();
 
                // Include XML comments
-               options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "LibraryAPI.xml"), true);
+               var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+               var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+               if (File.Exists(xmlPath))
+               {
+                   options.IncludeXmlComments(xmlPath, true);
+               }
 
                // Add security definition for JWT
                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -443,14 +449,14 @@ namespace LibraryAPI.Models.DTOs
            {
                var info = new OpenApiInfo
                {
-                   Title = "Library API",
+                   Title = "RESTful API",
                    Version = description.ApiVersion.ToString(),
-                   Description = "A comprehensive API for managing library resources",
+                   Description = "A comprehensive API for managing products",
                    Contact = new OpenApiContact
                    {
-                       Name = "Library Support Team",
-                       Email = "support@library.com",
-                       Url = new Uri("https://library.com/support")
+                       Name = "API Support Team",
+                       Email = "support@api.com",
+                       Url = new Uri("https://api.com/support")
                    },
                    License = new OpenApiLicense
                    {
@@ -518,16 +524,11 @@ namespace LibraryAPI.Models.DTOs
    }
    ```
 
-2. **Create custom Swagger configuration** in `Configuration/`:
-
-   **SwaggerConfiguration.cs**:
-   ```csharp
-   using Microsoft.AspNetCore.Mvc.ApiExplorer;
-   using Microsoft.Extensions.Options;
-   using Microsoft.OpenApi.Models;
-   using Swashbuckle.AspNetCore.SwaggerGen;
-
-
+2. **The ConfigureSwaggerOptions.cs file is already created above** and matches the source code exactly. It includes:
+   - API versioning support with proper document generation
+   - JWT Bearer authentication configuration
+   - XML comments inclusion
+   - Custom operation filters for enhanced documentation
 
 3. **Add XML documentation** to your models and controllers:
 
