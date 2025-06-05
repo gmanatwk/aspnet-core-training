@@ -1,0 +1,78 @@
+### Module 03 - API Endpoint Tests
+### This file demonstrates the correct URLs for the API
+
+### Root - Should redirect to Swagger
+GET http://localhost:5000/
+
+### Health Check
+GET http://localhost:5000/health
+
+### Products API - Version 1 (Correct URLs)
+
+### Get all products (paginated)
+GET http://localhost:5000/api/v1/products
+
+### Get products with filters
+GET http://localhost:5000/api/v1/products?category=Electronics&pageSize=5
+
+### Get product by ID
+GET http://localhost:5000/api/v1/products/1
+
+### Get product categories
+GET http://localhost:5000/api/v1/products/categories
+
+### Search products
+GET http://localhost:5000/api/v1/products/search?query=Test
+
+### Create a new product
+POST http://localhost:5000/api/v1/products
+Content-Type: application/json
+
+{
+  "name": "New Product",
+  "description": "A new test product",
+  "price": 29.99,
+  "category": "Electronics",
+  "stockQuantity": 100,
+  "sku": "NEW-001"
+}
+
+### Authentication Endpoints
+
+### Register a new user
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPass123!",
+  "confirmPassword": "TestPass123!",
+  "fullName": "Test User"
+}
+
+### Login
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "Admin123!"
+}
+
+### Minimal API Endpoints
+
+### Get products via minimal API
+GET http://localhost:5000/api/minimal/products
+
+### Get product by ID via minimal API
+GET http://localhost:5000/api/minimal/products/1
+
+### IMPORTANT NOTES:
+### 1. The API uses versioning, so URLs must include /v1/ for version 1
+### 2. Wrong: http://localhost:5000/api/products (returns 404)
+### 3. Correct: http://localhost:5000/api/v1/products
+### 4. Swagger UI is available at: http://localhost:5000/ (redirects to /index.html)
+### 5. Alternative version formats also work:
+###    - Query string: /api/products?api-version=1.0
+###    - Header: X-Version: 1.0
+###    - Media type: Accept: application/json;ver=1.0

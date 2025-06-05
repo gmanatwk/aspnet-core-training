@@ -27,9 +27,21 @@ These fixes ensure the code compiles and runs correctly with .NET 8.0 and the la
 - If you're continuing from Exercise 1 & 2 (Products theme), you can adapt the concepts to your existing ProductsController
 - The versioning, documentation, and health check concepts apply regardless of the domain model used
 
+**Important**: Use `Asp.Versioning` namespace, not the old `Microsoft.AspNetCore.Mvc` versioning:
+```csharp
+using Asp.Versioning;  // Correct
+// NOT using Microsoft.AspNetCore.Mvc.ApiVersion;  // Old/Wrong
+```
+
 ## 📝 Instructions
 
 ### Part 0: Project Setup (2 minutes)
+
+**IMPORTANT**: This exercise builds on your existing Products API from Exercises 1 & 2. 
+- DO NOT create any BooksController files
+- DO NOT copy any code that references Books, Library, Authors, or Categories
+- You will version your existing ProductsController
+- Focus only on Products - the same domain you've been working with
 
 **If continuing from Exercise 2:**
 - Continue using your existing RestfulAPI project
@@ -46,11 +58,13 @@ dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
 dotnet add package System.IdentityModel.Tokens.Jwt
 dotnet add package Asp.Versioning.Mvc
 dotnet add package Asp.Versioning.Mvc.ApiExplorer
-dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer
 dotnet add package AspNetCore.HealthChecks.UI
 dotnet add package AspNetCore.HealthChecks.UI.Client
 dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage
 dotnet add package Swashbuckle.AspNetCore.Annotations
+
+# Remove old versioning package if present
+dotnet remove package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer
 
 # Verify setup
 dotnet build
@@ -58,156 +72,74 @@ dotnet build
 
 ### Part 1: Create Required DTOs and Models (5 minutes)
 
-First, create the data transfer objects and models needed for the exercise:
+**For students continuing from Exercise 1 & 2:**
 
-**Models/DTOs/BookDto.cs**:
+You need to create these NEW files in your DTOs folder:
+- [ ] ProductDtoV2.cs (extends your existing ProductDto)
+- [ ] PaginationDto.cs (new pagination classes)
+
+Do NOT modify your existing ProductDto.cs - we're adding new files.
+
+1. **Add versioning DTOs to your existing DTOs folder**:
+
+**IMPORTANT**: You MUST create this new file for V2 to work:
+
+**DTOs/ProductDtoV2.cs**:
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
-namespace RestfulAPI.Models.DTOs
+namespace RestfulAPI.DTOs
 {
     /// <summary>
-    /// Book data transfer object for API responses
+    /// Enhanced product DTO for API version 2 - extends your existing ProductDto
     /// </summary>
-    public class BookDto
+    public record ProductDtoV2 : ProductDto
     {
         /// <summary>
-        /// Unique identifier for the book
+        /// Product manufacturer
         /// </summary>
-        public int Id { get; set; }
+        public string Manufacturer { get; set; } = string.Empty;
 
         /// <summary>
-        /// Book title
-        /// </summary>
-        public string Title { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Book author
-        /// </summary>
-        public string Author { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Book category/genre
-        /// </summary>
-        public string Category { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Publication year
-        /// </summary>
-        public int PublicationYear { get; set; }
-
-        /// <summary>
-        /// ISBN number
-        /// </summary>
-        public string ISBN { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Number of available copies
-        /// </summary>
-        public int AvailableCopies { get; set; }
-    }
-
-    /// <summary>
-    /// Enhanced book DTO for API version 2
-    /// </summary>
-    public class BookDtoV2 : BookDto
-    {
-        /// <summary>
-        /// Book description
-        /// </summary>
-        public string Description { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Publisher information
-        /// </summary>
-        public string Publisher { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Book rating (1-5 stars)
+        /// Product rating (1-5 stars)
         /// </summary>
         public decimal Rating { get; set; }
 
         /// <summary>
-        /// Number of pages
+        /// Number of reviews
         /// </summary>
-        public int PageCount { get; set; }
+        public int ReviewCount { get; set; }
 
         /// <summary>
-        /// Book language
+        /// Product dimensions
         /// </summary>
-        public string Language { get; set; } = "English";
+        public string Dimensions { get; set; } = string.Empty;
 
         /// <summary>
-        /// Tags associated with the book
+        /// Product weight
+        /// </summary>
+        public string Weight { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Tags associated with the product
         /// </summary>
         public List<string> Tags { get; set; } = new();
-    }
-
-    /// <summary>
-    /// DTO for creating new books
-    /// </summary>
-    public class CreateBookDto
-    {
-        /// <summary>
-        /// Book title
-        /// </summary>
-        [Required]
-        [StringLength(200)]
-        public string Title { get; set; } = string.Empty;
 
         /// <summary>
-        /// Book author
+        /// Related product IDs
         /// </summary>
-        [Required]
-        [StringLength(100)]
-        public string Author { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Book category
-        /// </summary>
-        [Required]
-        [StringLength(50)]
-        public string Category { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Publication year
-        /// </summary>
-        [Range(1000, 2030)]
-        public int PublicationYear { get; set; }
-
-        /// <summary>
-        /// ISBN number
-        /// </summary>
-        [Required]
-        [RegularExpression(@"^(?:ISBN(?:-1[03])?:? )?(?=[0-9X]{10}$|(?=(?:[0-9]+[- ]){3})[- 0-9X]{13}$|97[89][0-9]{10}$|(?=(?:[0-9]+[- ]){4})[- 0-9]{17}$)(?:97[89][- ]?)?[0-9]{1,5}[- ]?[0-9]+[- ]?[0-9]+[- ]?[0-9X]$")]
-        public string ISBN { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Number of copies
-        /// </summary>
-        [Range(0, 1000)]
-        public int AvailableCopies { get; set; }
-
-        /// <summary>
-        /// Author ID (for database relationship)
-        /// </summary>
-        [Required]
-        public int AuthorId { get; set; }
-
-        /// <summary>
-        /// Category ID (for database relationship)
-        /// </summary>
-        [Required]
-        public int CategoryId { get; set; }
+        public List<int> RelatedProductIds { get; set; } = new();
     }
 }
 ```
 
-**Models/DTOs/PaginationDto.cs**:
+2. **Add pagination DTOs** to your existing DTOs folder:
+
+**DTOs/PaginationDto.cs**:
 ```csharp
 using System.ComponentModel.DataAnnotations;
 
-namespace RestfulAPI.Models.DTOs
+namespace RestfulAPI.DTOs
 {
     /// <summary>
     /// Pagination parameters for API requests
@@ -632,7 +564,159 @@ namespace RestfulAPI.Models.DTOs
 
 ### Part 3: Implement API Versioning (10 minutes)
 
-1. **Create complete Program.cs configuration**:
+1. **Update your ProductsController with missing using directives**:
+
+Add these using statements to your existing `Controllers/ProductsController.cs`:
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using RestfulAPI.DTOs;
+```
+
+2. **Create versioned controllers from your existing ProductsController**:
+
+First, create folders for versioned controllers:
+```bash
+mkdir Controllers/V1
+mkdir Controllers/V2
+```
+
+3. **Move and update your existing ProductsController to V1**:
+
+   a. Move your existing `Controllers/ProductsController.cs` to `Controllers/V1/ProductsController.cs`
+   
+   b. Update the file with these changes:
+   - Add `using Asp.Versioning;` at the top
+   - Change namespace from `RestfulAPI.Controllers` to `RestfulAPI.Controllers.V1`
+   - Add `[ApiVersion("1.0")]` attribute
+   - Change route from `[Route("api/[controller]")]` to `[Route("api/v{version:apiVersion}/[controller]")]`
+   
+   Your V1 controller should look like this (keeping all your existing methods):
+   ```csharp
+   using Asp.Versioning;
+   using Microsoft.AspNetCore.Authorization;
+   using Microsoft.AspNetCore.Mvc;
+   using Microsoft.EntityFrameworkCore;
+   using RestfulAPI.Data;
+   using RestfulAPI.DTOs;
+   using RestfulAPI.Models;
+
+   namespace RestfulAPI.Controllers.V1
+   {
+       [ApiController]
+       [ApiVersion("1.0")]
+       [Route("api/v{version:apiVersion}/[controller]")]
+       [Produces("application/json")]
+       [Authorize]
+       public class ProductsController : ControllerBase
+       {
+           // Keep ALL your existing code here - constructor, GetProducts, GetProduct, 
+           // CreateProduct, UpdateProduct, DeleteProduct methods
+           // Just copy them as-is from your original controller
+       }
+   }
+   ```
+
+4. **Create V2 ProductsController with enhanced features**:
+
+   Copy your V1 controller to create a V2 version with enhancements:
+   
+   **Controllers/V2/ProductsController.cs**:
+```csharp
+using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Data;
+using RestfulAPI.DTOs;
+using RestfulAPI.Models;
+
+namespace RestfulAPI.Controllers.V2
+{
+    [ApiController]
+    [ApiVersion("2.0")]
+    [Route("api/v{version:apiVersion}/[controller]")]
+    [Produces("application/json")]
+    [Authorize]
+    public class ProductsController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsController> _logger;
+
+        public ProductsController(ApplicationDbContext context, ILogger<ProductsController> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get all products with pagination and enhanced data
+        /// </summary>
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<ActionResult<PaginatedResponse<ProductDtoV2>>> GetProducts(
+            [FromQuery] PaginationParams pagination,
+            [FromQuery] string? category = null,
+            [FromQuery] string? name = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null)
+        {
+            var query = _context.Products.AsQueryable();
+
+            // Apply filters (same as V1)
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(p => p.Category.Contains(category));
+            
+            if (!string.IsNullOrWhiteSpace(name))
+                query = query.Where(p => p.Name.Contains(name));
+            
+            if (minPrice.HasValue)
+                query = query.Where(p => p.Price >= minPrice.Value);
+            
+            if (maxPrice.HasValue)
+                query = query.Where(p => p.Price <= maxPrice.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var products = await query
+                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
+                .Select(p => new ProductDtoV2
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt,
+                    // V2 enhanced properties
+                    Manufacturer = "Sample Manufacturer",
+                    Rating = 4.5m,
+                    ReviewCount = 42,
+                    Dimensions = "10x10x10 cm",
+                    Weight = "1 kg",
+                    Tags = new List<string> { p.Category, "Popular" },
+                    RelatedProductIds = new List<int> { 1, 2, 3 }
+                })
+                .ToListAsync();
+
+            return Ok(PaginatedResponse<ProductDtoV2>.Create(
+                products, 
+                pagination.PageNumber, 
+                pagination.PageSize, 
+                totalCount));
+        }
+
+        // Copy other methods from V1 and adapt as needed
+    }
+}
+```
+
+5. **Create complete Program.cs configuration**:
 
    **Program.cs**:
    ```csharp
@@ -924,511 +1008,6 @@ namespace RestfulAPI.Models.DTOs
    app.MapControllers();
 
    app.Run();
-   ```
-
-2. **Create versioned controllers**:
-
-   **Controllers/V1/BooksController.cs**:
-   ```csharp
-   using Asp.Versioning;
-   using Microsoft.AspNetCore.Mvc;
-   using Swashbuckle.AspNetCore.Annotations;
-   using RestfulAPI.Models.DTOs;
-
-   namespace RestfulAPI.Controllers.V1
-   {
-       /// <summary>
-       /// Manages library books (Version 1)
-       /// </summary>
-       [ApiController]
-       [ApiVersion("1.0")]
-       [Route("api/v{version:apiVersion}/[controller]")]
-       [Produces("application/json")]
-       [SwaggerTag("Create, read, update and delete books")]
-       public class BooksController : ControllerBase
-       {
-           private readonly ApplicationDbContext _context;
-           private readonly ILogger<BooksController> _logger;
-
-           public BooksController(ApplicationDbContext context, ILogger<BooksController> logger)
-           {
-               _context = context;
-               _logger = logger;
-           }
-
-           /// <summary>
-           /// Get all books with pagination
-           /// </summary>
-           /// <remarks>
-           /// Sample request:
-           ///
-           ///     GET /api/v1/books?pageNumber=1&amp;pageSize=10&amp;category=Fiction
-           ///
-           /// </remarks>
-           /// <param name="category">Filter by category name (optional)</param>
-           /// <param name="author">Filter by author last name (optional)</param>
-           /// <param name="year">Filter by publication year (optional)</param>
-           /// <param name="pageNumber">Page number (default: 1)</param>
-           /// <param name="pageSize">Items per page (default: 10, max: 100)</param>
-           /// <returns>A paginated list of books</returns>
-           /// <response code="200">Returns the list of books</response>
-           /// <response code="400">If the pagination parameters are invalid</response>
-           [HttpGet]
-           [SwaggerOperation(
-               Summary = "Get all books",
-               Description = "Retrieves a paginated list of books with optional filtering",
-               OperationId = "GetBooksV1",
-               Tags = new[] { "Books" }
-           )]
-           [SwaggerResponse(200, "Success", typeof(PaginatedResponse<BookDto>))]
-           [SwaggerResponse(400, "Bad Request", typeof(ValidationProblemDetails))]
-           public async Task<ActionResult<PaginatedResponse<BookDto>>> GetBooks(
-               [FromQuery] string? category = null,
-               [FromQuery] string? author = null,
-               [FromQuery] int? year = null,
-               [FromQuery] int pageNumber = 1,
-               [FromQuery] int pageSize = 10)
-           {
-               try
-               {
-                   // Validate pagination parameters
-                   if (pageNumber < 1) pageNumber = 1;
-                   if (pageSize < 1) pageSize = 10;
-                   if (pageSize > 100) pageSize = 100;
-
-                   var query = _context.Books
-                       .Include(b => b.Author)
-                       .Include(b => b.Category)
-                       .AsQueryable();
-
-                   // Apply basic filters
-                   if (!string.IsNullOrEmpty(category))
-                   {
-                       query = query.Where(b => b.Category!.Name.Contains(category));
-                   }
-
-                   if (!string.IsNullOrEmpty(author))
-                   {
-                       query = query.Where(b => b.Author!.LastName.Contains(author));
-                   }
-
-                   if (year.HasValue)
-                   {
-                       query = query.Where(b => b.PublicationYear == year.Value);
-                   }
-
-                   // Get total count
-                   var totalCount = await query.CountAsync();
-
-                   // Apply pagination and select
-                   var books = await query
-                       .OrderBy(b => b.Title)
-                       .Skip((pageNumber - 1) * pageSize)
-                       .Take(pageSize)
-                       .Select(b => new BookDto
-                       {
-                           Id = b.Id,
-                           Title = b.Title,
-                           Author = $"{b.Author!.FirstName} {b.Author.LastName}",
-                           Category = b.Category!.Name,
-                           PublicationYear = b.PublicationYear,
-                           ISBN = b.ISBN,
-                           AvailableCopies = 5 // Mock data for V1
-                       })
-                       .ToListAsync();
-
-                   var result = PaginatedResponse<BookDto>.Create(
-                       books,
-                       pageNumber,
-                       pageSize,
-                       totalCount);
-
-                   return Ok(result);
-               }
-               catch (Exception ex)
-               {
-                   _logger.LogError(ex, "Error retrieving books");
-                   return StatusCode(500, "An error occurred while retrieving books");
-               }
-           }
-
-           /// <summary>
-           /// Get a specific book by ID
-           /// </summary>
-           /// <param name="id">Book ID</param>
-           /// <returns>Book details</returns>
-           [HttpGet("{id}")]
-           [SwaggerOperation(
-               Summary = "Get book by ID",
-               Description = "Retrieves a specific book by its ID",
-               OperationId = "GetBookByIdV1"
-           )]
-           [SwaggerResponse(200, "Success", typeof(BookDto))]
-           [SwaggerResponse(404, "Book not found")]
-           public async Task<ActionResult<BookDto>> GetBook(int id)
-           {
-               var book = await _context.Books
-                   .Include(b => b.Author)
-                   .Include(b => b.Category)
-                   .FirstOrDefaultAsync(b => b.Id == id);
-
-               if (book == null)
-               {
-                   return NotFound($"Book with ID {id} not found");
-               }
-
-               var bookDto = new BookDto
-               {
-                   Id = book.Id,
-                   Title = book.Title,
-                   Author = $"{book.Author!.FirstName} {book.Author.LastName}",
-                   Category = book.Category!.Name,
-                   PublicationYear = book.PublicationYear,
-                   ISBN = book.ISBN,
-                   AvailableCopies = 5 // Mock data for V1
-               };
-
-               return Ok(bookDto);
-           }
-       }
-   }
-   ```
-
-   **Controllers/V2/BooksController.cs**:
-   ```csharp
-   using Asp.Versioning;
-   using Microsoft.AspNetCore.Mvc;
-   using Microsoft.EntityFrameworkCore;
-   using RestfulAPI.Data;
-   using RestfulAPI.Models;
-   using RestfulAPI.Models.DTOs;
-   using Swashbuckle.AspNetCore.Annotations;
-
-   namespace RestfulAPI.Controllers.V2
-   {
-       /// <summary>
-       /// Manages library books (Version 2 - Enhanced)
-       /// </summary>
-       [ApiController]
-       [ApiVersion("2.0")]
-       [Route("api/v{version:apiVersion}/[controller]")]
-       [Produces("application/json")]
-       [SwaggerTag("Enhanced book management with advanced features")]
-       public class BooksController : ControllerBase
-       {
-           private readonly ApplicationDbContext _context;
-           private readonly ILogger<BooksController> _logger;
-
-           public BooksController(ApplicationDbContext context, ILogger<BooksController> logger)
-           {
-               _context = context;
-               _logger = logger;
-           }
-
-           /// <summary>
-           /// Get all books with advanced filtering and sorting
-           /// </summary>
-           /// <param name="filter">Advanced filter criteria</param>
-           /// <param name="pagination">Pagination parameters</param>
-           /// <param name="sortBy">Field to sort by (title, author, year, rating)</param>
-           /// <param name="sortDescending">Sort in descending order</param>
-           /// <returns>Paginated list of enhanced book data</returns>
-           [HttpGet]
-           [SwaggerOperation(
-               Summary = "Get books with advanced filtering",
-               Description = "Retrieves books with enhanced filtering, sorting, and pagination capabilities",
-               OperationId = "GetBooksV2"
-           )]
-           [SwaggerResponse(200, "Success", typeof(PaginatedResponse<BookDtoV2>))]
-           [SwaggerResponse(400, "Bad Request", typeof(ValidationProblemDetails))]
-           public async Task<ActionResult<PaginatedResponse<BookDtoV2>>> GetBooks(
-               [FromQuery] BookFilterDto filter,
-               [FromQuery] PaginationParams pagination,
-               [FromQuery] string? sortBy = "title",
-               [FromQuery] bool sortDescending = false)
-           {
-               try
-               {
-                   var query = _context.Books
-                       .Include(b => b.Author)
-                       .Include(b => b.Category)
-                       .AsQueryable();
-
-                   // Apply filters
-                   if (!string.IsNullOrEmpty(filter.Category))
-                   {
-                       query = query.Where(b => b.Category!.Name.Contains(filter.Category));
-                   }
-
-                   if (!string.IsNullOrEmpty(filter.Author))
-                   {
-                       query = query.Where(b =>
-                           b.Author!.FirstName.Contains(filter.Author) ||
-                           b.Author!.LastName.Contains(filter.Author));
-                   }
-
-                   if (filter.Year.HasValue)
-                   {
-                       query = query.Where(b => b.PublicationYear == filter.Year.Value);
-                   }
-
-                   if (!string.IsNullOrEmpty(filter.SearchTerm))
-                   {
-                       query = query.Where(b =>
-                           b.Title.Contains(filter.SearchTerm) ||
-                           b.Summary.Contains(filter.SearchTerm));
-                   }
-
-                   if (!string.IsNullOrEmpty(filter.Language))
-                   {
-                       // For demo purposes, assume all books are in English
-                       // In real implementation, you'd have a Language property
-                   }
-
-                   // Apply sorting
-                   query = sortBy?.ToLower() switch
-                   {
-                       "author" => sortDescending
-                           ? query.OrderByDescending(b => b.Author!.LastName)
-                           : query.OrderBy(b => b.Author!.LastName),
-                       "year" => sortDescending
-                           ? query.OrderByDescending(b => b.PublicationYear)
-                           : query.OrderBy(b => b.PublicationYear),
-                       "category" => sortDescending
-                           ? query.OrderByDescending(b => b.Category!.Name)
-                           : query.OrderBy(b => b.Category!.Name),
-                       _ => sortDescending
-                           ? query.OrderByDescending(b => b.Title)
-                           : query.OrderBy(b => b.Title)
-                   };
-
-                   // Get total count
-                   var totalCount = await query.CountAsync();
-
-                   // Apply pagination
-                   var books = await query
-                       .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-                       .Take(pagination.PageSize)
-                       .Select(b => new BookDtoV2
-                       {
-                           Id = b.Id,
-                           Title = b.Title,
-                           Author = $"{b.Author!.FirstName} {b.Author.LastName}",
-                           Category = b.Category!.Name,
-                           PublicationYear = b.PublicationYear,
-                           ISBN = b.ISBN,
-                           AvailableCopies = 5, // Mock data
-                           Description = b.Summary,
-                           Publisher = "Sample Publisher", // Mock data
-                           Rating = 4.2m, // Mock data
-                           PageCount = b.NumberOfPages,
-                           Language = "English",
-                           Tags = new List<string> { b.Category!.Name, "Popular" } // Mock data
-                       })
-                       .ToListAsync();
-
-                   var result = PaginatedResponse<BookDtoV2>.Create(
-                       books,
-                       pagination.PageNumber,
-                       pagination.PageSize,
-                       totalCount);
-
-                   return Ok(result);
-               }
-               catch (Exception ex)
-               {
-                   _logger.LogError(ex, "Error retrieving books");
-                   return StatusCode(500, "An error occurred while retrieving books");
-               }
-           }
-
-           /// <summary>
-           /// Get a specific book by ID with enhanced details
-           /// </summary>
-           /// <param name="id">Book ID</param>
-           /// <returns>Enhanced book details</returns>
-           [HttpGet("{id}")]
-           [SwaggerOperation(
-               Summary = "Get book by ID",
-               Description = "Retrieves a specific book with enhanced details",
-               OperationId = "GetBookByIdV2"
-           )]
-           [SwaggerResponse(200, "Success", typeof(BookDtoV2))]
-           [SwaggerResponse(404, "Book not found")]
-           public async Task<ActionResult<BookDtoV2>> GetBook(int id)
-           {
-               var book = await _context.Books
-                   .Include(b => b.Author)
-                   .Include(b => b.Category)
-                   .FirstOrDefaultAsync(b => b.Id == id);
-
-               if (book == null)
-               {
-                   return NotFound($"Book with ID {id} not found");
-               }
-
-               var bookDto = new BookDtoV2
-               {
-                   Id = book.Id,
-                   Title = book.Title,
-                   Author = $"{book.Author!.FirstName} {book.Author.LastName}",
-                   Category = book.Category!.Name,
-                   PublicationYear = book.PublicationYear,
-                   ISBN = book.ISBN,
-                   AvailableCopies = 5, // Mock data
-                   Description = book.Summary,
-                   Publisher = "Sample Publisher", // Mock data
-                   Rating = 4.2m, // Mock data
-                   PageCount = book.NumberOfPages,
-                   Language = "English",
-                   Tags = new List<string> { book.Category!.Name, "Popular" } // Mock data
-               };
-
-               return Ok(bookDto);
-           }
-
-           /// <summary>
-           /// Bulk create multiple books
-           /// </summary>
-           /// <param name="books">List of books to create</param>
-           /// <returns>Bulk operation result</returns>
-           [HttpPost("bulk")]
-           [SwaggerOperation(
-               Summary = "Bulk create books",
-               Description = "Creates multiple books in a single operation",
-               OperationId = "CreateBooksBulkV2"
-           )]
-           [SwaggerResponse(200, "Success", typeof(BulkOperationResult))]
-           [SwaggerResponse(400, "Validation errors")]
-           public async Task<ActionResult<BulkOperationResult>> CreateBooksBulk(
-               [FromBody] List<CreateBookDto> books)
-           {
-               var result = new BulkOperationResult
-               {
-                   TotalCount = books.Count
-               };
-
-               try
-               {
-                   using var transaction = await _context.Database.BeginTransactionAsync();
-
-                   for (int i = 0; i < books.Count; i++)
-                   {
-                       var bookDto = books[i];
-
-                       try
-                       {
-                           // Validate the book
-                           if (string.IsNullOrEmpty(bookDto.Title))
-                           {
-                               result.Errors.Add(new BulkOperationError
-                               {
-                                   Index = i,
-                                   Message = "Title is required",
-                                   Item = bookDto
-                               });
-                               result.FailureCount++;
-                               continue;
-                           }
-
-                           // Check if ISBN already exists
-                           var existingBook = await _context.Books
-                               .FirstOrDefaultAsync(b => b.ISBN == bookDto.ISBN);
-
-                           if (existingBook != null)
-                           {
-                               result.Errors.Add(new BulkOperationError
-                               {
-                                   Index = i,
-                                   Message = $"Book with ISBN {bookDto.ISBN} already exists",
-                                   Item = bookDto
-                               });
-                               result.FailureCount++;
-                               continue;
-                           }
-
-                           // Create the book
-                           var book = new Book
-                           {
-                               Title = bookDto.Title,
-                               ISBN = bookDto.ISBN,
-                               PublicationYear = bookDto.PublicationYear,
-                               NumberOfPages = bookDto.AvailableCopies,
-                               Summary = "Auto-generated summary", // Mock data
-                               AuthorId = bookDto.AuthorId,
-                               CategoryId = bookDto.CategoryId,
-                               CreatedAt = DateTime.UtcNow
-                           };
-
-                           _context.Books.Add(book);
-                           await _context.SaveChangesAsync();
-
-                           result.CreatedIds.Add(book.Id);
-                           result.SuccessCount++;
-                       }
-                       catch (Exception ex)
-                       {
-                           result.Errors.Add(new BulkOperationError
-                           {
-                               Index = i,
-                               Message = ex.Message,
-                               Item = bookDto
-                           });
-                           result.FailureCount++;
-                       }
-                   }
-
-                   await transaction.CommitAsync();
-                   return Ok(result);
-               }
-               catch (Exception ex)
-               {
-                   _logger.LogError(ex, "Error during bulk book creation");
-                   return StatusCode(500, "An error occurred during bulk creation");
-               }
-           }
-
-           /// <summary>
-           /// Get book statistics (V2 only feature)
-           /// </summary>
-           /// <returns>Book statistics</returns>
-           [HttpGet("statistics")]
-           [SwaggerOperation(
-               Summary = "Get book statistics",
-               Description = "Retrieves various statistics about the book collection",
-               OperationId = "GetBookStatisticsV2"
-           )]
-           public async Task<ActionResult<object>> GetStatistics()
-           {
-               try
-               {
-                   var stats = new
-                   {
-                       TotalBooks = await _context.Books.CountAsync(),
-                       TotalAuthors = await _context.Authors.CountAsync(),
-                       TotalCategories = await _context.Categories.CountAsync(),
-                       AveragePublicationYear = await _context.Books.AverageAsync(b => (double)b.PublicationYear),
-                       MostPopularCategory = await _context.Categories
-                           .OrderByDescending(c => c.Books.Count)
-                           .Select(c => c.Name)
-                           .FirstOrDefaultAsync(),
-                       BooksByDecade = await _context.Books
-                           .GroupBy(b => (b.PublicationYear / 10) * 10)
-                           .Select(g => new { Decade = g.Key, Count = g.Count() })
-                           .OrderBy(x => x.Decade)
-                           .ToListAsync()
-                   };
-
-                   return Ok(stats);
-               }
-               catch (Exception ex)
-               {
-                   _logger.LogError(ex, "Error retrieving book statistics");
-                   return StatusCode(500, "An error occurred while retrieving statistics");
-               }
-           }
-       }
-   }
    ```
 
 ### Part 4: Add Health Checks and Monitoring (10 minutes)
@@ -1771,6 +1350,38 @@ namespace RestfulAPI.Models.DTOs
 4. How can comprehensive documentation improve API adoption?
 
 ## 🆘 Troubleshooting
+
+**Issue**: BooksController errors (ApplicationDbContext not found)
+**Solution**: You should NOT have any BooksController files. Delete any Controllers/V1/BooksController.cs or Controllers/V2/BooksController.cs files. This exercise uses your existing ProductsController from Exercise 1 & 2.
+
+**Issue**: 'AuthorizeAttribute' could not be found
+**Solution**: Add `using Microsoft.AspNetCore.Authorization;` to your controller files.
+
+**Issue**: 'ApiVersion' is ambiguous reference
+**Solution**: Use only `using Asp.Versioning;` and remove old versioning packages:
+```bash
+dotnet remove package Microsoft.AspNetCore.Mvc.Versioning
+dotnet remove package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer
+```
+
+**Issue**: ProductsController referencing BookDto
+**Solution**: If continuing from Exercise 1 & 2, keep using ProductDto. The BookDto is just an example for Exercise 3's versioning demonstration.
+
+**Issue**: ProductDtoV2 could not be found
+**Solution**: You must create the ProductDtoV2.cs file as shown in Part 1. This is a NEW file that extends your existing ProductDto. Make sure it's in your DTOs folder with the correct namespace `RestfulAPI.DTOs`.
+
+**Issue**: "Only records may inherit from records" error
+**Solution**: Ensure DTOs are defined as records if using inheritance:
+```csharp
+public record BookDto { }  // Base record
+public record BookDtoV2 : BookDto { }  // Derived record
+```
+
+**Issue**: Missing ApplicationDbContext
+**Solution**: Add the correct using directive:
+```csharp
+using RestfulAPI.Data;
+```
 
 **Issue**: Swagger UI shows multiple versions but URLs don't work
 **Solution**: Ensure URL versioning is configured correctly in both controllers and Swagger.
