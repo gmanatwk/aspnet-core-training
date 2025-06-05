@@ -381,7 +381,7 @@ namespace LibraryAPI.Models.DTOs
    using Microsoft.OpenApi.Models;
    using Swashbuckle.AspNetCore.SwaggerGen;
 
-   namespace LibraryAPI.Configuration
+   namespace RestfulAPI.Configuration
    {
        public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
        {
@@ -621,12 +621,12 @@ namespace LibraryAPI.Models.DTOs
    using Asp.Versioning;
    using Asp.Versioning.ApiExplorer;
    using HealthChecks.UI.Client;
-   using LibraryAPI.Configuration;
-   using LibraryAPI.Data;
-   using LibraryAPI.HealthChecks;
-   using LibraryAPI.Middleware;
-   using LibraryAPI.Models.Auth;
-   using LibraryAPI.Services;
+   using RestfulAPI.Configuration;
+   using RestfulAPI.Data;
+   using RestfulAPI.HealthChecks;
+   using RestfulAPI.Middleware;
+   using RestfulAPI.Models.Auth;
+   using RestfulAPI.Services;
    using Microsoft.AspNetCore.Authentication.JwtBearer;
    using Microsoft.AspNetCore.Diagnostics.HealthChecks;
    using Microsoft.AspNetCore.Identity;
@@ -1080,12 +1080,12 @@ namespace LibraryAPI.Models.DTOs
    using Asp.Versioning;
    using Microsoft.AspNetCore.Mvc;
    using Microsoft.EntityFrameworkCore;
-   using LibraryAPI.Data;
-   using LibraryAPI.Models;
-   using LibraryAPI.Models.DTOs;
+   using RestfulAPI.Data;
+   using RestfulAPI.Models;
+   using RestfulAPI.Models.DTOs;
    using Swashbuckle.AspNetCore.Annotations;
 
-   namespace LibraryAPI.Controllers.V2
+   namespace RestfulAPI.Controllers.V2
    {
        /// <summary>
        /// Manages library books (Version 2 - Enhanced)
@@ -1419,15 +1419,16 @@ namespace LibraryAPI.Models.DTOs
    **HealthChecks/DatabaseHealthCheck.cs**:
    ```csharp
    using Microsoft.Extensions.Diagnostics.HealthChecks;
-   using LibraryAPI.Data;
+   using RestfulAPI.Data;
+   using Microsoft.EntityFrameworkCore;
 
-   namespace LibraryAPI.HealthChecks
+   namespace RestfulAPI.HealthChecks
    {
        public class DatabaseHealthCheck : IHealthCheck
        {
-           private readonly LibraryContext _context;
+           private readonly ApplicationDbContext _context;
 
-           public DatabaseHealthCheck(LibraryContext context)
+           public DatabaseHealthCheck(ApplicationDbContext context)
            {
                _context = context;
            }
@@ -1440,14 +1441,14 @@ namespace LibraryAPI.Models.DTOs
                {
                    // Try to access the database
                    var canConnect = await _context.Database.CanConnectAsync(cancellationToken);
-                   
+
                    if (canConnect)
                    {
-                       var bookCount = await _context.Books.CountAsync(cancellationToken);
+                       var productCount = await _context.Products.CountAsync(cancellationToken);
                        return HealthCheckResult.Healthy(
-                           $"Database is accessible. Books count: {bookCount}");
+                           $"Database is accessible. Products count: {productCount}");
                    }
-                   
+
                    return HealthCheckResult.Unhealthy("Cannot connect to database");
                }
                catch (Exception ex)
@@ -1459,91 +1460,13 @@ namespace LibraryAPI.Models.DTOs
            }
        }
    }
-
-   public class ApiHealthCheck : IHealthCheck
-   {
-       private readonly IHttpClientFactory _httpClientFactory;
-       private readonly IConfiguration _configuration;
-
-       public ApiHealthCheck(IHttpClientFactory httpClientFactory, IConfiguration configuration)
-       {
-           _httpClientFactory = httpClientFactory;
-           _configuration = configuration;
-       }
-
-       public async Task<HealthCheckResult> CheckHealthAsync(
-           HealthCheckContext context,
-           CancellationToken cancellationToken = default)
-       {
-           try
-           {
-               var client = _httpClientFactory.CreateClient();
-               var baseUrl = _configuration["BaseUrl"] ?? "https://localhost:5001";
-               
-               var response = await client.GetAsync($"{baseUrl}/api/v1/books", cancellationToken);
-               
-               if (response.IsSuccessStatusCode)
-               {
-                   return HealthCheckResult.Healthy("API is responding");
-               }
-               
-               return HealthCheckResult.Degraded(
-                   $"API returned status code: {response.StatusCode}");
-           }
-           catch (Exception ex)
-           {
-               return HealthCheckResult.Unhealthy(
-                   "API health check failed",
-                   exception: ex);
-           }
-       }
-   }
-   ```
-
-3. **Create health check classes** (referenced in Program.cs):
-
-   **HealthChecks/DatabaseHealthCheck.cs**:
-   ```csharp
-   using LibraryAPI.Data;
-   using Microsoft.EntityFrameworkCore;
-   using Microsoft.Extensions.Diagnostics.HealthChecks;
-
-   namespace LibraryAPI.HealthChecks
-   {
-       public class DatabaseHealthCheck : IHealthCheck
-       {
-           private readonly LibraryContext _context;
-
-           public DatabaseHealthCheck(LibraryContext context)
-           {
-               _context = context;
-           }
-
-           public async Task<HealthCheckResult> CheckHealthAsync(
-               HealthCheckContext context,
-               CancellationToken cancellationToken = default)
-           {
-               try
-               {
-                   await _context.Database.CanConnectAsync(cancellationToken);
-                   var bookCount = await _context.Books.CountAsync(cancellationToken);
-
-                   return HealthCheckResult.Healthy($"Database is healthy. Books: {bookCount}");
-               }
-               catch (Exception ex)
-               {
-                   return HealthCheckResult.Unhealthy("Database is unhealthy", ex);
-               }
-           }
-       }
-   }
    ```
 
    **HealthChecks/ApiHealthCheck.cs**:
    ```csharp
    using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-   namespace LibraryAPI.HealthChecks
+   namespace RestfulAPI.HealthChecks
    {
        public class ApiHealthCheck : IHealthCheck
        {
@@ -1565,7 +1488,7 @@ namespace LibraryAPI.Models.DTOs
                    // For this demo, we'll simply check if we can create an HTTP client
                    // In a real scenario, you might check external dependencies
                    using var client = _httpClientFactory.CreateClient();
-                   
+
                    // Simple check - if we can create a client, consider it healthy
                    return HealthCheckResult.Healthy("API is responding");
                }
@@ -1578,99 +1501,23 @@ namespace LibraryAPI.Models.DTOs
    }
    ```
 
-   **Services/JwtService.cs** (referenced in Program.cs):
+2. **Test the health checks**:
+   - The health check classes are already created and match the source code
+   - They use the correct `RestfulAPI` namespace and `ApplicationDbContext`
+   - The `DatabaseHealthCheck` monitors `Products` table as per the actual API
+
+3. **Note about additional services**:
+   The source code includes additional services like `JwtService` that use the `RestfulAPI` namespace.
+   These are already implemented in the source code and follow the same namespace pattern:
    ```csharp
    using System.IdentityModel.Tokens.Jwt;
    using System.Security.Claims;
    using System.Text;
-   using LibraryAPI.Models.Auth;
+   using RestfulAPI.Models.Auth;
    using Microsoft.AspNetCore.Identity;
    using Microsoft.IdentityModel.Tokens;
 
-   namespace LibraryAPI.Services
-   {
-       public interface IJwtService
-       {
-           Task<string> GenerateTokenAsync(User user);
-           ClaimsPrincipal? ValidateToken(string token);
-       }
-
-       public class JwtService : IJwtService
-       {
-           private readonly IConfiguration _configuration;
-           private readonly UserManager<User> _userManager;
-
-           public JwtService(IConfiguration configuration, UserManager<User> userManager)
-           {
-               _configuration = configuration;
-               _userManager = userManager;
-           }
-
-           public async Task<string> GenerateTokenAsync(User user)
-           {
-               var tokenHandler = new JwtSecurityTokenHandler();
-               var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ??
-                   throw new InvalidOperationException("JWT Key not configured"));
-               var roles = await _userManager.GetRolesAsync(user);
-
-               var claims = new List<Claim>
-               {
-                   new Claim(ClaimTypes.NameIdentifier, user.Id),
-                   new Claim(ClaimTypes.Email, user.Email!),
-                   new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
-                   new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-               };
-
-               foreach (var role in roles)
-               {
-                   claims.Add(new Claim(ClaimTypes.Role, role));
-               }
-
-               var tokenDescriptor = new SecurityTokenDescriptor
-               {
-                   Subject = new ClaimsIdentity(claims),
-                   Expires = DateTime.UtcNow.AddHours(1),
-                   Issuer = _configuration["Jwt:Issuer"],
-                   Audience = _configuration["Jwt:Audience"],
-                   SigningCredentials = new SigningCredentials(
-                       new SymmetricSecurityKey(key),
-                       SecurityAlgorithms.HmacSha256Signature)
-               };
-
-               var token = tokenHandler.CreateToken(tokenDescriptor);
-               return tokenHandler.WriteToken(token);
-           }
-
-           public ClaimsPrincipal? ValidateToken(string token)
-           {
-               var tokenHandler = new JwtSecurityTokenHandler();
-               var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ??
-                   throw new InvalidOperationException("JWT Key not configured"));
-
-               try
-               {
-                   var validationParameters = new TokenValidationParameters
-                   {
-                       ValidateIssuerSigningKey = true,
-                       IssuerSigningKey = new SymmetricSecurityKey(key),
-                       ValidateIssuer = true,
-                       ValidIssuer = _configuration["Jwt:Issuer"],
-                       ValidateAudience = true,
-                       ValidAudience = _configuration["Jwt:Audience"],
-                       ValidateLifetime = true,
-                       ClockSkew = TimeSpan.Zero
-                   };
-
-                   var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
-                   return principal;
-               }
-               catch
-               {
-                   return null;
-               }
-           }
-       }
-   }
+   // Additional services like JwtService are already implemented in the source code
    ```
 
 ### Part 5: Add API Analytics and Metrics (5 minutes)
@@ -1681,7 +1528,7 @@ namespace LibraryAPI.Models.DTOs
    ```csharp
    using System.Diagnostics;
 
-   namespace LibraryAPI.Middleware
+   namespace RestfulAPI.Middleware
    {
        public class ApiAnalyticsMiddleware
        {
@@ -1772,9 +1619,9 @@ namespace LibraryAPI.Models.DTOs
    using Asp.Versioning;
    using Microsoft.AspNetCore.Authorization;
    using Microsoft.AspNetCore.Mvc;
-   using LibraryAPI.Middleware;
+   using RestfulAPI.Middleware;
 
-   namespace LibraryAPI.Controllers
+   namespace RestfulAPI.Controllers
    {
        [ApiController]
    [ApiVersion("1.0")]
@@ -1859,12 +1706,12 @@ namespace LibraryAPI.Models.DTOs
    ```
 
 3. **Test endpoints**:
-   - Swagger UI: `https://localhost:[port]/swagger`
-   - Health checks: `https://localhost:[port]/health`
-   - Health UI: `https://localhost:[port]/health-ui`
-   - V1 API: `https://localhost:[port]/api/v1/books`
-   - V2 API: `https://localhost:[port]/api/v2/books`
-   - Analytics: `https://localhost:[port]/api/v1/analytics/summary`
+   - Swagger UI: `http://localhost:5001/swagger`
+   - Health checks: `http://localhost:5001/health`
+   - Health UI: `http://localhost:5001/health-ui`
+   - V1 API: `http://localhost:5001/api/v1/products`
+   - V2 API: `http://localhost:5001/api/v2/products`
+   - Analytics: `http://localhost:5001/api/v1/analytics/summary`
 
 ## ✅ Success Criteria
 
