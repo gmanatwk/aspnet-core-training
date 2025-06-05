@@ -31,64 +31,82 @@ dotnet build
 
 ### Part 1: Create the API Models and Controllers (10 minutes)
 
-3. **Create the domain models** in `Models/`:
+3. **Create the domain model** in `Models/`:
 
-   **Book.cs**:
+   **Product.cs**:
    ```csharp
-   namespace LibraryAPI.Models
-   {
-       public class Book
-       {
-           public int Id { get; set; }
-           public string Title { get; set; } = string.Empty;
-           public string ISBN { get; set; } = string.Empty;
-           public int PublicationYear { get; set; }
-           public int NumberOfPages { get; set; }
-           public string Summary { get; set; } = string.Empty;
-           
-           // Navigation properties
-           public int AuthorId { get; set; }
-           public Author? Author { get; set; }
-           
-           public int CategoryId { get; set; }
-           public Category? Category { get; set; }
-           
-           public DateTime CreatedAt { get; set; }
-           public DateTime? UpdatedAt { get; set; }
-       }
-   }
-   ```
+   using System.ComponentModel.DataAnnotations;
 
-   **Author.cs**:
-   ```csharp
-   namespace LibraryAPI.Models
+   namespace RestfulAPI.Models
    {
-       public class Author
+       /// <summary>
+       /// Product entity model
+       /// </summary>
+       public class Product
        {
+           /// <summary>
+           /// Unique identifier
+           /// </summary>
            public int Id { get; set; }
-           public string FirstName { get; set; } = string.Empty;
-           public string LastName { get; set; } = string.Empty;
-           public string Biography { get; set; } = string.Empty;
-           public DateTime DateOfBirth { get; set; }
-           
-           // Navigation property
-           public List<Book> Books { get; set; } = new();
-       }
-   }
-   ```
 
-   **Category.cs**:
-   ```csharp
-   namespace LibraryAPI.Models
-   {
-       public class Category
-       {
-           public int Id { get; set; }
+           /// <summary>
+           /// Product name
+           /// </summary>
+           [Required]
+           [StringLength(200)]
            public string Name { get; set; } = string.Empty;
+
+           /// <summary>
+           /// Product description
+           /// </summary>
+           [StringLength(2000)]
            public string Description { get; set; } = string.Empty;
-           
-           // Navigation property
-           public List<Book> Books { get; set; } = new();
+
+           /// <summary>
+           /// Product price
+           /// </summary>
+           [Range(0.01, double.MaxValue)]
+           public decimal Price { get; set; }
+
+           /// <summary>
+           /// Product category
+           /// </summary>
+           [Required]
+           [StringLength(100)]
+           public string Category { get; set; } = string.Empty;
+
+           /// <summary>
+           /// Stock quantity
+           /// </summary>
+           [Range(0, int.MaxValue)]
+           public int StockQuantity { get; set; }
+
+           /// <summary>
+           /// Stock keeping unit
+           /// </summary>
+           [Required]
+           [StringLength(50)]
+           public string Sku { get; set; } = string.Empty;
+
+           /// <summary>
+           /// Indicates if the product is active
+           /// </summary>
+           public bool IsActive { get; set; } = true;
+
+           /// <summary>
+           /// Indicates if the product is available for sale
+           /// </summary>
+           public bool IsAvailable { get; set; } = true;
+
+           /// <summary>
+           /// Creation timestamp
+           /// </summary>
+           public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+           /// <summary>
+           /// Last update timestamp
+           /// </summary>
+           public DateTime? UpdatedAt { get; set; }
        }
    }
    ```
@@ -97,163 +115,258 @@ dotnet build
 
 1. **Create a `DTOs` folder** and add the following:
 
-   **BookDtos.cs**:
+   **ProductDtos.cs**:
    ```csharp
    using System.ComponentModel.DataAnnotations;
 
-   namespace LibraryAPI.DTOs
+   namespace RestfulAPI.DTOs
    {
-       public record BookDto(
-           int Id,
-           string Title,
-           string ISBN,
-           int PublicationYear,
-           int NumberOfPages,
-           string Summary,
-           string AuthorName,
-           string CategoryName,
-           DateTime CreatedAt,
-           DateTime? UpdatedAt
-       );
-
-       public record CreateBookDto(
-           [Required] [StringLength(200, MinimumLength = 1)] string Title,
-           [Required] [RegularExpression(@"^\d{3}-\d{10}$", ErrorMessage = "ISBN must be in format XXX-XXXXXXXXXX")] string ISBN,
-           [Range(1450, 2100, ErrorMessage = "Publication year must be between 1450 and current year + 5")] int PublicationYear,
-           [Range(1, 10000, ErrorMessage = "Number of pages must be between 1 and 10000")] int NumberOfPages,
-           [StringLength(2000)] string Summary,
-           [Required] int AuthorId,
-           [Required] int CategoryId
-       );
-
-       public record UpdateBookDto(
-           [Required] [StringLength(200, MinimumLength = 1)] string Title,
-           [Required] [RegularExpression(@"^\d{3}-\d{10}$")] string ISBN,
-           [Range(1450, 2100)] int PublicationYear,
-           [Range(1, 10000)] int NumberOfPages,
-           [StringLength(2000)] string Summary,
-           [Required] int AuthorId,
-           [Required] int CategoryId
-       );
-   }
-   ```
-
-   **AuthorDtos.cs**:
-   ```csharp
-   using System.ComponentModel.DataAnnotations;
-
-   namespace LibraryAPI.DTOs
-   {
-       public record AuthorDto(
-           int Id,
-           string FirstName,
-           string LastName,
-           string Biography,
-           DateTime DateOfBirth,
-           int BookCount
-       );
-
-       public record CreateAuthorDto(
-           [Required] [StringLength(100, MinimumLength = 1)] string FirstName,
-           [Required] [StringLength(100, MinimumLength = 1)] string LastName,
-           [StringLength(2000)] string Biography,
-           [Required] DateTime DateOfBirth
-       )
+       /// <summary>
+       /// Product data transfer object
+       /// </summary>
+       public record ProductDto
        {
-           public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-           {
-               if (DateOfBirth > DateTime.Now)
-               {
-                   yield return new ValidationResult(
-                       "Date of birth cannot be in the future",
-                       new[] { nameof(DateOfBirth) }
-                   );
-               }
-           }
+           /// <summary>
+           /// Unique identifier for the product
+           /// </summary>
+           public int Id { get; init; }
+
+           /// <summary>
+           /// Product name
+           /// </summary>
+           public string Name { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product description
+           /// </summary>
+           public string Description { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product price in USD
+           /// </summary>
+           public decimal Price { get; init; }
+
+           /// <summary>
+           /// Product category
+           /// </summary>
+           public string Category { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Available stock quantity
+           /// </summary>
+           public int StockQuantity { get; init; }
+
+           /// <summary>
+           /// Product SKU (Stock Keeping Unit)
+           /// </summary>
+           public string Sku { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Indicates if the product is currently active
+           /// </summary>
+           public bool IsActive { get; init; }
+
+           /// <summary>
+           /// Indicates if the product is available for sale
+           /// </summary>
+           public bool IsAvailable { get; init; }
+
+           /// <summary>
+           /// Product creation timestamp
+           /// </summary>
+           public DateTime CreatedAt { get; init; }
+
+           /// <summary>
+           /// Product last update timestamp
+           /// </summary>
+           public DateTime? UpdatedAt { get; init; }
+       }
+
+       /// <summary>
+       /// DTO for creating a new product
+       /// </summary>
+       public record CreateProductDto
+       {
+           /// <summary>
+           /// Product name
+           /// </summary>
+           [Required(ErrorMessage = "Product name is required")]
+           [StringLength(200, MinimumLength = 1, ErrorMessage = "Product name must be between 1 and 200 characters")]
+           public string Name { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product description
+           /// </summary>
+           [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
+           public string Description { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product price in USD
+           /// </summary>
+           [Required(ErrorMessage = "Price is required")]
+           [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+           public decimal Price { get; init; }
+
+           /// <summary>
+           /// Product category
+           /// </summary>
+           [Required(ErrorMessage = "Category is required")]
+           [StringLength(100, MinimumLength = 1, ErrorMessage = "Category must be between 1 and 100 characters")]
+           public string Category { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Initial stock quantity
+           /// </summary>
+           [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
+           public int StockQuantity { get; init; }
+
+           /// <summary>
+           /// Product SKU (Stock Keeping Unit)
+           /// </summary>
+           [Required(ErrorMessage = "SKU is required")]
+           [StringLength(50, MinimumLength = 1, ErrorMessage = "SKU must be between 1 and 50 characters")]
+           [RegularExpression(@"^[A-Z0-9\-]+$", ErrorMessage = "SKU must contain only uppercase letters, numbers, and hyphens")]
+           public string Sku { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Indicates if the product is active
+           /// </summary>
+           public bool? IsActive { get; init; }
+       }
+
+       /// <summary>
+       /// DTO for updating an existing product
+       /// </summary>
+       public record UpdateProductDto
+       {
+           /// <summary>
+           /// Product name
+           /// </summary>
+           [Required(ErrorMessage = "Product name is required")]
+           [StringLength(200, MinimumLength = 1, ErrorMessage = "Product name must be between 1 and 200 characters")]
+           public string Name { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product description
+           /// </summary>
+           [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
+           public string Description { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Product price in USD
+           /// </summary>
+           [Required(ErrorMessage = "Price is required")]
+           [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+           public decimal Price { get; init; }
+
+           /// <summary>
+           /// Product category
+           /// </summary>
+           [Required(ErrorMessage = "Category is required")]
+           [StringLength(100, MinimumLength = 1, ErrorMessage = "Category must be between 1 and 100 characters")]
+           public string Category { get; init; } = string.Empty;
+
+           /// <summary>
+           /// Available stock quantity
+           /// </summary>
+           [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
+           public int StockQuantity { get; init; }
+
+           /// <summary>
+           /// Product SKU (Stock Keeping Unit)
+           /// </summary>
+           [StringLength(50, MinimumLength = 1, ErrorMessage = "SKU must be between 1 and 50 characters")]
+           [RegularExpression(@"^[A-Z0-9\-]+$", ErrorMessage = "SKU must contain only uppercase letters, numbers, and hyphens")]
+           public string? Sku { get; init; }
+
+           /// <summary>
+           /// Indicates if the product is currently active
+           /// </summary>
+           public bool? IsActive { get; init; }
+
+           /// <summary>
+           /// Indicates if the product is available for sale
+           /// </summary>
+           public bool? IsAvailable { get; init; }
        }
    }
    ```
 
 ### Part 3: Create the Data Context (5 minutes)
 
-**Data/LibraryContext.cs**:
+**Data/ApplicationDbContext.cs**:
 ```csharp
 using Microsoft.EntityFrameworkCore;
-using LibraryAPI.Models;
+using RestfulAPI.Models;
 
-namespace LibraryAPI.Data
+namespace RestfulAPI.Data
 {
-    public class LibraryContext : DbContext
+    public class ApplicationDbContext : DbContext
     {
-        public LibraryContext(DbContextOptions<LibraryContext> options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
 
-        public DbSet<Book> Books => Set<Book>();
-        public DbSet<Author> Authors => Set<Author>();
-        public DbSet<Category> Categories => Set<Category>();
+        public DbSet<Product> Products => Set<Product>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configure Book entity
-            modelBuilder.Entity<Book>(entity =>
+            // Configure Product entity
+            modelBuilder.Entity<Product>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.ISBN).IsRequired().HasMaxLength(14);
-                entity.HasIndex(e => e.ISBN).IsUnique();
-                
-                entity.HasOne(e => e.Author)
-                    .WithMany(a => a.Books)
-                    .HasForeignKey(e => e.AuthorId)
-                    .OnDelete(DeleteBehavior.Restrict);
-                
-                entity.HasOne(e => e.Category)
-                    .WithMany(c => c.Books)
-                    .HasForeignKey(e => e.CategoryId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
+                entity.HasIndex(e => e.Sku).IsUnique();
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
 
-            // Configure Author entity
-            modelBuilder.Entity<Author>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
-            });
-
-            // Configure Category entity
-            modelBuilder.Entity<Category>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-                entity.HasIndex(e => e.Name).IsUnique();
+                // Add query filter to exclude soft-deleted items
+                entity.HasQueryFilter(p => !p.IsDeleted);
             });
 
             // Seed data
-            modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "Fiction", Description = "Fictional works" },
-                new Category { Id = 2, Name = "Non-Fiction", Description = "Non-fictional works" },
-                new Category { Id = 3, Name = "Science", Description = "Scientific literature" }
-            );
-
-            modelBuilder.Entity<Author>().HasData(
-                new Author 
-                { 
-                    Id = 1, 
-                    FirstName = "Jane", 
-                    LastName = "Austen", 
-                    Biography = "English novelist", 
-                    DateOfBirth = new DateTime(1775, 12, 16) 
+            modelBuilder.Entity<Product>().HasData(
+                new Product
+                {
+                    Id = 1,
+                    Name = "Laptop Computer",
+                    Description = "High-performance laptop with 16GB RAM and 512GB SSD",
+                    Price = 999.99m,
+                    Category = "Electronics",
+                    StockQuantity = 50,
+                    Sku = "ELEC-LAP-001",
+                    IsActive = true,
+                    IsAvailable = true,
+                    CreatedAt = DateTime.UtcNow
                 },
-                new Author 
-                { 
-                    Id = 2, 
-                    FirstName = "Mark", 
-                    LastName = "Twain", 
-                    Biography = "American writer", 
-                    DateOfBirth = new DateTime(1835, 11, 30) 
+                new Product
+                {
+                    Id = 2,
+                    Name = "Wireless Mouse",
+                    Description = "Ergonomic wireless mouse with precision tracking",
+                    Price = 29.99m,
+                    Category = "Accessories",
+                    StockQuantity = 100,
+                    Sku = "ACC-MOU-002",
+                    IsActive = true,
+                    IsAvailable = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Product
+                {
+                    Id = 3,
+                    Name = "Programming Book",
+                    Description = "Comprehensive guide to modern software development",
+                    Price = 49.99m,
+                    Category = "Books",
+                    StockQuantity = 25,
+                    Sku = "BOOK-PROG-003",
+                    IsActive = true,
+                    IsAvailable = true,
+                    CreatedAt = DateTime.UtcNow
                 }
             );
         }
@@ -261,259 +374,240 @@ namespace LibraryAPI.Data
 }
 ```
 
-### Part 4: Create the Books Controller (15 minutes)
+### Part 4: Create the Products Controller (15 minutes)
 
-**Controllers/BooksController.cs**:
+**Controllers/ProductsController.cs**:
 ```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using LibraryAPI.Data;
-using LibraryAPI.DTOs;
-using LibraryAPI.Models;
+using RestfulAPI.Data;
+using RestfulAPI.DTOs;
+using RestfulAPI.Models;
 
-namespace LibraryAPI.Controllers
+namespace RestfulAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class BooksController : ControllerBase
+    public class ProductsController : ControllerBase
     {
-        private readonly LibraryContext _context;
-        private readonly ILogger<BooksController> _logger;
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsController> _logger;
 
-        public BooksController(LibraryContext context, ILogger<BooksController> logger)
+        public ProductsController(ApplicationDbContext context, ILogger<ProductsController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
         /// <summary>
-        /// Get all books with optional filtering
+        /// Get all products with optional filtering
         /// </summary>
         /// <param name="category">Filter by category name</param>
-        /// <param name="author">Filter by author last name</param>
-        /// <param name="year">Filter by publication year</param>
-        /// <returns>List of books</returns>
+        /// <param name="name">Filter by product name</param>
+        /// <param name="minPrice">Minimum price filter</param>
+        /// <param name="maxPrice">Maximum price filter</param>
+        /// <returns>List of products</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<BookDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<BookDto>>> GetBooks(
+        [ProducesResponseType(typeof(IEnumerable<ProductDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
             [FromQuery] string? category = null,
-            [FromQuery] string? author = null,
-            [FromQuery] int? year = null)
+            [FromQuery] string? name = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null)
         {
-            _logger.LogInformation("Getting books with filters - Category: {Category}, Author: {Author}, Year: {Year}", 
-                category, author, year);
+            _logger.LogInformation("Getting products with filters - Category: {Category}, Name: {Name}, MinPrice: {MinPrice}, MaxPrice: {MaxPrice}",
+                category, name, minPrice, maxPrice);
 
-            var query = _context.Books
-                .Include(b => b.Author)
-                .Include(b => b.Category)
-                .AsQueryable();
+            var query = _context.Products.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(category))
             {
-                query = query.Where(b => b.Category.Name.Contains(category));
+                query = query.Where(p => p.Category.Contains(category));
             }
 
-            if (!string.IsNullOrWhiteSpace(author))
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                query = query.Where(b => b.Author.LastName.Contains(author));
+                query = query.Where(p => p.Name.Contains(name));
             }
 
-            if (year.HasValue)
+            if (minPrice.HasValue)
             {
-                query = query.Where(b => b.PublicationYear == year.Value);
+                query = query.Where(p => p.Price >= minPrice.Value);
             }
 
-            var books = await query
-                .Select(b => new BookDto(
-                    b.Id,
-                    b.Title,
-                    b.ISBN,
-                    b.PublicationYear,
-                    b.NumberOfPages,
-                    b.Summary,
-                    $"{b.Author.FirstName} {b.Author.LastName}",
-                    b.Category.Name,
-                    b.CreatedAt,
-                    b.UpdatedAt
-                ))
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= maxPrice.Value);
+            }
+
+            var products = await query
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .ToListAsync();
 
-            return Ok(books);
+            return Ok(products);
         }
 
         /// <summary>
-        /// Get a specific book by ID
+        /// Get a specific product by ID
         /// </summary>
-        /// <param name="id">Book ID</param>
-        /// <returns>Book details</returns>
+        /// <param name="id">Product ID</param>
+        /// <returns>Product details</returns>
         [HttpGet("{id:int}")]
-        [ProducesResponseType(typeof(BookDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BookDto>> GetBook(int id)
+        public async Task<ActionResult<ProductDto>> GetProduct(int id)
         {
-            _logger.LogInformation("Getting book with ID: {BookId}", id);
+            _logger.LogInformation("Getting product with ID: {ProductId}", id);
 
-            var book = await _context.Books
-                .Include(b => b.Author)
-                .Include(b => b.Category)
-                .Where(b => b.Id == id)
-                .Select(b => new BookDto(
-                    b.Id,
-                    b.Title,
-                    b.ISBN,
-                    b.PublicationYear,
-                    b.NumberOfPages,
-                    b.Summary,
-                    $"{b.Author.FirstName} {b.Author.LastName}",
-                    b.Category.Name,
-                    b.CreatedAt,
-                    b.UpdatedAt
-                ))
+            var product = await _context.Products
+                .Where(p => p.Id == id)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .FirstOrDefaultAsync();
 
-            if (book == null)
+            if (product == null)
             {
-                _logger.LogWarning("Book with ID {BookId} not found", id);
-                return NotFound(new { message = $"Book with ID {id} not found" });
+                _logger.LogWarning("Product with ID {ProductId} not found", id);
+                return NotFound(new { message = $"Product with ID {id} not found" });
             }
 
-            return Ok(book);
+            return Ok(product);
         }
 
         /// <summary>
-        /// Create a new book
+        /// Create a new product
         /// </summary>
-        /// <param name="createBookDto">Book creation data</param>
-        /// <returns>Created book</returns>
+        /// <param name="createProductDto">Product creation data</param>
+        /// <returns>Created product</returns>
         [HttpPost]
-        [ProducesResponseType(typeof(BookDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BookDto>> CreateBook([FromBody] CreateBookDto createBookDto)
+        public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto createProductDto)
         {
-            _logger.LogInformation("Creating new book: {BookTitle}", createBookDto.Title);
+            _logger.LogInformation("Creating new product: {ProductName}", createProductDto.Name);
 
-            // Validate author exists
-            var authorExists = await _context.Authors.AnyAsync(a => a.Id == createBookDto.AuthorId);
-            if (!authorExists)
+            // Check for duplicate SKU
+            var skuExists = await _context.Products.AnyAsync(p => p.Sku == createProductDto.Sku);
+            if (skuExists)
             {
-                return BadRequest(new { message = $"Author with ID {createBookDto.AuthorId} not found" });
+                return BadRequest(new { message = $"Product with SKU {createProductDto.Sku} already exists" });
             }
 
-            // Validate category exists
-            var categoryExists = await _context.Categories.AnyAsync(c => c.Id == createBookDto.CategoryId);
-            if (!categoryExists)
+            var product = new Product
             {
-                return BadRequest(new { message = $"Category with ID {createBookDto.CategoryId} not found" });
-            }
-
-            // Check for duplicate ISBN
-            var isbnExists = await _context.Books.AnyAsync(b => b.ISBN == createBookDto.ISBN);
-            if (isbnExists)
-            {
-                return BadRequest(new { message = $"Book with ISBN {createBookDto.ISBN} already exists" });
-            }
-
-            var book = new Book
-            {
-                Title = createBookDto.Title,
-                ISBN = createBookDto.ISBN,
-                PublicationYear = createBookDto.PublicationYear,
-                NumberOfPages = createBookDto.NumberOfPages,
-                Summary = createBookDto.Summary,
-                AuthorId = createBookDto.AuthorId,
-                CategoryId = createBookDto.CategoryId,
+                Name = createProductDto.Name,
+                Description = createProductDto.Description,
+                Price = createProductDto.Price,
+                Category = createProductDto.Category,
+                StockQuantity = createProductDto.StockQuantity,
+                Sku = createProductDto.Sku,
+                IsActive = createProductDto.IsActive ?? true,
+                IsAvailable = true,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Books.Add(book);
+            _context.Products.Add(product);
             await _context.SaveChangesAsync();
 
-            // Load related data for response
-            await _context.Entry(book)
-                .Reference(b => b.Author)
-                .LoadAsync();
-            await _context.Entry(book)
-                .Reference(b => b.Category)
-                .LoadAsync();
-
-            var bookDto = new BookDto(
-                book.Id,
-                book.Title,
-                book.ISBN,
-                book.PublicationYear,
-                book.NumberOfPages,
-                book.Summary,
-                $"{book.Author.FirstName} {book.Author.LastName}",
-                book.Category.Name,
-                book.CreatedAt,
-                book.UpdatedAt
-            );
+            var productDto = new ProductDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                Category = product.Category,
+                StockQuantity = product.StockQuantity,
+                Sku = product.Sku,
+                IsActive = product.IsActive,
+                IsAvailable = product.IsAvailable,
+                CreatedAt = product.CreatedAt,
+                UpdatedAt = product.UpdatedAt
+            };
 
             return CreatedAtAction(
-                nameof(GetBook),
-                new { id = book.Id },
-                bookDto);
+                nameof(GetProduct),
+                new { id = product.Id },
+                productDto);
         }
 
         /// <summary>
-        /// Update an existing book
+        /// Update an existing product
         /// </summary>
-        /// <param name="id">Book ID</param>
-        /// <param name="updateBookDto">Updated book data</param>
+        /// <param name="id">Product ID</param>
+        /// <param name="updateProductDto">Updated product data</param>
         /// <returns>No content</returns>
         [HttpPut("{id:int}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UpdateBook(int id, [FromBody] UpdateBookDto updateBookDto)
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateProductDto)
         {
-            _logger.LogInformation("Updating book with ID: {BookId}", id);
+            _logger.LogInformation("Updating product with ID: {ProductId}", id);
 
-            var book = await _context.Books.FindAsync(id);
-            if (book == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
-                return NotFound(new { message = $"Book with ID {id} not found" });
+                return NotFound(new { message = $"Product with ID {id} not found" });
             }
 
-            // Validate author exists
-            if (book.AuthorId != updateBookDto.AuthorId)
+            // Check for duplicate SKU (if changed)
+            if (!string.IsNullOrEmpty(updateProductDto.Sku) && product.Sku != updateProductDto.Sku)
             {
-                var authorExists = await _context.Authors.AnyAsync(a => a.Id == updateBookDto.AuthorId);
-                if (!authorExists)
+                var skuExists = await _context.Products.AnyAsync(p => p.Sku == updateProductDto.Sku && p.Id != id);
+                if (skuExists)
                 {
-                    return BadRequest(new { message = $"Author with ID {updateBookDto.AuthorId} not found" });
+                    return BadRequest(new { message = $"Product with SKU {updateProductDto.Sku} already exists" });
                 }
             }
 
-            // Validate category exists
-            if (book.CategoryId != updateBookDto.CategoryId)
+            product.Name = updateProductDto.Name;
+            product.Description = updateProductDto.Description;
+            product.Price = updateProductDto.Price;
+            product.Category = updateProductDto.Category;
+            product.StockQuantity = updateProductDto.StockQuantity;
+
+            if (!string.IsNullOrEmpty(updateProductDto.Sku))
             {
-                var categoryExists = await _context.Categories.AnyAsync(c => c.Id == updateBookDto.CategoryId);
-                if (!categoryExists)
-                {
-                    return BadRequest(new { message = $"Category with ID {updateBookDto.CategoryId} not found" });
-                }
+                product.Sku = updateProductDto.Sku;
             }
 
-            // Check for duplicate ISBN (if changed)
-            if (book.ISBN != updateBookDto.ISBN)
+            if (updateProductDto.IsActive.HasValue)
             {
-                var isbnExists = await _context.Books.AnyAsync(b => b.ISBN == updateBookDto.ISBN && b.Id != id);
-                if (isbnExists)
-                {
-                    return BadRequest(new { message = $"Book with ISBN {updateBookDto.ISBN} already exists" });
-                }
+                product.IsActive = updateProductDto.IsActive.Value;
             }
 
-            book.Title = updateBookDto.Title;
-            book.ISBN = updateBookDto.ISBN;
-            book.PublicationYear = updateBookDto.PublicationYear;
-            book.NumberOfPages = updateBookDto.NumberOfPages;
-            book.Summary = updateBookDto.Summary;
-            book.AuthorId = updateBookDto.AuthorId;
-            book.CategoryId = updateBookDto.CategoryId;
-            book.UpdatedAt = DateTime.UtcNow;
+            if (updateProductDto.IsAvailable.HasValue)
+            {
+                product.IsAvailable = updateProductDto.IsAvailable.Value;
+            }
+
+            product.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
@@ -521,57 +615,57 @@ namespace LibraryAPI.Controllers
         }
 
         /// <summary>
-        /// Delete a book
+        /// Delete a product
         /// </summary>
-        /// <param name="id">Book ID</param>
+        /// <param name="id">Product ID</param>
         /// <returns>No content</returns>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteBook(int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
-            _logger.LogInformation("Deleting book with ID: {BookId}", id);
+            _logger.LogInformation("Deleting product with ID: {ProductId}", id);
 
-            var book = await _context.Books.FindAsync(id);
-            if (book == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
-                return NotFound(new { message = $"Book with ID {id} not found" });
+                return NotFound(new { message = $"Product with ID {id} not found" });
             }
 
-            _context.Books.Remove(book);
+            _context.Products.Remove(product);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
         /// <summary>
-        /// Get books by author
+        /// Get products by category
         /// </summary>
-        /// <param name="authorId">Author ID</param>
-        /// <returns>List of books by the author</returns>
-        [HttpGet("by-author/{authorId:int}")]
-        [ProducesResponseType(typeof(IEnumerable<BookDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<BookDto>>> GetBooksByAuthor(int authorId)
+        /// <param name="category">Category name</param>
+        /// <returns>List of products in the category</returns>
+        [HttpGet("by-category/{category}")]
+        [ProducesResponseType(typeof(IEnumerable<ProductDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProductsByCategory(string category)
         {
-            var books = await _context.Books
-                .Include(b => b.Author)
-                .Include(b => b.Category)
-                .Where(b => b.AuthorId == authorId)
-                .Select(b => new BookDto(
-                    b.Id,
-                    b.Title,
-                    b.ISBN,
-                    b.PublicationYear,
-                    b.NumberOfPages,
-                    b.Summary,
-                    $"{b.Author.FirstName} {b.Author.LastName}",
-                    b.Category.Name,
-                    b.CreatedAt,
-                    b.UpdatedAt
-                ))
+            var products = await _context.Products
+                .Where(p => p.Category.Contains(category))
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .ToListAsync();
 
-            return Ok(books);
+            return Ok(products);
         }
     }
 }
@@ -581,7 +675,7 @@ namespace LibraryAPI.Controllers
 
 Update **Program.cs**:
 ```csharp
-using LibraryAPI.Data;
+using RestfulAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
@@ -595,13 +689,13 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Library API",
+        Title = "RESTful API",
         Version = "v1",
-        Description = "A simple API for managing a library system",
+        Description = "A comprehensive API for managing products",
         Contact = new OpenApiContact
         {
-            Name = "Library Support",
-            Email = "support@library.com"
+            Name = "API Support Team",
+            Email = "support@api.com"
         }
     });
 
@@ -615,8 +709,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add Entity Framework
-builder.Services.AddDbContext<LibraryContext>(options =>
-    options.UseInMemoryDatabase("LibraryDb"));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("ProductsDb"));
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -634,7 +728,7 @@ var app = builder.Build();
 // Seed the database
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<LibraryContext>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     context.Database.EnsureCreated();
 }
 
@@ -644,7 +738,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Library API V1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "RESTful API V1");
     });
 }
 
@@ -674,62 +768,62 @@ app.Run();
 3. **Test with Swagger UI**:
    - Navigate to `https://localhost:[port]/swagger`
    - Test each endpoint:
-     - GET `/api/books` - Get all books
-     - GET `/api/books/1` - Get specific book
-     - POST `/api/books` - Create new book
-     - PUT `/api/books/1` - Update book
-     - DELETE `/api/books/1` - Delete book
+     - GET `/api/products` - Get all products
+     - GET `/api/products/1` - Get specific product
+     - POST `/api/products` - Create new product
+     - PUT `/api/products/1` - Update product
+     - DELETE `/api/products/1` - Delete product
 
 4. **Test with curl or Postman**:
    ```bash
-   # Get all books
-   curl -X GET https://localhost:5001/api/books
+   # Get all products
+   curl -X GET https://localhost:5001/api/products
 
-   # Create a new book
-   curl -X POST https://localhost:5001/api/books \
+   # Create a new product
+   curl -X POST https://localhost:5001/api/products \
      -H "Content-Type: application/json" \
      -d '{
-       "title": "Pride and Prejudice",
-       "isbn": "978-0141439518",
-       "publicationYear": 1813,
-       "numberOfPages": 432,
-       "summary": "A classic novel",
-       "authorId": 1,
-       "categoryId": 1
+       "name": "Wireless Headphones",
+       "description": "High-quality wireless headphones with noise cancellation",
+       "price": 199.99,
+       "category": "Electronics",
+       "stockQuantity": 75,
+       "sku": "ELEC-HEAD-004",
+       "isActive": true
      }'
    ```
 
 ## ✅ Success Criteria
 
 - [ ] API project created and running
-- [ ] All CRUD operations working for books
+- [ ] All CRUD operations working for products
 - [ ] Proper HTTP status codes returned
 - [ ] Input validation working
 - [ ] Swagger documentation available
-- [ ] Relationships between entities working
+- [ ] SKU uniqueness validation working
 - [ ] Error responses are meaningful
 
 ## 🚀 Bonus Challenges
 
-1. **Add Authors Controller**:
-   - Create full CRUD operations for authors
-   - Include a count of books per author
-   - Prevent deleting authors with books
+1. **Add Product Search**:
+   - Create advanced search endpoint
+   - Search by name, description, and category
+   - Add price range filtering
 
-2. **Add Categories Controller**:
-   - Create CRUD operations for categories
-   - Add endpoint to get books by category
-   - Implement category statistics
+2. **Add Product Categories**:
+   - Create separate Category entity
+   - Implement category management endpoints
+   - Add category statistics
 
 3. **Add Pagination**:
-   - Implement pagination for book list
-   - Add sorting options (by title, year, author)
+   - Implement pagination for product list
+   - Add sorting options (by name, price, category)
    - Return pagination metadata in headers
 
-4. **Add Search Functionality**:
-   - Create a search endpoint
-   - Search across title, author, and ISBN
-   - Implement fuzzy search
+4. **Add Inventory Management**:
+   - Create stock adjustment endpoints
+   - Add low stock alerts
+   - Implement stock history tracking
 
 ## 🤔 Reflection Questions
 
