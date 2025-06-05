@@ -60,9 +60,22 @@ echo "=================================="
 # Step 1: Create project
 echo -n "1. Creating Web API project... "
 
-# Remove existing project if it exists
+# Check if project already exists
 if [ -d "$PROJECT_NAME" ]; then
-    rm -rf "$PROJECT_NAME"
+    echo -e "${YELLOW}⚠️  Project '$PROJECT_NAME' already exists!${NC}"
+    echo -n "Do you want to overwrite it? This will delete all existing work! (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Setup cancelled. Existing project preserved.${NC}"
+        exit 1
+    fi
+    echo -n "Creating backup... "
+    if [ -d "${PROJECT_NAME}_backup_$(date +%Y%m%d_%H%M%S)" ]; then
+        rm -rf "${PROJECT_NAME}_backup_$(date +%Y%m%d_%H%M%S)"
+    fi
+    mv "$PROJECT_NAME" "${PROJECT_NAME}_backup_$(date +%Y%m%d_%H%M%S)"
+    echo -e "${GREEN}✓${NC}"
+    echo -n "1. Creating Web API project... "
 fi
 
 if dotnet new webapi -n "$PROJECT_NAME" --framework net8.0 > /dev/null 2>&1; then

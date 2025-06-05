@@ -28,9 +28,21 @@ Write-Host "=================================="
 # Step 1: Create project
 Write-Host -NoNewline "1. Creating Web API project... "
 
-# Remove existing project if it exists
+# Check if project already exists
 if (Test-Path $ProjectName) {
-    Remove-Item -Path $ProjectName -Recurse -Force
+    Write-Host "⚠️  Project '$ProjectName' already exists!" -ForegroundColor Yellow
+    $response = Read-Host "Do you want to overwrite it? This will delete all existing work! (y/N)"
+    if ($response -notmatch "^[Yy]$") {
+        Write-Host "Setup cancelled. Existing project preserved." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host -NoNewline "Creating backup... "
+    $backupName = "${ProjectName}_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    if (Test-Path $backupName) {
+        Remove-Item -Path $backupName -Recurse -Force
+    }
+    Rename-Item -Path $ProjectName -NewName $backupName
+    Write-Host "✓" -ForegroundColor Green
 }
 
 try {
