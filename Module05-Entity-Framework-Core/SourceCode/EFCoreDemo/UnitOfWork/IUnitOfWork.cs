@@ -4,16 +4,17 @@ using EFCoreDemo.Repositories;
 namespace EFCoreDemo.UnitOfWork;
 
 /// <summary>
-/// Unit of Work interface from Exercise 03
+/// Unit of Work interface from Exercise 03 - Repository Pattern
+/// Coordinates multiple repositories and manages transactions
 /// </summary>
 public interface IUnitOfWork : IDisposable
 {
-    // Repository properties for Product Catalog
+    // Product Catalog repositories (existing)
     IProductRepository Products { get; }
     ICategoryRepository Categories { get; }
     IRepository<Supplier> Suppliers { get; }
     
-    // Repository properties for BookStore
+    // BookStore repositories (Exercise 03)
     IBookRepository Books { get; }
     IAuthorRepository Authors { get; }
     IRepository<Publisher> Publishers { get; }
@@ -23,5 +24,4 @@ public interface IUnitOfWork : IDisposable
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
-    bool HasActiveTransaction { get; }
 }

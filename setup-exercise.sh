@@ -29,7 +29,16 @@ EXERCISE_NAME=$1
 # Set project name based on exercise
 case $EXERCISE_NAME in
     "module04-exercise01-jwt")
-        PROJECT_NAME="JwtAuthExercise"
+        PROJECT_NAME="JwtAuthenticationAPI"
+        ;;
+    "module05-exercise01-efcore")
+        PROJECT_NAME="EFCoreDemo"
+        ;;
+    "module05-exercise02-linq")
+        PROJECT_NAME="EFCoreDemo"
+        ;;
+    "module05-exercise03-repository")
+        PROJECT_NAME="EFCoreDemo"
         ;;
     *)
         PROJECT_NAME="LibraryAPI"
@@ -71,6 +80,9 @@ case $EXERCISE_NAME in
     "module04-exercise01-jwt")
         TEMPLATE_PATH="../Module04-Authentication-and-Authorization/Templates/JwtAuthExercise.csproj"
         ;;
+    "module05-exercise01-efcore"|"module05-exercise02-linq"|"module05-exercise03-repository")
+        TEMPLATE_PATH="../Module05-Entity-Framework-Core/Templates/EFCoreDemo.csproj"
+        ;;
     *)
         TEMPLATE_PATH="../Module03-Working-with-Web-APIs/Templates/LibraryAPI.csproj"
         ;;
@@ -84,6 +96,9 @@ if [ -f "$TEMPLATE_PATH" ]; then
     case $EXERCISE_NAME in
         "module04-exercise01-jwt")
             APPSETTINGS_PATH="../Module04-Authentication-and-Authorization/Templates/appsettings.json"
+            ;;
+        "module05-exercise01-efcore"|"module05-exercise02-linq"|"module05-exercise03-repository")
+            APPSETTINGS_PATH="../Module05-Entity-Framework-Core/Templates/appsettings.json"
             ;;
     esac
 
@@ -126,6 +141,13 @@ else
             dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
             dotnet add package Microsoft.IdentityModel.Tokens --version 8.0.2 > /dev/null 2>&1
             dotnet add package Swashbuckle.AspNetCore --version 6.8.1 > /dev/null 2>&1
+            ;;
+        "module05-exercise01-efcore"|"module05-exercise02-linq"|"module05-exercise03-repository")
+            dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.6 > /dev/null 2>&1
+            dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.6 > /dev/null 2>&1
+            dotnet add package Microsoft.EntityFrameworkCore.Design --version 8.0.6 > /dev/null 2>&1
+            dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection --version 12.0.1 > /dev/null 2>&1
+            dotnet add package Swashbuckle.AspNetCore --version 6.4.0 > /dev/null 2>&1
             ;;
     esac
     echo -e "${GREEN}✓${NC}"

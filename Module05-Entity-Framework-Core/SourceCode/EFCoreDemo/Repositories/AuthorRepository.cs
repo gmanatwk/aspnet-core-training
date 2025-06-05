@@ -20,17 +20,15 @@ public interface IAuthorRepository : IRepository<Author>
 /// <summary>
 /// Author repository implementation from Exercise 03
 /// </summary>
-public class AuthorRepository : Repository<Author>, IAuthorRepository
+public class AuthorRepository : BookStoreRepository<Author>, IAuthorRepository
 {
     public AuthorRepository(BookStoreContext context) : base(context)
     {
     }
 
-    private BookStoreContext BookContext => (BookStoreContext)_context;
-
     public async Task<IEnumerable<Author>> GetAuthorsWithBooksAsync()
     {
-        return await BookContext.Authors
+        return await _context.Authors
             .Include(a => a.BookAuthors)
                 .ThenInclude(ba => ba.Book)
                     .ThenInclude(b => b.Publisher)
@@ -41,7 +39,7 @@ public class AuthorRepository : Repository<Author>, IAuthorRepository
 
     public async Task<Author?> GetAuthorWithBooksAsync(int id)
     {
-        return await BookContext.Authors
+        return await _context.Authors
             .Include(a => a.BookAuthors)
                 .ThenInclude(ba => ba.Book)
                     .ThenInclude(b => b.Publisher)
@@ -51,7 +49,7 @@ public class AuthorRepository : Repository<Author>, IAuthorRepository
     public async Task<IEnumerable<Author>> SearchAuthorsAsync(string searchTerm)
     {
         var term = searchTerm.ToLower();
-        return await BookContext.Authors
+        return await _context.Authors
             .Include(a => a.BookAuthors)
                 .ThenInclude(ba => ba.Book)
             .Where(a => a.FirstName.ToLower().Contains(term) ||
@@ -65,7 +63,7 @@ public class AuthorRepository : Repository<Author>, IAuthorRepository
 
     public async Task<bool> EmailExistsAsync(string email, int? excludeAuthorId = null)
     {
-        var query = BookContext.Authors.Where(a => a.Email.ToLower() == email.ToLower());
+        var query = _context.Authors.Where(a => a.Email.ToLower() == email.ToLower());
         
         if (excludeAuthorId.HasValue)
         {
@@ -77,7 +75,7 @@ public class AuthorRepository : Repository<Author>, IAuthorRepository
 
     public async Task<IEnumerable<Author>> GetAuthorsByCountryAsync(string country)
     {
-        return await BookContext.Authors
+        return await _context.Authors
             .Include(a => a.BookAuthors)
                 .ThenInclude(ba => ba.Book)
             .Where(a => a.Country != null && a.Country.ToLower() == country.ToLower())
@@ -88,16 +86,13 @@ public class AuthorRepository : Repository<Author>, IAuthorRepository
 
     public async Task<int> GetBookCountForAuthorAsync(int authorId)
     {
-        return await BookContext.BookAuthors
+        return await _context.BookAuthors
             .Where(ba => ba.AuthorId == authorId)
             .CountAsync();
     }
 
     public override async Task<Author?> GetByIdAsync(int id)
     {
-        return await BookContext.Authors
-            .Include(a => a.BookAuthors)
-                .ThenInclude(ba => ba.Book)
-            .FirstOrDefaultAsync(a => a.Id == id);
+        return await GetAuthorWithBooksAsync(id);
     }
 }

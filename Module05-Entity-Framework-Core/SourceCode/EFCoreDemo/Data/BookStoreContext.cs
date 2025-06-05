@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace EFCoreDemo.Data;
 
 /// <summary>
-/// BookStore database context from Exercise 01
+/// BookStore database context from Exercise 01 - Basic EF Core Setup
+/// Configured with Fluent API as per Exercise 01 requirements
 /// </summary>
 public class BookStoreContext : DbContext
 {
@@ -22,7 +23,7 @@ public class BookStoreContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure Book entity
+        // Configure Book entity (Exercise 01 - Fluent API configuration)
         modelBuilder.Entity<Book>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -30,17 +31,17 @@ public class BookStoreContext : DbContext
             entity.Property(e => e.ISBN).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
             
-            // Unique constraint on ISBN
+            // Exercise 01 - Unique constraint on ISBN
             entity.HasIndex(e => e.ISBN).IsUnique();
             
-            // Configure relationship with Publisher
+            // Exercise 02 - Configure relationship with Publisher
             entity.HasOne(e => e.Publisher)
                   .WithMany(p => p.Books)
                   .HasForeignKey(e => e.PublisherId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // Configure Author entity
+        // Configure Author entity (Exercise 02)
         modelBuilder.Entity<Author>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -52,7 +53,7 @@ public class BookStoreContext : DbContext
             entity.HasIndex(e => e.Email).IsUnique();
         });
 
-        // Configure Publisher entity
+        // Configure Publisher entity (Exercise 02)
         modelBuilder.Entity<Publisher>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -61,7 +62,7 @@ public class BookStoreContext : DbContext
             entity.Property(e => e.Website).HasMaxLength(200);
         });
 
-        // Configure BookAuthor many-to-many relationship
+        // Configure BookAuthor many-to-many relationship (Exercise 02)
         modelBuilder.Entity<BookAuthor>(entity =>
         {
             entity.HasKey(ba => new { ba.BookId, ba.AuthorId });
@@ -77,7 +78,7 @@ public class BookStoreContext : DbContext
             entity.Property(ba => ba.Role).HasMaxLength(50);
         });
 
-        // Seed data
+        // Exercise 01 - Seed data
         SeedData(modelBuilder);
     }
 
@@ -97,7 +98,7 @@ public class BookStoreContext : DbContext
             new Author { Id = 3, FirstName = "Robert", LastName = "Johnson", Email = "robert.j@email.com", BirthDate = new DateTime(1970, 3, 10), Country = "Canada" }
         );
 
-        // Seed Books
+        // Seed Books (Exercise 01 requirement - 3 books)
         modelBuilder.Entity<Book>().HasData(
             new Book 
             { 

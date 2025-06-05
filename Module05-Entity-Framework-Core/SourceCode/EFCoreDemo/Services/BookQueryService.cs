@@ -6,6 +6,7 @@ namespace EFCoreDemo.Services;
 
 /// <summary>
 /// Book query service from Exercise 02 - Advanced LINQ Queries
+/// Implements all required query methods from the exercise
 /// </summary>
 public class BookQueryService
 {
@@ -19,7 +20,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get all books with their publishers
+    /// Get all books with their publishers (Basic LINQ Query #1)
     /// </summary>
     public async Task<IEnumerable<Book>> GetBooksWithPublishersAsync()
     {
@@ -31,7 +32,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get books by a specific author
+    /// Get books by a specific author (Basic LINQ Query #2)
     /// </summary>
     public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
     {
@@ -45,7 +46,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get authors with their book count
+    /// Get authors with their book count (Basic LINQ Query #3)
     /// </summary>
     public async Task<IEnumerable<object>> GetAuthorsWithBookCountAsync()
     {
@@ -62,7 +63,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get books published in a specific year
+    /// Get books published in a specific year (Basic LINQ Query #4)
     /// </summary>
     public async Task<IEnumerable<Book>> GetBooksByYearAsync(int year)
     {
@@ -74,7 +75,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get the most expensive books
+    /// Get the most expensive books (Basic LINQ Query #5)
     /// </summary>
     public async Task<IEnumerable<Book>> GetTopExpensiveBooksAsync(int count = 5)
     {
@@ -86,7 +87,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Get books with author details and publisher info (multi-table join)
+    /// Get books with author details and publisher info - Multi-table Join (Advanced Query #1)
     /// </summary>
     public async Task<IEnumerable<object>> GetBooksWithAuthorAndPublisherAsync()
     {
@@ -107,7 +108,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Calculate average price by publisher
+    /// Calculate average price by publisher - Aggregation (Advanced Query #2)
     /// </summary>
     public async Task<IEnumerable<object>> GetAveragePriceByPublisherAsync()
     {
@@ -126,7 +127,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Find authors who have written books above a certain price
+    /// Find authors who have written books above a certain price - Filtering with Navigation (Advanced Query #3)
     /// </summary>
     public async Task<IEnumerable<Author>> GetAuthorsWithExpensiveBooksAsync(decimal priceThreshold)
     {
@@ -140,7 +141,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Group books by publication year with statistics
+    /// Group books by publication year with statistics - Grouping (Advanced Query #4)
     /// </summary>
     public async Task<IEnumerable<object>> GetBooksByYearStatisticsAsync()
     {
@@ -159,7 +160,7 @@ public class BookQueryService
     }
 
     /// <summary>
-    /// Full-text search across book title, author name, and publisher
+    /// Full-text search across book title, author name, and publisher - Search (Advanced Query #5)
     /// </summary>
     public async Task<IEnumerable<object>> SearchBooksAsync(string searchTerm)
     {

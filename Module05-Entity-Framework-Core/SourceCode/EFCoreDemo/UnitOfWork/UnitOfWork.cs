@@ -7,6 +7,7 @@ namespace EFCoreDemo.UnitOfWork;
 
 /// <summary>
 /// Unit of Work implementation from Exercise 03
+/// Manages multiple DbContexts and ensures transactional consistency
 /// </summary>
 public class UnitOfWork : IUnitOfWork
 {
@@ -52,9 +53,7 @@ public class UnitOfWork : IUnitOfWork
         _authors ??= new AuthorRepository(_bookContext);
 
     public IRepository<Publisher> Publishers => 
-        _publishers ??= new Repository<Publisher>(_bookContext);
-
-    public bool HasActiveTransaction => _productTransaction != null || _bookTransaction != null;
+        _publishers ??= new BookStoreRepository<Publisher>(_bookContext);
 
     public async Task<int> SaveChangesAsync()
     {
@@ -77,12 +76,6 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task BeginTransactionAsync()
     {
-        if (HasActiveTransaction)
-        {
-            _logger.LogWarning("Transaction already in progress");
-            return;
-        }
-
         try
         {
             _productTransaction = await _productContext.Database.BeginTransactionAsync();
@@ -99,12 +92,6 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task CommitTransactionAsync()
     {
-        if (!HasActiveTransaction)
-        {
-            _logger.LogWarning("No active transaction to commit");
-            return;
-        }
-
         try
         {
             if (_productTransaction != null)
@@ -133,12 +120,6 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task RollbackTransactionAsync()
     {
-        if (!HasActiveTransaction)
-        {
-            _logger.LogWarning("No active transaction to rollback");
-            return;
-        }
-
         try
         {
             if (_productTransaction != null)

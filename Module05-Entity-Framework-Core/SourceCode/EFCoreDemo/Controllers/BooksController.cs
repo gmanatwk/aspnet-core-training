@@ -22,7 +22,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Get all books
+    /// Get all books - Exercise 01
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
@@ -40,7 +40,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Get book by ID
+    /// Get book by ID - Exercise 01
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<Book>> GetBook(int id)
@@ -64,7 +64,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new book
+    /// Create a new book - Exercise 01
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Book>> CreateBook(Book book)
@@ -101,7 +101,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing book
+    /// Update an existing book - Exercise 01
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<Book>> UpdateBook(int id, Book book)
@@ -153,7 +153,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Delete a book
+    /// Delete a book - Exercise 01
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteBook(int id)
@@ -179,7 +179,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Search books (from Exercise 02)
+    /// Search books - Bonus from Exercise 01
     /// </summary>
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Book>>> SearchBooks([FromQuery] string searchTerm)
@@ -202,7 +202,7 @@ public class BooksController : ControllerBase
     }
 
     /// <summary>
-    /// Get books by price range (Bonus from Exercise 01)
+    /// Get books by price range - Bonus from Exercise 01
     /// </summary>
     [HttpGet("price-range")]
     public async Task<ActionResult<IEnumerable<Book>>> GetBooksByPriceRange(
@@ -222,45 +222,6 @@ public class BooksController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving books by price range");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    /// <summary>
-    /// Get books with pagination (Bonus from Exercise 01)
-    /// </summary>
-    [HttpGet("paged")]
-    public async Task<ActionResult<object>> GetBooksPaged(
-        [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 10)
-    {
-        try
-        {
-            if (page < 1 || pageSize < 1 || pageSize > 100)
-            {
-                return BadRequest("Invalid pagination parameters");
-            }
-
-            var books = await _unitOfWork.Books.GetPagedAsync<Book>(
-                filter: b => b.IsAvailable,
-                orderBy: q => q.OrderBy(b => b.Title),
-                page: page,
-                pageSize: pageSize);
-
-            var totalCount = await _unitOfWork.Books.CountAsync(b => b.IsAvailable);
-            
-            return Ok(new
-            {
-                Data = books,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount,
-                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving paged books");
             return StatusCode(500, "Internal server error");
         }
     }

@@ -5,6 +5,7 @@ namespace EFCoreDemo.Controllers;
 
 /// <summary>
 /// Query Test Controller from Exercise 02 - Advanced LINQ Queries
+/// Demonstrates all required query methods from the exercise
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -20,7 +21,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get books with publishers
+    /// Get books with publishers - Basic Query #1
     /// </summary>
     [HttpGet("books-with-publishers")]
     public async Task<IActionResult> GetBooksWithPublishers()
@@ -38,7 +39,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get books by author
+    /// Get books by author - Basic Query #2
     /// </summary>
     [HttpGet("books-by-author/{authorId}")]
     public async Task<IActionResult> GetBooksByAuthor(int authorId)
@@ -56,7 +57,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get authors with book count
+    /// Get authors with book count - Basic Query #3
     /// </summary>
     [HttpGet("authors-with-book-count")]
     public async Task<IActionResult> GetAuthorsWithBookCount()
@@ -74,7 +75,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get books by year
+    /// Get books by year - Basic Query #4
     /// </summary>
     [HttpGet("books-by-year/{year}")]
     public async Task<IActionResult> GetBooksByYear(int year)
@@ -92,7 +93,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get top expensive books
+    /// Get top expensive books - Basic Query #5
     /// </summary>
     [HttpGet("top-expensive-books")]
     public async Task<IActionResult> GetTopExpensiveBooks([FromQuery] int count = 5)
@@ -110,7 +111,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get books with full details (authors and publisher)
+    /// Get books with full details - Advanced Query #1 (Multi-table Join)
     /// </summary>
     [HttpGet("books-with-full-details")]
     public async Task<IActionResult> GetBooksWithAuthorAndPublisher()
@@ -128,7 +129,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get average price by publisher
+    /// Get average price by publisher - Advanced Query #2 (Aggregation)
     /// </summary>
     [HttpGet("average-price-by-publisher")]
     public async Task<IActionResult> GetAveragePriceByPublisher()
@@ -146,7 +147,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get authors with expensive books
+    /// Get authors with expensive books - Advanced Query #3 (Filtering with Navigation)
     /// </summary>
     [HttpGet("authors-with-expensive-books")]
     public async Task<IActionResult> GetAuthorsWithExpensiveBooks([FromQuery] decimal priceThreshold = 50)
@@ -164,7 +165,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Get books statistics by year
+    /// Get books statistics by year - Advanced Query #4 (Grouping)
     /// </summary>
     [HttpGet("books-by-year-statistics")]
     public async Task<IActionResult> GetBooksByYearStatistics()
@@ -182,7 +183,7 @@ public class QueryTestController : ControllerBase
     }
 
     /// <summary>
-    /// Search books across multiple fields
+    /// Search books across multiple fields - Advanced Query #5 (Search)
     /// </summary>
     [HttpGet("search")]
     public async Task<IActionResult> SearchBooks([FromQuery] string term)

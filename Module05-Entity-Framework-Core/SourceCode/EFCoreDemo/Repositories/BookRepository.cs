@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 namespace EFCoreDemo.Repositories;
 
 /// <summary>
-/// Book-specific repository interface from Exercise 03
+/// Book-specific repository interface from Exercise 03 - Repository Pattern
 /// </summary>
 public interface IBookRepository : IRepository<Book>
 {
@@ -19,28 +19,20 @@ public interface IBookRepository : IRepository<Book>
     Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null);
     Task<decimal> GetAveragePriceAsync();
     Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year);
-    Task<IEnumerable<T>> GetPagedAsync<T>(
-        Expression<Func<Book, bool>>? filter = null,
-        Func<IQueryable<Book>, IOrderedQueryable<Book>>? orderBy = null,
-        int page = 1,
-        int pageSize = 10,
-        Expression<Func<Book, T>>? selector = null) where T : class;
 }
 
 /// <summary>
 /// Book repository implementation from Exercise 03
 /// </summary>
-public class BookRepository : Repository<Book>, IBookRepository
+public class BookRepository : BookStoreRepository<Book>, IBookRepository
 {
     public BookRepository(BookStoreContext context) : base(context)
     {
     }
 
-    private BookStoreContext BookContext => (BookStoreContext)_context;
-
     public async Task<IEnumerable<Book>> GetBooksWithPublisherAsync()
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Where(b => b.IsAvailable)
             .OrderBy(b => b.Title)
@@ -49,7 +41,7 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<Book?> GetBookWithDetailsAsync(int id)
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Include(b => b.BookAuthors)
                 .ThenInclude(ba => ba.Author)
@@ -58,7 +50,7 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
             .OrderBy(b => b.Title)
@@ -67,7 +59,7 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId)
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Where(b => b.PublisherId == publisherId && b.IsAvailable)
             .OrderBy(b => b.Title)
@@ -77,7 +69,7 @@ public class BookRepository : Repository<Book>, IBookRepository
     public async Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm)
     {
         var term = searchTerm.ToLower();
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Include(b => b.BookAuthors)
                 .ThenInclude(ba => ba.Author)
@@ -93,7 +85,7 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice)
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Where(b => b.IsAvailable && b.Price >= minPrice && b.Price <= maxPrice)
             .OrderBy(b => b.Price)
@@ -102,7 +94,7 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null)
     {
-        var query = BookContext.Books.Where(b => b.ISBN == isbn);
+        var query = _context.Books.Where(b => b.ISBN == isbn);
         
         if (excludeBookId.HasValue)
         {
@@ -114,67 +106,21 @@ public class BookRepository : Repository<Book>, IBookRepository
 
     public async Task<decimal> GetAveragePriceAsync()
     {
-        var books = await BookContext.Books.Where(b => b.IsAvailable).ToListAsync();
+        var books = await _context.Books.Where(b => b.IsAvailable).ToListAsync();
         return books.Any() ? books.Average(b => b.Price) : 0m;
     }
 
     public async Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year)
     {
-        return await BookContext.Books
+        return await _context.Books
             .Include(b => b.Publisher)
             .Where(b => b.PublishedDate.Year == year)
             .OrderBy(b => b.PublishedDate)
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<T>> GetPagedAsync<T>(
-        Expression<Func<Book, bool>>? filter = null,
-        Func<IQueryable<Book>, IOrderedQueryable<Book>>? orderBy = null,
-        int page = 1,
-        int pageSize = 10,
-        Expression<Func<Book, T>>? selector = null) where T : class
-    {
-        IQueryable<Book> query = BookContext.Books
-            .Include(b => b.Publisher)
-            .Include(b => b.BookAuthors)
-                .ThenInclude(ba => ba.Author);
-
-        if (filter != null)
-        {
-            query = query.Where(filter);
-        }
-
-        if (orderBy != null)
-        {
-            query = orderBy(query);
-        }
-        else
-        {
-            query = query.OrderBy(b => b.Title);
-        }
-
-        query = query.Skip((page - 1) * pageSize).Take(pageSize);
-
-        if (selector != null)
-        {
-            return await query.Select(selector).ToListAsync();
-        }
-
-        // If no selector is provided and T is Book, return as is
-        if (typeof(T) == typeof(Book))
-        {
-            return (IEnumerable<T>)await query.ToListAsync();
-        }
-
-        throw new InvalidOperationException("Selector must be provided when T is not Book");
-    }
-
     public override async Task<Book?> GetByIdAsync(int id)
     {
-        return await BookContext.Books
-            .Include(b => b.Publisher)
-            .Include(b => b.BookAuthors)
-                .ThenInclude(ba => ba.Author)
-            .FirstOrDefaultAsync(b => b.Id == id);
+        return await GetBookWithDetailsAsync(id);
     }
 }

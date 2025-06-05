@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace EFCoreDemo.Models;
 
 /// <summary>
-/// Book entity from Exercise 01
+/// Book entity from Exercise 01 - Basic EF Core Setup
 /// </summary>
 public class Book
 {
@@ -26,7 +26,7 @@ public class Book
 
     public bool IsAvailable { get; set; } = true;
 
-    // Foreign Key for Exercise 02
+    // Foreign Key added in Exercise 02
     public int? PublisherId { get; set; }
 
     // Navigation properties
@@ -35,7 +35,7 @@ public class Book
 }
 
 /// <summary>
-/// Author entity from Exercise 02
+/// Author entity from Exercise 02 - Advanced LINQ Queries
 /// </summary>
 public class Author
 {
@@ -69,7 +69,7 @@ public class Author
 }
 
 /// <summary>
-/// Publisher entity from Exercise 02
+/// Publisher entity from Exercise 02 - Advanced LINQ Queries
 /// </summary>
 public class Publisher
 {
@@ -93,7 +93,7 @@ public class Publisher
 }
 
 /// <summary>
-/// BookAuthor junction table from Exercise 02
+/// BookAuthor junction table from Exercise 02 - Advanced LINQ Queries
 /// </summary>
 public class BookAuthor
 {

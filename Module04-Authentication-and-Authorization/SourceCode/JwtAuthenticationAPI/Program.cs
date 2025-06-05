@@ -132,14 +132,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+// Serve static files from wwwroot
+app.UseDefaultFiles(); // This must come before UseStaticFiles
+app.UseStaticFiles();
+
 // Authentication & Authorization middleware order is important!
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Add a simple root endpoint that returns API info
-app.MapGet("/", () => new 
+// Add API info endpoint (not at root to allow static files)
+app.MapGet("/api/info", () => new 
 {
     message = "JWT Authentication & Authorization API - Complete Module 04",
     version = "1.0",
