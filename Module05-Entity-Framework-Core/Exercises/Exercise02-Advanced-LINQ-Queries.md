@@ -156,70 +156,202 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 ```
 
 ### Step 4: Create BookQueryService
+
+**Services/BookQueryService.cs**:
 ```csharp
-// Services/BookQueryService.cs
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace EFCoreDemo.Services;
+
+/// <summary>
+/// Book query service from Exercise 02 - Advanced LINQ Queries
+/// Implements all required query methods from the exercise
+/// </summary>
 public class BookQueryService
 {
     private readonly BookStoreContext _context;
-    
-    public BookQueryService(BookStoreContext context)
+    private readonly ILogger<BookQueryService> _logger;
+
+    public BookQueryService(BookStoreContext context, ILogger<BookQueryService> logger)
     {
         _context = context;
+        _logger = logger;
     }
-    
-    // TODO: Implement the following methods
-    
+
+    /// <summary>
+    /// Get all books with their publishers (Basic LINQ Query #1)
+    /// </summary>
     public async Task<IEnumerable<Book>> GetBooksWithPublishersAsync()
     {
-        // Your implementation here
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Get books by a specific author (Basic LINQ Query #2)
+    /// </summary>
     public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
     {
-        // Your implementation here
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Get authors with their book count (Basic LINQ Query #3)
+    /// </summary>
     public async Task<IEnumerable<object>> GetAuthorsWithBookCountAsync()
     {
-        // Your implementation here
-        // Return anonymous objects with Author info + BookCount
+        return await _context.Authors
+            .Select(a => new
+            {
+                AuthorId = a.Id,
+                FullName = a.FirstName + " " + a.LastName,
+                Email = a.Email,
+                BookCount = a.BookAuthors.Count()
+            })
+            .OrderByDescending(a => a.BookCount)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Get books published in a specific year (Basic LINQ Query #4)
+    /// </summary>
     public async Task<IEnumerable<Book>> GetBooksByYearAsync(int year)
     {
-        // Your implementation here
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.PublishedDate.Year == year)
+            .OrderBy(b => b.PublishedDate)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Get the most expensive books (Basic LINQ Query #5)
+    /// </summary>
     public async Task<IEnumerable<Book>> GetTopExpensiveBooksAsync(int count = 5)
     {
-        // Your implementation here
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .OrderByDescending(b => b.Price)
+            .Take(count)
+            .ToListAsync();
     }
-    
-    // Advanced queries
+
+    /// <summary>
+    /// Get books with author details and publisher info - Multi-table Join (Advanced Query #1)
+    /// </summary>
     public async Task<IEnumerable<object>> GetBooksWithAuthorAndPublisherAsync()
     {
-        // Complex join returning anonymous object with:
-        // BookTitle, AuthorName, PublisherName, Price
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Select(b => new
+            {
+                BookTitle = b.Title,
+                AuthorNames = string.Join(", ", b.BookAuthors.Select(ba => ba.Author.FullName)),
+                PublisherName = b.Publisher != null ? b.Publisher.Name : "Unknown",
+                Price = b.Price,
+                PublishedDate = b.PublishedDate
+            })
+            .OrderBy(b => b.BookTitle)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Calculate average price by publisher - Aggregation (Advanced Query #2)
+    /// </summary>
     public async Task<IEnumerable<object>> GetAveragePriceByPublisherAsync()
     {
-        // Group by publisher, calculate average price
+        return await _context.Publishers
+            .Select(p => new
+            {
+                PublisherName = p.Name,
+                BookCount = p.Books.Count(),
+                AveragePrice = p.Books.Any() ? Math.Round(p.Books.Average(b => b.Price), 2) : 0,
+                MinPrice = p.Books.Any() ? p.Books.Min(b => b.Price) : 0,
+                MaxPrice = p.Books.Any() ? p.Books.Max(b => b.Price) : 0
+            })
+            .Where(p => p.BookCount > 0)
+            .OrderByDescending(p => p.AveragePrice)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Find authors who have written books above a certain price - Filtering with Navigation (Advanced Query #3)
+    /// </summary>
     public async Task<IEnumerable<Author>> GetAuthorsWithExpensiveBooksAsync(decimal priceThreshold)
     {
-        // Authors who have written books above the price threshold
+        return await _context.Authors
+            .Where(a => a.BookAuthors.Any(ba => ba.Book.Price > priceThreshold))
+            .Include(a => a.BookAuthors)
+                .ThenInclude(ba => ba.Book)
+            .OrderBy(a => a.LastName)
+            .ThenBy(a => a.FirstName)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Group books by publication year with statistics - Grouping (Advanced Query #4)
+    /// </summary>
     public async Task<IEnumerable<object>> GetBooksByYearStatisticsAsync()
     {
-        // Group by year: Year, BookCount, AveragePrice, TotalRevenue
+        return await _context.Books
+            .GroupBy(b => b.PublishedDate.Year)
+            .Select(g => new
+            {
+                Year = g.Key,
+                BookCount = g.Count(),
+                AveragePrice = Math.Round(g.Average(b => b.Price), 2),
+                TotalRevenue = g.Sum(b => b.Price),
+                Titles = g.Select(b => b.Title).ToList()
+            })
+            .OrderByDescending(g => g.Year)
+            .ToListAsync();
     }
-    
+
+    /// <summary>
+    /// Full-text search across book title, author name, and publisher - Search (Advanced Query #5)
+    /// </summary>
     public async Task<IEnumerable<object>> SearchBooksAsync(string searchTerm)
     {
-        // Search across book title, author name, and publisher name
+        var term = searchTerm.ToLower();
+
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.Title.ToLower().Contains(term) ||
+                       b.ISBN.Contains(term) ||
+                       (b.Publisher != null && b.Publisher.Name.ToLower().Contains(term)) ||
+                       b.BookAuthors.Any(ba =>
+                           ba.Author.FirstName.ToLower().Contains(term) ||
+                           ba.Author.LastName.ToLower().Contains(term)))
+            .Select(b => new
+            {
+                Id = b.Id,
+                Title = b.Title,
+                ISBN = b.ISBN,
+                Price = b.Price,
+                PublisherName = b.Publisher != null ? b.Publisher.Name : "Unknown",
+                Authors = b.BookAuthors.Select(ba => new
+                {
+                    Name = ba.Author.FullName,
+                    Role = ba.Role
+                }).ToList()
+            })
+            .OrderBy(b => b.Title)
+            .ToListAsync();
     }
 }
 ```

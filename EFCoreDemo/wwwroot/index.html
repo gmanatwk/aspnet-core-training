@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity Framework Core Demo API</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 40px;
+            text-align: center;
+            max-width: 900px;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        .api-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .api-link {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            text-decoration: none;
+            color: #495057;
+            transition: all 0.3s ease;
+        }
+        .api-link:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .api-link h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .api-link p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+        .features {
+            text-align: left;
+            margin: 30px 0;
+        }
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        .features li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .demo-section {
+            background: #f0f8ff;
+            border: 1px solid #b8e0ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .demo-section h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .endpoint {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .database-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        .pattern-badge {
+            background: #17a2b8;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        .database-info {
+            background: #e8f5e9;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .database-info h3 {
+            margin-top: 0;
+            color: #155724;
+        }
+        .sample-data {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .sample-data h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            text-align: left;
+        }
+        #queryDemo {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        #queryResults {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            text-align: left;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .tech-badge {
+            background: #6c757d;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ Entity Framework Core Demo API</h1>
+        <p class="subtitle">Comprehensive demonstration of EF Core patterns with Product Catalog system</p>
+        
+        <div class="api-links">
+            <a href="/swagger" class="api-link">
+                <h3>📚 API Documentation</h3>
+                <p>Interactive Swagger UI for testing all endpoints</p>
+            </a>
+            
+            <a href="/api/products" class="api-link">
+                <h3>📦 Product Catalog</h3>
+                <p>Main demo with advanced EF Core features</p>
+            </a>
+            
+            <a href="/api/books" class="api-link">
+                <h3>📖 BookStore API</h3>
+                <p>Exercise 01 - Basic CRUD operations</p>
+            </a>
+            
+            <a href="/api/querytest/books-with-publishers" class="api-link">
+                <h3>🔍 LINQ Queries</h3>
+                <p>Exercise 02 - Advanced query demonstrations</p>
+            </a>
+        </div>
+
+        <div id="queryDemo">
+            <h3>🚀 Quick Demo - Test LINQ Queries</h3>
+            <button onclick="testQuery('products-with-categories')">Products with Categories</button>
+            <button onclick="testQuery('books-with-publishers')">Books with Publishers</button>
+            <button onclick="testQuery('authors-with-book-count')">Authors with Book Count</button>
+            <button onclick="testQuery('statistics')">Product Statistics</button>
+            <div id="queryResults"></div>
+        </div>
+        
+        <div class="database-info">
+            <h3>🗄️ Databases</h3>
+            <div style="margin: 10px 0;">
+                <strong>ProductCatalogDB</strong> <span class="database-badge">Main Demo</span>
+                <ul>
+                    <li>Products, Categories, Suppliers</li>
+                    <li>Many-to-Many relationships</li>
+                    <li>Advanced filtering and pagination</li>
+                </ul>
+            </div>
+            <div style="margin: 10px 0;">
+                <strong>BookStoreDB</strong> <span class="database-badge">Exercises</span>
+                <ul>
+                    <li>Books, Authors, Publishers</li>
+                    <li>Repository Pattern implementation</li>
+                    <li>Unit of Work pattern</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🎯 Exercise 01 - Basic EF Core Setup</h3>
+            <div class="endpoint">GET /api/books - Get all books</div>
+            <div class="endpoint">GET /api/books/{id} - Get book by ID</div>
+            <div class="endpoint">POST /api/books - Create new book</div>
+            <div class="endpoint">PUT /api/books/{id} - Update book</div>
+            <div class="endpoint">DELETE /api/books/{id} - Delete book</div>
+            <p style="margin-top: 10px;">Features: Entity configuration, Fluent API, seed data, data annotations</p>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🔍 Exercise 02 - Advanced LINQ Queries</h3>
+            <div class="endpoint">GET /api/querytest/books-with-publishers</div>
+            <div class="endpoint">GET /api/querytest/books-by-author/{authorId}</div>
+            <div class="endpoint">GET /api/querytest/average-price-by-publisher</div>
+            <div class="endpoint">GET /api/querytest/books-by-year-statistics</div>
+            <div class="endpoint">GET /api/querytest/search?term=...</div>
+            <p style="margin-top: 10px;">Features: Joins, aggregations, grouping, filtering with navigation properties</p>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🏗️ Exercise 03 - Repository Pattern</h3>
+            <p>All operations now use:</p>
+            <ul style="margin: 10px 0;">
+                <li><strong>Generic Repository:</strong> IRepository&lt;T&gt; with common CRUD</li>
+                <li><strong>Specific Repositories:</strong> BookRepository, ProductRepository</li>
+                <li><strong>Unit of Work:</strong> Transaction management across repositories</li>
+            </ul>
+            <p>Benefits: Testability, separation of concerns, consistent data access</p>
+        </div>
+        
+        <div class="sample-data">
+            <h3>📝 Sample Data</h3>
+            <p><strong>Product Catalog:</strong></p>
+            <pre>{
+  "name": "Smartphone Pro",
+  "price": 999.99,
+  "sku": "SP-001",
+  "stockQuantity": 50,
+  "categoryIds": [1]
+}</pre>
+            <p><strong>BookStore:</strong></p>
+            <pre>{
+  "title": "C# Programming Guide",
+  "isbn": "978-1234567890",
+  "price": 29.99,
+  "publishedDate": "2024-01-15",
+  "publisherId": 1
+}</pre>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 Key EF Core Patterns Demonstrated</h3>
+            <ul>
+                <li>Code-First approach with migrations</li>
+                <li>Entity configuration using Data Annotations and Fluent API</li>
+                <li>Complex relationships (One-to-Many, Many-to-Many)</li>
+                <li>Navigation properties and eager loading</li>
+                <li>LINQ queries with filtering, sorting, and pagination</li>
+                <li>Aggregation queries and grouping</li>
+                <li>Repository pattern implementation</li>
+                <li>Unit of Work for transaction management</li>
+                <li>Async/await throughout for scalability</li>
+                <li>Performance optimization with indexes</li>
+                <li>DTOs and AutoMapper integration</li>
+                <li>Comprehensive error handling</li>
+            </ul>
+        </div>
+        
+        <div class="tech-stack">
+            <span class="tech-badge">Entity Framework Core 8.0</span>
+            <span class="tech-badge">SQL Server</span>
+            <span class="tech-badge">AutoMapper</span>
+            <span class="tech-badge">Repository Pattern</span>
+            <span class="tech-badge">Unit of Work</span>
+            <span class="tech-badge">LINQ</span>
+            <span class="tech-badge">Swagger</span>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 0.9em;">
+            <p>Built with ASP.NET Core 8.0 | Module 5: Entity Framework Core</p>
+        </div>
+    </div>
+
+    <script>
+        async function testQuery(queryType) {
+            const endpoints = {
+                'products-with-categories': '/api/products?page=1&pageSize=5',
+                'books-with-publishers': '/api/querytest/books-with-publishers',
+                'authors-with-book-count': '/api/querytest/authors-with-book-count',
+                'statistics': '/api/products/statistics'
+            };
+            
+            const endpoint = endpoints[queryType];
+            if (!endpoint) return;
+            
+            try {
+                const response = await fetch(endpoint);
+                if (response.ok) {
+                    const data = await response.json();
+                    const resultsDiv = document.getElementById('queryResults');
+                    resultsDiv.style.display = 'block';
+                    resultsDiv.innerHTML = `
+                        <strong>✅ Query Results: ${queryType}</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    alert(`Query failed. Status: ${response.status}`);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        // Test database connectivity on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/products/statistics');
+                if (response.ok) {
+                    console.log('✅ Database connectivity confirmed');
+                }
+            } catch (error) {
+                console.error('❌ Database connectivity issue:', error);
+            }
+        });
+    </script>
+</body>
+</html>

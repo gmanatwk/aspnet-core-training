@@ -1,0 +1,10 @@
+{
+  "sdk": {
+    "version": "8.0.410",
+    "rollForward": "latestPatch"
+  },
+  "msbuild-sdks": {
+    "Microsoft.NET.Sdk": "8.0.410",
+    "Microsoft.NET.Sdk.Web": "8.0.410"
+  }
+}

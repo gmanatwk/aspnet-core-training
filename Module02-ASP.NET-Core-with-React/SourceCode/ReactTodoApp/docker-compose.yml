@@ -1,0 +1,69 @@
+services:
+  # Production build - ASP.NET Core API + React SPA
+  todo-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - todo-network
+
+  # Development build with hot reload
+  todo-app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    volumes:
+      - .:/app
+      - /app/bin
+      - /app/obj
+      - /app/ClientApp/node_modules
+    networks:
+      - todo-network
+    profiles:
+      - dev
+
+  # React development server (for Exercise 1-3)
+  react-dev:
+    build:
+      context: ./ClientApp
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./ClientApp:/app
+      - /app/node_modules
+    networks:
+      - todo-network
+    profiles:
+      - react-dev
+
+  # ASP.NET Core API only (for Exercise 1-3)
+  api-only:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "5002:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - todo-network
+    profiles:
+      - api-only
+
+networks:
+  todo-network:
+    driver: bridge

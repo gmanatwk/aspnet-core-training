@@ -1,0 +1,33 @@
+# Development Dockerfile with debugging support
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /app
+
+# Install debugging tools
+RUN apt-get update && apt-get install -y \
+    procps \
+    curl \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dotnet tools
+RUN dotnet tool install --global dotnet-trace
+RUN dotnet tool install --global dotnet-counters
+RUN dotnet tool install --global dotnet-dump
+RUN dotnet tool install --global dotnet-gcdump
+
+# Add tools to PATH
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+# Set environment variables
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+ENV ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS=false
+
+# Enable detailed errors
+ENV ASPNETCORE_DETAILEDERRORS=true
+
+# Expose ports
+EXPOSE 80
+
+# Use dotnet watch for development with debugging enabled
+ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:80"]

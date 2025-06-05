@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
 using RestfulAPI.DTOs;
 using RestfulAPI.Services;
 using System.Security.Claims;

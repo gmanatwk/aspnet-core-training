@@ -56,6 +56,31 @@ public class JwtTokenService : IJwtTokenService
             {
                 tokenDescriptor.Subject.AddClaim(new Claim(ClaimTypes.Role, role));
             }
+            
+            // Add custom claims for Exercise 03 demonstrations
+            // Add birthdate claim for age-based policies
+            if (user.Username == "admin" || user.Username == "senior_dev")
+            {
+                tokenDescriptor.Subject.AddClaim(new Claim("birthdate", "1985-05-15"));
+            }
+            else if (user.Username == "junior_dev")
+            {
+                tokenDescriptor.Subject.AddClaim(new Claim("birthdate", "2002-08-20"));
+            }
+            
+            // Add department claim for department-based policies
+            if (user.Username == "admin" || user.Username.Contains("dev"))
+            {
+                tokenDescriptor.Subject.AddClaim(new Claim("department", "IT"));
+            }
+            else if (user.Username == "editor")
+            {
+                tokenDescriptor.Subject.AddClaim(new Claim("department", "Content"));
+            }
+            else
+            {
+                tokenDescriptor.Subject.AddClaim(new Claim("department", "General"));
+            }
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);

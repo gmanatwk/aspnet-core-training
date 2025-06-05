@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Entity Framework Core Demo API
+  efcore-api:
+    build:
+      context: ./EFCoreDemo
+      dockerfile: Dockerfile.dev
+    container_name: efcore-demo-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=db;Database=EFCoreDemoDB;User Id=sa;Password=YourStrong@Passw0rd123;TrustServerCertificate=true
+      - ConnectionStrings__BookStoreConnection=Server=db;Database=BookStoreDB;User Id=sa;Password=YourStrong@Passw0rd123;TrustServerCertificate=true
+    ports:
+      - "5003:80"
+    depends_on:
+      - db
+    volumes:
+      - ./EFCoreDemo:/app
+      - ~/.nuget/packages:/root/.nuget/packages:ro
+    networks:
+      - efcore-network
+
+  # SQL Server Database
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64  # Required for Apple Silicon Macs
+    container_name: efcore-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd123
+      - MSSQL_PID=Developer
+    ports:
+      - "1434:1433"  # Using 1434 to avoid conflict with Module03
+    volumes:
+      - efcore_sqlserver_data:/var/opt/mssql
+    networks:
+      - efcore-network
+
+networks:
+  efcore-network:
+    driver: bridge
+
+volumes:
+  efcore_sqlserver_data:
