@@ -37,6 +37,12 @@ using Asp.Versioning;  // Correct
 
 ### Part 0: Project Setup (2 minutes)
 
+**IMPORTANT**: This exercise builds on your existing Products API from Exercises 1 & 2. 
+- DO NOT create any BooksController files
+- DO NOT copy any code that references Books, Library, Authors, or Categories
+- You will version your existing ProductsController
+- Focus only on Products - the same domain you've been working with
+
 **If continuing from Exercise 2:**
 - Continue using your existing RestfulAPI project
 - Skip to Part 1
@@ -568,43 +574,45 @@ mkdir Controllers/V2
 
 3. **Move and update your existing ProductsController to V1**:
 
-**Controllers/V1/ProductsController.cs**:
-```csharp
-using Asp.Versioning;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RestfulAPI.Data;
-using RestfulAPI.DTOs;
-using RestfulAPI.Models;
+   a. Move your existing `Controllers/ProductsController.cs` to `Controllers/V1/ProductsController.cs`
+   
+   b. Update the file with these changes:
+   - Add `using Asp.Versioning;` at the top
+   - Change namespace from `RestfulAPI.Controllers` to `RestfulAPI.Controllers.V1`
+   - Add `[ApiVersion("1.0")]` attribute
+   - Change route from `[Route("api/[controller]")]` to `[Route("api/v{version:apiVersion}/[controller]")]`
+   
+   Your V1 controller should look like this (keeping all your existing methods):
+   ```csharp
+   using Asp.Versioning;
+   using Microsoft.AspNetCore.Authorization;
+   using Microsoft.AspNetCore.Mvc;
+   using Microsoft.EntityFrameworkCore;
+   using RestfulAPI.Data;
+   using RestfulAPI.DTOs;
+   using RestfulAPI.Models;
 
-namespace RestfulAPI.Controllers.V1
-{
-    [ApiController]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
-    [Produces("application/json")]
-    [Authorize]
-    public class ProductsController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-        private readonly ILogger<ProductsController> _logger;
-
-        public ProductsController(ApplicationDbContext context, ILogger<ProductsController> logger)
-        {
-            _context = context;
-            _logger = logger;
-        }
-
-        // Your existing GetProducts, GetProduct, CreateProduct, UpdateProduct, DeleteProduct methods
-        // No changes needed to these methods
-    }
-}
-```
+   namespace RestfulAPI.Controllers.V1
+   {
+       [ApiController]
+       [ApiVersion("1.0")]
+       [Route("api/v{version:apiVersion}/[controller]")]
+       [Produces("application/json")]
+       [Authorize]
+       public class ProductsController : ControllerBase
+       {
+           // Keep ALL your existing code here - constructor, GetProducts, GetProduct, 
+           // CreateProduct, UpdateProduct, DeleteProduct methods
+           // Just copy them as-is from your original controller
+       }
+   }
+   ```
 
 4. **Create V2 ProductsController with enhanced features**:
 
-**Controllers/V2/ProductsController.cs**:
+   Copy your V1 controller to create a V2 version with enhancements:
+   
+   **Controllers/V2/ProductsController.cs**:
 ```csharp
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -1334,6 +1342,9 @@ namespace RestfulAPI.Controllers.V2
 4. How can comprehensive documentation improve API adoption?
 
 ## 🆘 Troubleshooting
+
+**Issue**: BooksController errors (ApplicationDbContext not found)
+**Solution**: You should NOT have any BooksController files. Delete any Controllers/V1/BooksController.cs or Controllers/V2/BooksController.cs files. This exercise uses your existing ProductsController from Exercise 1 & 2.
 
 **Issue**: 'AuthorizeAttribute' could not be found
 **Solution**: Add `using Microsoft.AspNetCore.Authorization;` to your controller files.
