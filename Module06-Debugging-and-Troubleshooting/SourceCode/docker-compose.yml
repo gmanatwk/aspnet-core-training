@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Debugging Demo API
+  debugging-api:
+    build:
+      context: ./DebuggingDemo
+      dockerfile: Dockerfile.dev
+    container_name: debugging-demo-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=db;Database=DebuggingDemoDB;User Id=sa;Password=YourStrong@Passw0rd123;TrustServerCertificate=true
+      # Serilog configuration
+      - Serilog__MinimumLevel__Default=Debug
+      - Serilog__MinimumLevel__Override__Microsoft=Information
+      - Serilog__MinimumLevel__Override__System=Warning
+      - Serilog__WriteTo__0__Name=Console
+      - Serilog__WriteTo__1__Name=File
+      - Serilog__WriteTo__1__Args__path=/app/logs/log-.txt
+      - Serilog__WriteTo__1__Args__rollingInterval=Day
+      - Serilog__WriteTo__1__Args__retainedFileCountLimit=7
+      # Performance monitoring
+      - PerformanceSettings__SlowRequestThresholdMs=500
+      - PerformanceSettings__EnablePerformanceLogging=true
+    ports:
+      - "5004:80"
+    depends_on:
+      - db
+    volumes:
+      # Source code for hot reload
+      - ./DebuggingDemo:/app
+      # Logs volume for persistent logging
+      - ./logs:/app/logs
+      # NuGet packages cache
+      - ~/.nuget/packages:/root/.nuget/packages:ro
+    networks:
+      - debugging-network
+    # Enable debugging
+    stdin_open: true
+    tty: true
+
+  # SQL Server Database
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64  # Required for Apple Silicon Macs
+    container_name: debugging-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd123
+      - MSSQL_PID=Developer
+    ports:
+      - "1435:1433"  # Different port to avoid conflicts
+    volumes:
+      - debugging_sqlserver_data:/var/opt/mssql
+    networks:
+      - debugging-network
+
+  # Health Checks UI (optional but useful for debugging module)
+  healthchecks-ui:
+    image: xabarilcoding/healthchecksui:latest
+    container_name: debugging-healthchecks-ui
+    environment:
+      - HealthChecksUI__HealthChecks__0__Name=Debugging Demo API
+      - HealthChecksUI__HealthChecks__0__Uri=http://debugging-api/health
+      - HealthChecksUI__EvaluationTimeInSeconds=30
+      - HealthChecksUI__MinimumSecondsBetweenFailureNotifications=60
+    ports:
+      - "5005:80"
+    depends_on:
+      - debugging-api
+    networks:
+      - debugging-network
+
+networks:
+  debugging-network:
+    driver: bridge
+
+volumes:
+  debugging_sqlserver_data:

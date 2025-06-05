@@ -156,17 +156,32 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
 5. **Configure ASP.NET Core to serve React app**. Update `Program.cs`:
    ```csharp
+   using Microsoft.OpenApi.Models;
+
    var builder = WebApplication.CreateBuilder(args);
 
    // Add services to the container
    builder.Services.AddControllers();
    builder.Services.AddEndpointsApiExplorer();
-   builder.Services.AddSwaggerGen();
+   builder.Services.AddSwaggerGen(c =>
+   {
+       c.SwaggerDoc("v1", new OpenApiInfo { Title = "React Todo API", Version = "v1" });
+   });
+
+   // Add CORS
+   builder.Services.AddCors(options =>
+   {
+       options.AddPolicy("AllowReactApp",
+           builder => builder
+               .WithOrigins("http://localhost:3000", "http://localhost:5173")
+               .AllowAnyMethod()
+               .AllowAnyHeader());
+   });
 
    // Add SPA static files
    builder.Services.AddSpaStaticFiles(configuration =>
    {
-       configuration.RootPath = "clientapp/dist";
+       configuration.RootPath = "wwwroot";
    });
 
    var app = builder.Build();
@@ -175,13 +190,33 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    if (app.Environment.IsDevelopment())
    {
        app.UseSwagger();
-       app.UseSwaggerUI();
+       app.UseSwaggerUI(c =>
+       {
+           c.SwaggerEndpoint("/swagger/v1/swagger.json", "React Todo API v1");
+           c.RoutePrefix = "swagger";
+       });
    }
 
-   app.UseHttpsRedirection();
+   // Enable Swagger in production for demo purposes
+   if (app.Environment.IsProduction())
+   {
+       app.UseSwagger();
+       app.UseSwaggerUI(c =>
+       {
+           c.SwaggerEndpoint("/swagger/v1/swagger.json", "React Todo API v1");
+           c.RoutePrefix = "swagger";
+       });
+   }
+
+   // Only use HTTPS redirection in development with proper certificates
+   if (app.Environment.IsDevelopment())
+   {
+       app.UseHttpsRedirection();
+   }
    app.UseStaticFiles();
    app.UseSpaStaticFiles();
 
+   app.UseCors("AllowReactApp");
    app.UseRouting();
    app.UseAuthorization();
 
@@ -190,13 +225,13 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    // Configure SPA
    app.UseSpa(spa =>
    {
-       spa.Options.SourcePath = "clientapp";
+       spa.Options.SourcePath = "ClientApp";
 
        if (app.Environment.IsDevelopment())
        {
            // This is the correct configuration for Vite with .NET 8
            // Make sure you have Microsoft.AspNetCore.SpaServices.Extensions version 8.0.0 or higher
-           spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
+           spa.UseProxyToSpaDevelopmentServer("http://localhost:5173");
        }
    });
 
@@ -205,11 +240,11 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
 ### Part 3: Create React Components (15 minutes)
 
-1. **Create API service** in `clientapp/src/services/todoService.ts`:
+1. **Create API service** in `ClientApp/src/services/todoService.ts`:
    ```typescript
    import axios from 'axios';
 
-   const API_BASE_URL = '/api/todo';
+   const API_BASE_URL = '/api/todos';
 
    export interface Todo {
      id?: number;
@@ -244,7 +279,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    };
    ```
 
-2. **Create TodoList component** in `clientapp/src/components/TodoList.tsx`:
+2. **Create TodoList component** in `ClientApp/src/components/TodoList.tsx`:
    ```typescript
    import React, { useState, useEffect } from 'react';
    import { Todo, todoService } from '../services/todoService';
@@ -352,7 +387,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    export default TodoList;
    ```
 
-3. **Update App.tsx** in `clientapp/src/App.tsx`:
+3. **Update App.tsx** in `ClientApp/src/App.tsx`:
    ```typescript
    import React from 'react';
    import './App.css';
@@ -374,7 +409,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    export default App;
    ```
 
-4. **Add styles** to `clientapp/src/App.css`:
+4. **Add styles** to `ClientApp/src/App.css`:
    ```css
    .App {
      text-align: center;
@@ -471,7 +506,7 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
 
 2. **Start the Vite development server** (in a separate terminal):
    ```bash
-   cd clientapp
+   cd ClientApp
    npm run dev
    ```
 
@@ -502,27 +537,27 @@ For Windows students, use Docker to avoid dependency issues:
    cd Module02-ASP.NET-Core-with-React\SourceCode\ReactTodoApp
    ```
 
-2. **Start the application with Docker**:
+2. **Build and run the application with Docker**:
    ```cmd
-   docker-compose --profile api-only --profile react-dev up --build
+   docker build -t reacttodoapp-todo-app .
+   docker run -p 8080:8080 reacttodoapp-todo-app
    ```
 
 3. **Access your application**:
-   - React Frontend: http://localhost:3000
-   - ASP.NET Core API: http://localhost:5002
-   - API Documentation: http://localhost:5002/swagger
+   - Complete Application: http://localhost:8080
+   - API Documentation: http://localhost:8080/swagger
 
 4. **Stop the application**:
    ```cmd
-   docker-compose down
+   docker stop $(docker ps -q --filter ancestor=reacttodoapp-todo-app)
    ```
 
-### **Alternative: Production Build**
-For a single integrated container:
+### **Alternative: Docker Compose (if available)**
+For development with separate containers:
 ```cmd
 docker-compose up --build
 ```
-Access at: http://localhost:5000
+Access at: http://localhost:8080
 
 ## ✅ Success Criteria
 
@@ -565,7 +600,7 @@ Access at: http://localhost:5000
 **Solution**: The SPA middleware handles this in development. For production, configure CORS properly.
 
 **Issue**: React app not loading
-**Solution**: Check that Node.js is installed and `npm install` was run in the clientapp folder.
+**Solution**: Check that Node.js is installed and `npm install` was run in the ClientApp folder.
 
 **Issue**: API calls failing (404 errors)
 **Solution**:
@@ -576,14 +611,15 @@ Access at: http://localhost:5000
 
 **Issue**: Vite dev server not starting
 **Solution**:
-1. Ensure you're in the clientapp directory when running npm commands
+1. Ensure you're in the ClientApp directory when running npm commands
 2. Check that all dependencies are installed: `npm install`
 3. Verify Node.js version is 18+ with `node --version`
 
 **Issue**: Build files not found (dist folder)
 **Solution**:
-1. Run `npm run build` in the clientapp folder first
-2. Ensure the ASP.NET Core configuration points to `clientapp/dist` not `clientapp/build`
+1. Run `npm run build` in the ClientApp folder first
+2. Ensure the ASP.NET Core configuration points to `wwwroot` for production builds
+3. For development, the SPA middleware handles the proxy to Vite dev server
 
 **Issue**: Hot reload not working
 **Solution**:

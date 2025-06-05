@@ -314,7 +314,13 @@ environment:
    }
 
    app.UseCors("AllowReactApp");
-   app.UseHttpsRedirection();
+
+   // Only use HTTPS redirection in development with proper certificates
+   if (app.Environment.IsDevelopment())
+   {
+       app.UseHttpsRedirection();
+   }
+
    app.UseAuthorization();
    app.MapControllers();
 
