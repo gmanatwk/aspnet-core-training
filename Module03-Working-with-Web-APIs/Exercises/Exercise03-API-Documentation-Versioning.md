@@ -30,7 +30,7 @@ These fixes ensure the code compiles and runs correctly with .NET 8.0 and the la
 ```bash
 # From the aspnet-core-training directory
 ./setup-exercise.sh exercise03-documentation
-cd LibraryAPI
+cd RestfulAPI
 ```
 
 **Verify setup:**

@@ -20,7 +20,7 @@ Build a complete RESTful API for managing a library system with books, authors, 
 ```bash
 # From the aspnet-core-training directory
 ./setup-exercise.ps1 exercise01-basic-api
-cd LibraryAPI
+cd RestfulAPI
 ```
 
 **Verify setup:**
