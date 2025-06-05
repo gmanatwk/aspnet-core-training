@@ -17,8 +17,8 @@ Secure your Library API with JWT authentication, implement role-based authorizat
 
 **Run the setup script:**
 ```bash
-# From the aspnet-core-training directory
-./setup-exercise.sh exercise02-authentication
+# From the Module03-Working-with-Web-APIs directory
+../setup-exercise.sh exercise02-authentication
 cd RestfulAPI
 ```
 

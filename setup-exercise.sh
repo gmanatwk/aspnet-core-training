@@ -86,7 +86,7 @@ echo -n "2. Applying package versions... "
 # Determine template path based on exercise
 TEMPLATE_PATH=""
 case $EXERCISE_NAME in
-    "exercise01-basic-api"|"exercise02-authentication"|"exercise03-documentation")
+    "exercise02-authentication"|"exercise03-documentation")
         TEMPLATE_PATH="../Module03-Working-with-Web-APIs/SourceCode/RestfulAPI/RestfulAPI.csproj"
         ;;
     "module04-exercise01-jwt")
@@ -96,7 +96,8 @@ case $EXERCISE_NAME in
         TEMPLATE_PATH="../Module05-Entity-Framework-Core/Templates/EFCoreDemo.csproj"
         ;;
     *)
-        TEMPLATE_PATH="../Module03-Working-with-Web-APIs/Templates/LibraryAPI.csproj"
+        # For exercise01-basic-api and others, use manual package installation
+        TEMPLATE_PATH=""
         ;;
 esac
 
@@ -145,6 +146,7 @@ else
         "exercise01-basic-api")
             dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 > /dev/null 2>&1
             dotnet add package Swashbuckle.AspNetCore --version 6.8.1 > /dev/null 2>&1
+            dotnet add package Microsoft.AspNetCore.OpenApi --version 8.0.11 > /dev/null 2>&1
             ;;
         "exercise02-authentication")
             dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 > /dev/null 2>&1

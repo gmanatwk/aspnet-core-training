@@ -60,6 +60,7 @@ try {
         "exercise01-basic-api" {
             dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 | Out-Null
             dotnet add package Swashbuckle.AspNetCore --version 6.8.1 | Out-Null
+            dotnet add package Microsoft.AspNetCore.OpenApi --version 8.0.11 | Out-Null
         }
         "exercise02-authentication" {
             dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 | Out-Null
