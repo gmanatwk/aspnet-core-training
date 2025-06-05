@@ -15,32 +15,200 @@ Learn how to containerize React and ASP.NET Core applications using Docker, crea
 
 ## 📝 Instructions
 
-### Part 1: Create Development Docker Setup (15 minutes)
+### Part 1: Windows Docker Setup (15 minutes)
 
-1. **Create project structure** for the exercise:
-   ```bash
-   mkdir TodoAppDocker
-   cd TodoAppDocker
+**For Windows students, use the pre-built source code with Docker Compose commands:**
+
+1. **Navigate to the source code directory**:
+   ```cmd
+   cd Module02-ASP.NET-Core-with-React\SourceCode\ReactTodoApp
    ```
 
-2. **Create ASP.NET Core Web API**:
-   ```bash
-   dotnet new webapi -n TodoApi --framework net8.0
-   cd TodoApi
+2. **Verify Docker Desktop is running**:
+   - Ensure Docker Desktop for Windows is started
+   - Check that Docker is running: `docker --version`
+
+3. **Test different Docker configurations**:
+
+   **Development Mode (API + React separate containers):**
+   ```cmd
+   docker-compose --profile api-only --profile react-dev up --build
+   ```
+   - React Frontend: http://localhost:3000
+   - ASP.NET Core API: http://localhost:5002
+   - API Documentation: http://localhost:5002/swagger
+
+   **Development Mode (Integrated with hot reload):**
+   ```cmd
+   docker-compose --profile dev up --build
+   ```
+   - Full Application: http://localhost:5001
+
+   **Production Mode (Optimized build):**
+   ```cmd
+   docker-compose up --build
+   ```
+   - Production Application: http://localhost:5000
+
+### Part 2: Testing Docker Configurations (15 minutes)
+
+**Windows students can test all configurations using the pre-built source code:**
+
+4. **Test Development Configuration (Separate Containers)**:
+   ```cmd
+   docker-compose --profile api-only --profile react-dev up --build
    ```
 
-3. **Verify target framework** (should show `net8.0`):
-   ```bash
-   cat TodoApi.csproj | grep TargetFramework
+   **What this does:**
+   - Starts ASP.NET Core API in one container (port 5002)
+   - Starts React development server in another container (port 3000)
+   - Enables hot reload for both frontend and backend
+   - Perfect for development with live code changes
+
+   **Access points:**
+   - React App: http://localhost:3000
+   - API: http://localhost:5002/api/todo
+   - Swagger: http://localhost:5002/swagger
+
+5. **Test Integrated Development Configuration**:
+   ```cmd
+   docker-compose down
+   docker-compose --profile dev up --build
    ```
 
-4. **Add necessary packages**:
-   ```bash
-   dotnet add package Microsoft.AspNetCore.SpaServices.Extensions
-   dotnet add package Swashbuckle.AspNetCore
+   **What this does:**
+   - Builds a single container with both API and React
+   - Includes hot reload capabilities
+   - Simulates production structure but with development features
+
+   **Access points:**
+   - Full App: http://localhost:5001
+
+6. **Test Production Configuration**:
+   ```cmd
+   docker-compose down
+   docker-compose up --build
    ```
 
-5. **Create Todo model and controller** in `Models/Todo.cs`:
+   **What this does:**
+   - Creates optimized production build
+   - Minifies React code for performance
+   - Serves static files efficiently
+   - Production-ready container
+
+   **Access points:**
+   - Production App: http://localhost:5000
+
+### Part 3: Understanding Docker Benefits (10 minutes)
+
+7. **Compare the different approaches**:
+
+   | Configuration | Use Case | Pros | Cons |
+   |---------------|----------|------|------|
+   | Separate Containers | Development | Fast hot reload, isolated services | More complex networking |
+   | Integrated Dev | Development | Single container, easier debugging | Slower builds |
+   | Production | Deployment | Optimized, fast loading | No hot reload |
+
+8. **View container logs**:
+   ```cmd
+   # View all logs
+   docker-compose logs
+
+   # View specific service logs
+   docker-compose logs todo-app
+   docker-compose logs react-dev
+   ```
+
+9. **Monitor container resources**:
+   ```cmd
+   # View running containers
+   docker ps
+
+   # View container resource usage
+   docker stats
+   ```
+
+### Part 4: Cleanup and Management (5 minutes)
+
+10. **Stop all containers**:
+    ```cmd
+    docker-compose down
+    ```
+
+11. **Remove all containers and images** (if needed):
+    ```cmd
+    docker-compose down --rmi all --volumes --remove-orphans
+    ```
+
+12. **Rebuild after code changes**:
+    ```cmd
+    docker-compose up --build --force-recreate
+    ```
+
+## 🎯 **Key Learning Points**
+
+**Docker Benefits for Full-Stack Development:**
+- ✅ **Consistent Environment**: Same setup across all machines
+- ✅ **Dependency Management**: No Node.js/npm installation required
+- ✅ **Isolation**: Containers don't interfere with host system
+- ✅ **Scalability**: Easy to add databases, caching, etc.
+- ✅ **Production Parity**: Development matches production environment
+
+**Container Orchestration:**
+- ✅ **Multi-service Applications**: API + Frontend + Database
+- ✅ **Service Communication**: Containers can talk to each other
+- ✅ **Environment-specific Builds**: Development vs Production
+- ✅ **Volume Management**: Persistent data and hot reload
+
+## 🚀 **Advanced Challenges (Optional)**
+
+If you finish early, try these advanced scenarios:
+
+**Add a Database Container:**
+```yaml
+# Add to docker-compose.yml
+postgres:
+  image: postgres:15
+  environment:
+    POSTGRES_DB: todoapp
+    POSTGRES_USER: user
+    POSTGRES_PASSWORD: password
+  ports:
+    - "5432:5432"
+```
+
+**Add Redis for Caching:**
+```yaml
+redis:
+  image: redis:alpine
+  ports:
+    - "6379:6379"
+```
+
+**Environment Variables:**
+```yaml
+environment:
+  - DATABASE_URL=postgresql://user:password@postgres:5432/todoapp
+  - REDIS_URL=redis://redis:6379
+```
+
+## 🔧 **Troubleshooting**
+
+**Common Issues:**
+
+1. **Port conflicts**: Change ports in docker-compose.yml
+2. **Build failures**: Run `docker system prune -f` to clear cache
+3. **Permission errors**: Ensure Docker Desktop has proper permissions
+4. **Slow builds**: Use `.dockerignore` to exclude unnecessary files
+
+**Windows-Specific:**
+- Ensure Docker Desktop is running
+- Check Windows firewall settings
+- Use PowerShell or Command Prompt (not Git Bash for Docker commands)
+
+---
+
+**Note:** The following sections contain the original manual setup code for reference, but Windows students should use the Docker commands above.
    ```csharp
    namespace TodoApi.Models
    {

@@ -724,6 +724,35 @@ Implement advanced API integration patterns, error handling, caching, and perfor
    - Test optimistic updates by throttling network
    - Check performance metrics in development
 
+## 🐳 **Windows Students: Docker Setup**
+
+For Windows students, use Docker for performance testing:
+
+### **Performance Testing with Docker**
+
+1. **Navigate to the source code directory**:
+   ```cmd
+   cd Module02-ASP.NET-Core-with-React\SourceCode\ReactTodoApp
+   ```
+
+2. **Start production-like environment**:
+   ```cmd
+   docker-compose up --build
+   ```
+
+3. **Access optimized application**:
+   - Production Application: http://localhost:5000
+   - API Documentation: http://localhost:5000/swagger
+
+4. **Test performance optimizations**
+5. **Stop when done**: `docker-compose down`
+
+### **Development Testing**
+For development with hot reload:
+```cmd
+docker-compose --profile dev up --build
+```
+
 ## ✅ Success Criteria
 
 - [ ] API client handles errors gracefully

@@ -91,13 +91,26 @@ try
     // Configure Entity Framework
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
-        if (builder.Environment.IsDevelopment())
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        
+        // Try to use SQL Server if connection string is provided
+        if (!string.IsNullOrEmpty(connectionString))
         {
-            options.UseInMemoryDatabase("ProductsDb");
+            options.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+            });
+            
+            Log.Information("Using SQL Server database");
         }
         else
         {
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+            // Fall back to in-memory database
+            options.UseInMemoryDatabase("ProductsDb");
+            Log.Information("Using in-memory database");
         }
     });
 
@@ -250,7 +263,14 @@ try
         using (var scope = app.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            DataSeeder.SeedData(context);
+            try
+            {
+                DataSeeder.SeedData(context);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Failed to seed database: {Message}. Using in-memory database if SQL Server is unavailable.", ex.Message);
+            }
         }
     }
     else

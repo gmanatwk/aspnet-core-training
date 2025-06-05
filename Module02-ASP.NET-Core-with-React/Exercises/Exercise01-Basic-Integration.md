@@ -491,6 +491,39 @@ Create a full-stack application with React frontend and ASP.NET Core backend, es
    - Navigate to https://localhost:[port]/swagger
    - Test the API endpoints
 
+## 🐳 **Windows Students: Docker Setup (Recommended)**
+
+For Windows students, use Docker to avoid dependency issues:
+
+### **Quick Start with Docker Compose**
+
+1. **Navigate to the source code directory**:
+   ```cmd
+   cd Module02-ASP.NET-Core-with-React\SourceCode\ReactTodoApp
+   ```
+
+2. **Start the application with Docker**:
+   ```cmd
+   docker-compose --profile api-only --profile react-dev up --build
+   ```
+
+3. **Access your application**:
+   - React Frontend: http://localhost:3000
+   - ASP.NET Core API: http://localhost:5002
+   - API Documentation: http://localhost:5002/swagger
+
+4. **Stop the application**:
+   ```cmd
+   docker-compose down
+   ```
+
+### **Alternative: Production Build**
+For a single integrated container:
+```cmd
+docker-compose up --build
+```
+Access at: http://localhost:5000
+
 ## ✅ Success Criteria
 
 - [ ] ASP.NET Core Web API is running with Todo endpoints

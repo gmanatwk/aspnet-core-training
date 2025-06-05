@@ -1,0 +1,62 @@
+version: '3.8'
+
+networks:
+  webapi-network:
+    driver: bridge
+
+services:
+  # ASP.NET Core RestfulAPI
+  restfulapi:
+    build:
+      context: ./RestfulAPI
+      dockerfile: Dockerfile.dev
+    container_name: restfulapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "5001:80"
+    networks:
+      - webapi-network
+    volumes:
+      - ./RestfulAPI:/app
+      - ~/.nuget/packages:/root/.nuget/packages:ro
+    # Note: No dependency on db, so API starts even if SQL Server fails
+
+  # React Frontend
+  react-frontend:
+    build:
+      context: ./ReactFrontend
+      dockerfile: Dockerfile.dev
+    container_name: react-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - webapi-network
+    volumes:
+      - ./ReactFrontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - restfulapi
+
+  # SQL Server Database (Optional - API will use in-memory if this fails)
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64  # Required for Apple Silicon Macs
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd123
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    networks:
+      - webapi-network
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+volumes:
+  sqlserver_data:

@@ -1,0 +1,26 @@
+# API-only Dockerfile for Exercises 1-3
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project file and restore dependencies
+COPY ["ReactTodoApp.csproj", "."]
+RUN dotnet restore "./ReactTodoApp.csproj"
+
+# Copy source code (excluding ClientApp for API-only)
+COPY . .
+RUN rm -rf ClientApp
+
+# Build the application
+RUN dotnet build "ReactTodoApp.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "ReactTodoApp.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "ReactTodoApp.dll"]

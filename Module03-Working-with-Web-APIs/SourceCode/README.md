@@ -1,6 +1,6 @@
 # Module 03 - Working with Web APIs
 
-This module contains a comprehensive RESTful API implementation with ASP.NET Core, including authentication, authorization, and integration tests.
+This module contains a comprehensive RESTful API implementation with ASP.NET Core, including authentication, authorization, integration tests, and a modern React TypeScript frontend with Docker support.
 
 ## Projects
 
@@ -8,12 +8,22 @@ This module contains a comprehensive RESTful API implementation with ASP.NET Cor
 The main API project featuring:
 - RESTful API endpoints with versioning
 - JWT authentication and role-based authorization
-- Entity Framework Core with in-memory database
+- Entity Framework Core with SQL Server support
 - Swagger/OpenAPI documentation
 - Both controller-based and minimal API implementations
 - Global exception handling and logging
 - CORS configuration
 - Response caching and compression
+- Docker support for containerized deployment
+
+### ReactFrontend
+A modern React TypeScript SPA featuring:
+- React 18 with TypeScript
+- Vite for fast development and optimized builds
+- React Query for efficient data fetching
+- Full CRUD operations for Product management
+- Responsive UI design
+- Docker support with nginx for production
 
 ### RestfulAPI.Tests
 Comprehensive integration test suite covering:
@@ -25,20 +35,47 @@ Comprehensive integration test suite covering:
 
 ## Running the Application
 
+### Option 1: Using Docker (Recommended)
+
 ```bash
-# Navigate to the RestfulAPI directory
-cd RestfulAPI
+# Start all services with hot reload
+docker-compose up --build
 
-# Restore dependencies
-dotnet restore
+# To run in background
+docker-compose up -d --build
 
-# Run the application
-dotnet run
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (database data)
+docker-compose down -v
 ```
 
-The API will be available at:
-- HTTP: http://localhost:5000
-- HTTPS: https://localhost:5001
+Services will be available at:
+- React Frontend: http://localhost:3000
+- RestfulAPI: http://localhost:5001
+- Swagger UI: http://localhost:5001/swagger
+- SQL Server: localhost:1433 (sa/YourStrong@Passw0rd123) - Optional
+
+**Note**: If SQL Server fails to start (common on Apple Silicon Macs), the API automatically falls back to using an in-memory database. This ensures the application works on all platforms.
+
+### Option 2: Manual Setup
+
+```bash
+# Terminal 1: Run the API
+cd RestfulAPI
+dotnet restore
+dotnet run
+
+# Terminal 2: Run the React frontend
+cd ReactFrontend
+npm install
+npm run dev
+```
+
+The services will be available at:
+- React Frontend: http://localhost:3000
+- API: http://localhost:5000 (HTTP) or https://localhost:5001 (HTTPS)
 - Swagger UI: http://localhost:5000 (root URL)
 
 ## Running Tests
@@ -111,7 +148,36 @@ The API uses JWT Bearer authentication. To access protected endpoints:
 
 ## Development Notes
 
-- The application uses an in-memory database in development mode
+- The application uses SQL Server (in Docker) or in-memory database as fallback
 - Swagger UI is available at the root URL in development
 - All endpoints support JSON and some support XML
 - API versioning is supported via URL segment, query string, header, or media type
+- Docker Compose orchestrates all services (API, Frontend, Database)
+- Hot reload is enabled in development mode for both frontend and backend
+
+## Docker Integration
+
+See [DOCKER-INTEGRATION.md](./DOCKER-INTEGRATION.md) for detailed Docker setup and configuration instructions.
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  React Frontend │────▶│   RestfulAPI    │────▶│   SQL Server    │
+│   (Port 3000)   │     │   (Port 5001)   │     │   (Port 1433)   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+## Additional Resources
+
+### Setup and Configuration
+- [Setup Guide](./SETUP-GUIDE.md) - **Start here!** Cross-platform setup instructions
+- [Docker Commands Reference](./DOCKER-COMMANDS.md) - Cross-platform Docker commands
+- [Docker Integration Guide](./DOCKER-INTEGRATION.md) - Detailed Docker setup guide
+- [Project Templates](./templates/README.md) - Consistent dependency templates
+
+### Project Documentation
+- [RestfulAPI README](./RestfulAPI/README.md) - Detailed API documentation
+- [ReactFrontend README](./ReactFrontend/README.md) - Frontend documentation
+- [API Endpoints Reference](./RestfulAPI/API-ENDPOINTS-REFERENCE.md) - Complete API reference
+- [Test Coverage Report](./RestfulAPI.Tests/TestCoverage.md) - Test coverage details

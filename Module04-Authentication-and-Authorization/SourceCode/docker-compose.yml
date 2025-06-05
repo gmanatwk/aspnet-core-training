@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  # JWT Authentication API
+  jwt-api:
+    build:
+      context: ./JwtAuthenticationAPI
+      dockerfile: Dockerfile.dev
+    container_name: jwt-authentication-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "5002:80"
+    volumes:
+      - ./JwtAuthenticationAPI:/app
+      - ~/.nuget/packages:/root/.nuget/packages:ro

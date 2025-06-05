@@ -653,6 +653,29 @@ Enhance the React application with proper state management using Context API and
    - Use the filter buttons
    - Logout and verify redirect
 
+## 🐳 **Windows Students: Docker Setup**
+
+For Windows students, use Docker to continue from Exercise 1:
+
+### **Continue Development with Docker**
+
+1. **Navigate to the source code directory**:
+   ```cmd
+   cd Module02-ASP.NET-Core-with-React\SourceCode\ReactTodoApp
+   ```
+
+2. **Start development environment**:
+   ```cmd
+   docker-compose --profile dev up --build
+   ```
+
+3. **Access your application**:
+   - Full Application: http://localhost:5001
+   - API Documentation: http://localhost:5001/swagger
+
+4. **Make changes and see hot reload in action**
+5. **Stop when done**: `docker-compose down`
+
 ## ✅ Success Criteria
 
 - [ ] Context API manages todo state globally

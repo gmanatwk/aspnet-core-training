@@ -1,0 +1,25 @@
+# Development Dockerfile for hot reload
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+
+# Install Node.js for React development
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Copy project file and restore dependencies
+COPY ["ReactTodoApp.csproj", "."]
+RUN dotnet restore "./ReactTodoApp.csproj"
+
+# Copy source code
+COPY . .
+
+# Install React dependencies
+WORKDIR /app/ClientApp
+RUN npm install
+
+# Return to app directory
+WORKDIR /app
+
+# Start the application with hot reload
+CMD ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:80"]

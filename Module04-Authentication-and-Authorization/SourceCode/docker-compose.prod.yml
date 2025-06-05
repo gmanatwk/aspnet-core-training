@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  # JWT Authentication API - Production
+  jwt-api:
+    build:
+      context: ./JwtAuthenticationAPI
+      dockerfile: Dockerfile
+    container_name: jwt-authentication-api-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "5002:80"
+    restart: unless-stopped

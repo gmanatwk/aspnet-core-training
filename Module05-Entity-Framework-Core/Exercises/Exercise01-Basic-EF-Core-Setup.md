@@ -3,6 +3,15 @@
 ## 🎯 Objective
 Set up Entity Framework Core in an ASP.NET Core application and implement basic CRUD operations for a simple entity.
 
+## 🌐 **Demo Application**
+After completing all Module 05 exercises, your application will have a comprehensive demo interface available at `http://localhost:5000` (or your configured port). The demo page includes:
+- Interactive LINQ query testing
+- Product catalog and bookstore APIs
+- Real-time database connectivity testing
+- Links to all EF Core endpoints and patterns
+
+**Preview the final result:** Check the `wwwroot/index.html` in the source code to see the complete EF Core demonstration you're building toward!
+
 ## ⏱️ Time Allocation
 **Total Time**: 30 minutes
 - Setup and Configuration: 10 minutes
@@ -544,6 +553,34 @@ After completing this exercise, you should understand:
 ### Issue 3: Null Reference Exceptions
 **Problem**: DbSet properties are null
 **Solution**: Ensure DbContext is properly registered in DI container
+
+---
+
+## 🌐 **Testing Your Implementation with the Demo Page**
+
+After completing all Module 05 exercises, you can test your Entity Framework Core implementation using the built-in demo page:
+
+1. **Start your application:**
+   ```bash
+   dotnet run
+   ```
+
+2. **Open the demo page:**
+   Navigate to `http://localhost:5000` (or your configured port)
+
+3. **Test the features:**
+   - Interactive LINQ query testing
+   - Product catalog and bookstore APIs
+   - Real-time database connectivity testing
+   - Links to all EF Core endpoints and patterns
+
+4. **Available demo features:**
+   - Book management (CRUD operations)
+   - Advanced LINQ query examples
+   - Repository pattern demonstrations
+   - Product catalog with complex relationships
+
+The demo page provides a comprehensive interface to test all the Entity Framework Core features you'll implement across all three exercises!
 
 ---
 

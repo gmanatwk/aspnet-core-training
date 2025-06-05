@@ -3,6 +3,15 @@
 ## 🎯 Objective
 Create a secure JWT authentication system from scratch and test all endpoints.
 
+## 🌐 **Demo Application**
+After completing this exercise, your application will have a comprehensive demo interface available at `http://localhost:5000` (or your configured port). The demo page includes:
+- Interactive login form with test users
+- JWT token display and testing
+- Links to all authentication endpoints
+- Real-time API testing capabilities
+
+**Preview the final result:** Check the `wwwroot/index.html` in the source code to see what you're building toward!
+
 ## ⏱️ Time Allocation: 45 minutes
 
 ## 📋 Prerequisites
@@ -682,6 +691,32 @@ You have successfully completed this exercise when:
 - [JWT.io Token Debugger](https://jwt.io/)
 - [ASP.NET Core JWT Documentation](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/jwt-authn)
 - [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
+
+---
+
+## 🌐 **Testing Your Implementation with the Demo Page**
+
+After completing the exercise, you can test your JWT authentication system using the built-in demo page:
+
+1. **Start your application:**
+   ```bash
+   dotnet run
+   ```
+
+2. **Open the demo page:**
+   Navigate to `http://localhost:5000` (or your configured port)
+
+3. **Test the features:**
+   - Use the interactive login form with test users
+   - Copy JWT tokens for API testing
+   - Test protected endpoints directly from the page
+   - Explore all authentication and authorization features
+
+4. **Available test users:**
+   - `admin/admin123` - Full access (Admin, User roles)
+   - `user/user123` - Basic user access
+
+The demo page provides a comprehensive interface to test all the JWT authentication features you've implemented!
 
 ---
 

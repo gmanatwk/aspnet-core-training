@@ -106,6 +106,24 @@ if [ -f "$TEMPLATE_PATH" ]; then
         cp "$APPSETTINGS_PATH" "./appsettings.json"
     fi
 
+    # Copy wwwroot folder if it exists for this exercise
+    WWWROOT_PATH=""
+    case $EXERCISE_NAME in
+        "module04-exercise01-jwt")
+            WWWROOT_PATH="../Module04-Authentication-and-Authorization/SourceCode/JwtAuthenticationAPI/wwwroot"
+            ;;
+        "module02-exercise01-basic"|"module02-exercise02-state"|"module02-exercise03-api"|"module02-exercise04-docker")
+            WWWROOT_PATH="../Module02-ASP.NET-Core-with-React/SourceCode/ReactTodoApp/wwwroot"
+            ;;
+        "module05-exercise01-efcore"|"module05-exercise02-linq"|"module05-exercise03-repository")
+            WWWROOT_PATH="../Module05-Entity-Framework-Core/SourceCode/EFCoreDemo/wwwroot"
+            ;;
+    esac
+
+    if [ -d "$WWWROOT_PATH" ]; then
+        cp -r "$WWWROOT_PATH" "./wwwroot"
+    fi
+
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${YELLOW}⚠️  Template not found, using manual package installation${NC}"

@@ -1,0 +1,17 @@
+# Development Dockerfile with hot reload support
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /app
+
+# Install dotnet-watch for hot reload
+RUN dotnet tool install --global dotnet-watch
+
+# Set environment variables
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+# Expose ports
+EXPOSE 80
+
+# Use dotnet watch for development
+ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:80"]
