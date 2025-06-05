@@ -12,6 +12,9 @@ $NC = [ConsoleColor]::White
 
 # Set project name based on exercise
 $ProjectName = switch ($ExerciseName) {
+    "exercise01-basic-api" { "RestfulAPI" }
+    "exercise02-authentication" { "RestfulAPI" }
+    "exercise03-documentation" { "RestfulAPI" }
     "module04-exercise01-jwt" { "JwtAuthenticationAPI" }
     "module05-exercise01-efcore" { "EFCoreDemo" }
     "module05-exercise02-linq" { "EFCoreDemo" }
