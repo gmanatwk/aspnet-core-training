@@ -326,7 +326,7 @@ namespace RestfulAPI.Data
                 entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
                 entity.HasIndex(e => e.Sku).IsUnique();
-                entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Price).HasPrecision(18, 2);
 
                 // Add query filter to exclude soft-deleted items
                 entity.HasQueryFilter(p => !p.IsDeleted);
