@@ -8,6 +8,7 @@ namespace LibraryAPI.DTOs
         string LastName,
         string Biography,
         DateTime DateOfBirth,
+        string Nationality,
         int BookCount
     );
 

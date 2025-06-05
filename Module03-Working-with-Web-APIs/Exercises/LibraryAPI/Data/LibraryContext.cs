@@ -17,6 +17,8 @@ namespace LibraryAPI.Data
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+        public DbSet<Product> Products { get; internal set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

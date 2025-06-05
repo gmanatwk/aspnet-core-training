@@ -10,5 +10,6 @@ namespace LibraryAPI.Models
         
         // Navigation property
         public List<Book> Books { get; set; } = new();
+        public string Nationality { get; internal set; }
     }
 }
