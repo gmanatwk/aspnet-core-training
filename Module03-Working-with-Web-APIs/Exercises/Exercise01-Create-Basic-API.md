@@ -19,7 +19,7 @@ Build a complete RESTful API for managing a library system with books, authors, 
 **Run the setup script:**
 ```bash
 # From the aspnet-core-training directory
-./setup-exercise.sh exercise01-basic-api
+./setup-exercise.ps1 exercise01-basic-api
 cd LibraryAPI
 ```
 
