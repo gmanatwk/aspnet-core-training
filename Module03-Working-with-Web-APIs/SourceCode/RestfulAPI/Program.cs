@@ -1,19 +1,24 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.AspNetCore.Mvc.Versioning;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RestfulAPI.Configuration;
 using RestfulAPI.Data;
 using RestfulAPI.DTOs;
+using RestfulAPI.HealthChecks;
 using RestfulAPI.Middleware;
 using RestfulAPI.Services;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -77,7 +82,7 @@ try
         );
     });
 
-    builder.Services.AddVersionedApiExplorer(options =>
+    builder.Services.AddApiVersioning().AddApiExplorer(options =>
     {
         options.GroupNameFormat = "'v'VVV";
         options.SubstituteApiVersionInUrl = true;
@@ -142,84 +147,10 @@ try
     });
 
     // Configure Swagger/OpenAPI
+    builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
-        // Configure Swagger for API versioning - will be configured after build
-        options.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = "Products RESTful API",
-            Version = "v1",
-            Description = "A comprehensive RESTful API for managing products",
-            Contact = new OpenApiContact
-            {
-                Name = "API Support",
-                Email = "api-support@yourdomain.com",
-                Url = new Uri("https://example.com/support")
-            },
-            License = new OpenApiLicense
-            {
-                Name = "MIT License",
-                Url = new Uri("https://opensource.org/licenses/MIT")
-            }
-        });
-
-        options.SwaggerDoc("v2", new OpenApiInfo
-        {
-            Title = "Products RESTful API",
-            Version = "v2",
-            Description = "A comprehensive RESTful API for managing products",
-            Contact = new OpenApiContact
-            {
-                Name = "API Support",
-                Email = "api-support@yourdomain.com",
-                Url = new Uri("https://example.com/support")
-            },
-            License = new OpenApiLicense
-            {
-                Name = "MIT License",
-                Url = new Uri("https://opensource.org/licenses/MIT")
-            }
-        });
-
-        // Add JWT Authentication to Swagger
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = @"JWT Authorization header using the Bearer scheme. 
-                          Enter 'Bearer' [space] and then your token in the text input below.
-                          Example: 'Bearer 12345abcdef'",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-        });
-
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    },
-                    Scheme = "oauth2",
-                    Name = "Bearer",
-                    In = ParameterLocation.Header,
-                },
-                new List<string>()
-            }
-        });
-
-        // Include XML comments
-        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        if (File.Exists(xmlPath))
-        {
-            options.IncludeXmlComments(xmlPath);
-        }
-
         options.EnableAnnotations();
     });
 
@@ -262,7 +193,26 @@ try
 
     // Add health checks
     builder.Services.AddHealthChecks()
-        .AddDbContextCheck<ApplicationDbContext>("database");
+        .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "critical" })
+        .AddCheck<ApiHealthCheck>("api", tags: new[] { "api" })
+        .AddCheck("memory", () =>
+        {
+            var allocated = GC.GetTotalMemory(forceFullCollection: false);
+            var threshold = 1024L * 1024L * 1024L; // 1 GB
+
+            return allocated < threshold
+                ? HealthCheckResult.Healthy($"Memory usage: {allocated / 1024 / 1024} MB")
+                : HealthCheckResult.Degraded($"Memory usage high: {allocated / 1024 / 1024} MB");
+        }, tags: new[] { "memory" });
+
+    // Add health checks UI
+    builder.Services.AddHealthChecksUI(options =>
+    {
+        options.SetEvaluationTimeInSeconds(30);
+        options.MaximumHistoryEntriesPerEndpoint(50);
+        options.AddHealthCheckEndpoint("RESTful API", "/health");
+    })
+    .AddInMemoryStorage();
 
     // Add HTTP client
     builder.Services.AddHttpClient();
@@ -292,7 +242,7 @@ try
                     $"Products API {description.GroupName.ToUpperInvariant()}");
             }
 
-            options.RoutePrefix = string.Empty; // Serve Swagger UI at root
+            options.RoutePrefix = ""; // Serve Swagger UI at root
             options.DocumentTitle = "Products RESTful API";
         });
 
@@ -343,6 +293,9 @@ try
     // Use response compression
     app.UseResponseCompression();
 
+    // Add the analytics middleware
+    app.UseMiddleware<ApiAnalyticsMiddleware>();
+
     // Use authentication & authorization
     app.UseAuthentication();
     app.UseAuthorization();
@@ -350,12 +303,39 @@ try
     // Map controllers
     app.MapControllers();
 
-    // Map health checks
-    app.MapHealthChecks("/health");
+    // Configure health checks
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = _ => true,
+        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("critical"),
+        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    });
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false,
+        ResponseWriter = (context, _) =>
+        {
+            context.Response.ContentType = "text/plain";
+            return context.Response.WriteAsync("Healthy");
+        }
+    });
+
+    app.UseHealthChecksUI(options =>
+    {
+        options.UIPath = "/health-ui";
+        options.ApiPath = "/health-api";
+    });
 
     // Map minimal API endpoints
-    app.MapGet("/", () => Results.Redirect("/index.html"))
-        .ExcludeFromDescription();
+    // Commented out because Swagger UI is served at root
+    // app.MapGet("/", () => Results.Redirect("/index.html"))
+    //     .ExcludeFromDescription();
 
     // Minimal API example - lightweight endpoints
     var productsApi = app.MapGroup("/api/minimal/products")

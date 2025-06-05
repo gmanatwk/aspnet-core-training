@@ -12,6 +12,16 @@ Enhance your Library API with comprehensive documentation using Swagger/OpenAPI,
 - Basic knowledge of versioning strategies
 - Familiarity with Exercises 1 and 2 concepts (setup script provides complete project)
 
+## ⚠️ Important Notes
+
+This exercise includes several fixes for common compilation issues:
+- Updated API versioning configuration to use `.AddApiExplorer()` instead of `.AddVersionedApiExplorer()`
+- Fixed `SwaggerDefaultValues` class to handle deprecated API detection properly
+- Added missing using directive `Microsoft.AspNetCore.Diagnostics.HealthChecks`
+- Updated `ConfigureSwaggerOptions` to use proper extension methods
+
+These fixes ensure the code compiles and runs correctly with .NET 8.0 and the latest package versions.
+
 ## 📝 Instructions
 
 ### Part 0: Project Setup (2 minutes)
@@ -160,6 +170,18 @@ namespace LibraryAPI.Models.DTOs
         /// </summary>
         [Range(0, 1000)]
         public int AvailableCopies { get; set; }
+
+        /// <summary>
+        /// Author ID (for database relationship)
+        /// </summary>
+        [Required]
+        public int AuthorId { get; set; }
+
+        /// <summary>
+        /// Category ID (for database relationship)
+        /// </summary>
+        [Required]
+        public int CategoryId { get; set; }
     }
 }
 ```
@@ -353,6 +375,7 @@ namespace LibraryAPI.Models.DTOs
 
    **Configuration/ConfigureSwaggerOptions.cs**:
    ```csharp
+   using System;
    using Asp.Versioning.ApiExplorer;
    using Microsoft.Extensions.Options;
    using Microsoft.OpenApi.Models;
@@ -451,18 +474,22 @@ namespace LibraryAPI.Models.DTOs
            {
                var apiDescription = context.ApiDescription;
 
-               operation.Deprecated |= apiDescription.IsDeprecated();
+               // Check if the API is deprecated (simplified check)
+               operation.Deprecated |= apiDescription.CustomAttributes().OfType<ObsoleteAttribute>().Any();
 
                foreach (var responseType in context.ApiDescription.SupportedResponseTypes)
                {
                    var responseKey = responseType.IsDefaultResponse ? "default" : responseType.StatusCode.ToString();
-                   var response = operation.Responses[responseKey];
-
-                   foreach (var contentType in response.Content.Keys)
+                   if (operation.Responses.ContainsKey(responseKey))
                    {
-                       if (responseType.ApiResponseFormats.All(x => x.MediaType != contentType))
+                       var response = operation.Responses[responseKey];
+
+                       foreach (var contentType in response.Content.Keys.ToList())
                        {
-                           response.Content.Remove(contentType);
+                           if (responseType.ApiResponseFormats.All(x => x.MediaType != contentType))
+                           {
+                               response.Content.Remove(contentType);
+                           }
                        }
                    }
                }
@@ -472,16 +499,19 @@ namespace LibraryAPI.Models.DTOs
 
                foreach (var parameter in operation.Parameters)
                {
-                   var description = apiDescription.ParameterDescriptions.First(p => p.Name == parameter.Name);
-
-                   parameter.Description ??= description.ModelMetadata?.Description;
-
-                   if (parameter.Schema.Default == null && description.DefaultValue != null)
+                   var description = apiDescription.ParameterDescriptions.FirstOrDefault(p => p.Name == parameter.Name);
+                   if (description != null)
                    {
-                       parameter.Schema.Default = OpenApiAnyFactory.CreateFromJson(description.DefaultValue.ToString());
-                   }
+                       parameter.Description ??= description.ModelMetadata?.Description;
 
-                   parameter.Required |= description.IsRequired;
+                       if (parameter.Schema.Default == null && description.DefaultValue != null)
+                       {
+                           var defaultValueJson = System.Text.Json.JsonSerializer.Serialize(description.DefaultValue);
+                           parameter.Schema.Default = OpenApiAnyFactory.CreateFromJson(defaultValueJson);
+                       }
+
+                       parameter.Required |= description.IsRequired;
+                   }
                }
            }
        }
@@ -497,150 +527,7 @@ namespace LibraryAPI.Models.DTOs
    using Microsoft.OpenApi.Models;
    using Swashbuckle.AspNetCore.SwaggerGen;
 
-   namespace LibraryAPI.Configuration
-   {
-       public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
-       {
-           private readonly IApiVersionDescriptionProvider _provider;
 
-           public ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider)
-           {
-               _provider = provider;
-           }
-
-           public void Configure(SwaggerGenOptions options)
-           {
-               // Add a swagger document for each discovered API version
-               foreach (var description in _provider.ApiVersionDescriptions)
-               {
-                   options.SwaggerDoc(description.GroupName, CreateInfoForApiVersion(description));
-               }
-
-               // Add custom operation filter
-               options.OperationFilter<SwaggerDefaultValues>();
-
-               // Add example responses
-               options.OperationFilter<ExampleResponsesOperationFilter>();
-
-               // Group by tags
-               options.TagActionsBy(api =>
-               {
-                   if (api.GroupName != null)
-                   {
-                       return new[] { api.GroupName };
-                   }
-
-                   var controllerName = api.ActionDescriptor.RouteValues["controller"];
-                   return new[] { controllerName ?? "Default" };
-               });
-
-               options.DocInclusionPredicate((name, api) => true);
-           }
-
-           private static OpenApiInfo CreateInfoForApiVersion(ApiVersionDescription description)
-           {
-               var info = new OpenApiInfo
-               {
-                   Title = "Library API",
-                   Version = description.ApiVersion.ToString(),
-                   Description = "A comprehensive API for managing library resources",
-                   Contact = new OpenApiContact
-                   {
-                       Name = "Library Support Team",
-                       Email = "support@library.com",
-                       Url = new Uri("https://library.com/support")
-                   },
-                   License = new OpenApiLicense
-                   {
-                       Name = "MIT License",
-                       Url = new Uri("https://opensource.org/licenses/MIT")
-                   }
-               };
-
-               if (description.IsDeprecated)
-               {
-                   info.Description += " This API version has been deprecated.";
-               }
-
-               return info;
-           }
-       }
-
-       public class SwaggerDefaultValues : IOperationFilter
-       {
-           public void Apply(OpenApiOperation operation, OperationFilterContext context)
-           {
-               var apiDescription = context.ApiDescription;
-
-               operation.Deprecated |= apiDescription.IsDeprecated();
-
-               if (operation.Parameters == null)
-               {
-                   return;
-               }
-
-               foreach (var parameter in operation.Parameters)
-               {
-                   var description = apiDescription.ParameterDescriptions.First(p => p.Name == parameter.Name);
-
-                   if (parameter.Description == null)
-                   {
-                       parameter.Description = description.ModelMetadata?.Description;
-                   }
-
-                   if (parameter.Schema.Default == null && description.DefaultValue != null)
-                   {
-                       parameter.Schema.Default = OpenApiAnyFactory.CreateFromJson(
-                           System.Text.Json.JsonSerializer.Serialize(description.DefaultValue));
-                   }
-
-                   parameter.Required |= description.IsRequired;
-               }
-           }
-       }
-
-       public class ExampleResponsesOperationFilter : IOperationFilter
-       {
-           public void Apply(OpenApiOperation operation, OperationFilterContext context)
-           {
-               // Add common error responses
-               operation.Responses.TryAdd("400", new OpenApiResponse
-               {
-                   Description = "Bad Request - Invalid input data",
-                   Content = new Dictionary<string, OpenApiMediaType>
-                   {
-                       ["application/json"] = new OpenApiMediaType
-                       {
-                           Schema = new OpenApiSchema
-                           {
-                               Reference = new OpenApiReference
-                               {
-                                   Type = ReferenceType.Schema,
-                                   Id = "ProblemDetails"
-                               }
-                           }
-                       }
-                   }
-               });
-
-               operation.Responses.TryAdd("401", new OpenApiResponse
-               {
-                   Description = "Unauthorized - Authentication required"
-               });
-
-               operation.Responses.TryAdd("403", new OpenApiResponse
-               {
-                   Description = "Forbidden - Insufficient permissions"
-               });
-
-               operation.Responses.TryAdd("500", new OpenApiResponse
-               {
-                   Description = "Internal Server Error"
-               });
-           }
-       }
-   }
-   ```
 
 3. **Add XML documentation** to your models and controllers:
 
@@ -726,9 +613,85 @@ namespace LibraryAPI.Models.DTOs
 
 ### Part 3: Implement API Versioning (10 minutes)
 
-1. **Configure API versioning** in Program.cs:
+1. **Create complete Program.cs configuration**:
 
+   **Program.cs**:
    ```csharp
+   using System.Text;
+   using Asp.Versioning;
+   using Asp.Versioning.ApiExplorer;
+   using HealthChecks.UI.Client;
+   using LibraryAPI.Configuration;
+   using LibraryAPI.Data;
+   using LibraryAPI.HealthChecks;
+   using LibraryAPI.Middleware;
+   using LibraryAPI.Models.Auth;
+   using LibraryAPI.Services;
+   using Microsoft.AspNetCore.Authentication.JwtBearer;
+   using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+   using Microsoft.AspNetCore.Identity;
+   using Microsoft.EntityFrameworkCore;
+   using Microsoft.Extensions.Diagnostics.HealthChecks;
+   using Microsoft.Extensions.Options;
+   using Microsoft.IdentityModel.Tokens;
+   using Swashbuckle.AspNetCore.SwaggerGen;
+
+   var builder = WebApplication.CreateBuilder(args);
+
+   // Add services to the container
+   builder.Services.AddControllers();
+   builder.Services.AddEndpointsApiExplorer();
+
+   // Add Entity Framework
+   builder.Services.AddDbContext<LibraryContext>(options =>
+       options.UseInMemoryDatabase("LibraryDb"));
+
+   // Add Identity
+   builder.Services.AddIdentity<User, IdentityRole>(options =>
+   {
+       options.Password.RequireDigit = true;
+       options.Password.RequireLowercase = true;
+       options.Password.RequireNonAlphanumeric = false;
+       options.Password.RequireUppercase = true;
+       options.Password.RequiredLength = 6;
+       options.Password.RequiredUniqueChars = 1;
+       options.User.RequireUniqueEmail = true;
+   })
+   .AddEntityFrameworkStores<LibraryContext>()
+   .AddDefaultTokenProviders();
+
+   // Add JWT Authentication
+   var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsAVerySecretKeyForJWTTokensThatShouldBeAtLeast32CharactersLong!";
+   var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "LibraryAPI";
+   var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "LibraryAPIUsers";
+
+   builder.Services.AddAuthentication(options =>
+   {
+       options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+       options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+   })
+   .AddJwtBearer(options =>
+   {
+       options.TokenValidationParameters = new TokenValidationParameters
+       {
+           ValidateIssuer = true,
+           ValidateAudience = true,
+           ValidateLifetime = true,
+           ValidateIssuerSigningKey = true,
+           ValidIssuer = jwtIssuer,
+           ValidAudience = jwtAudience,
+           IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+           ClockSkew = TimeSpan.Zero
+       };
+   });
+
+   // Add Authorization
+   builder.Services.AddAuthorization(options =>
+   {
+       options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
+       options.AddPolicy("RequireLibrarianRole", policy => policy.RequireRole("Admin", "Librarian"));
+   });
+
    // Add API versioning
    builder.Services.AddApiVersioning(options =>
    {
@@ -741,9 +704,7 @@ namespace LibraryAPI.Models.DTOs
            new HeaderApiVersionReader("X-Version"),
            new MediaTypeApiVersionReader("version")
        );
-   });
-
-   builder.Services.AddVersionedApiExplorer(options =>
+   }).AddApiExplorer(options =>
    {
        options.GroupNameFormat = "'v'VVV";
        options.SubstituteApiVersionInUrl = true;
@@ -752,6 +713,198 @@ namespace LibraryAPI.Models.DTOs
    // Configure Swagger
    builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
    builder.Services.AddSwaggerGen();
+
+   // Add health checks
+   builder.Services.AddHealthChecks()
+       .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "critical" })
+       .AddCheck<ApiHealthCheck>("api", tags: new[] { "api" })
+       .AddCheck("memory", () =>
+       {
+           var allocated = GC.GetTotalMemory(forceFullCollection: false);
+           var threshold = 1024L * 1024L * 1024L; // 1 GB
+
+           return allocated < threshold
+               ? HealthCheckResult.Healthy($"Memory usage: {allocated / 1024 / 1024} MB")
+               : HealthCheckResult.Degraded($"Memory usage high: {allocated / 1024 / 1024} MB");
+       }, tags: new[] { "memory" });
+
+   // Add health checks UI
+   builder.Services.AddHealthChecksUI(options =>
+   {
+       options.SetEvaluationTimeInSeconds(30);
+       options.MaximumHistoryEntriesPerEndpoint(50);
+       options.AddHealthCheckEndpoint("Library API", "/health");
+   })
+   .AddInMemoryStorage();
+
+   // Register custom services
+   builder.Services.AddScoped<IJwtService, JwtService>();
+   builder.Services.AddHttpClient();
+
+   var app = builder.Build();
+
+   // Seed the database
+   using (var scope = app.Services.CreateScope())
+   {
+       var services = scope.ServiceProvider;
+       var context = services.GetRequiredService<LibraryContext>();
+       var userManager = services.GetRequiredService<UserManager<User>>();
+       var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+       context.Database.EnsureCreated();
+
+       // Create roles
+       string[] roles = { "Admin", "Librarian", "User" };
+       foreach (var role in roles)
+       {
+           if (!await roleManager.RoleExistsAsync(role))
+           {
+               await roleManager.CreateAsync(new IdentityRole(role));
+           }
+       }
+
+       // Create admin user
+       var adminEmail = "admin@library.com";
+       var adminUser = await userManager.FindByEmailAsync(adminEmail);
+       if (adminUser == null)
+       {
+           adminUser = new User
+           {
+               UserName = adminEmail,
+               Email = adminEmail,
+               FirstName = "Admin",
+               LastName = "User",
+               CreatedAt = DateTime.UtcNow,
+               IsActive = true
+           };
+
+           await userManager.CreateAsync(adminUser, "Admin123!");
+           await userManager.AddToRoleAsync(adminUser, "Admin");
+       }
+
+       // Seed sample data
+       if (!context.Categories.Any())
+       {
+           var categories = new[]
+           {
+               new Category { Name = "Fiction", Description = "Fictional literature" },
+               new Category { Name = "Non-Fiction", Description = "Non-fictional works" },
+               new Category { Name = "Science", Description = "Scientific literature" },
+               new Category { Name = "History", Description = "Historical works" }
+           };
+           context.Categories.AddRange(categories);
+           await context.SaveChangesAsync();
+       }
+
+       if (!context.Authors.Any())
+       {
+           var authors = new[]
+           {
+               new Author { FirstName = "George", LastName = "Orwell", Nationality = "British" },
+               new Author { FirstName = "Jane", LastName = "Austen", Nationality = "British" },
+               new Author { FirstName = "Mark", LastName = "Twain", Nationality = "American" },
+               new Author { FirstName = "Virginia", LastName = "Woolf", Nationality = "British" }
+           };
+           context.Authors.AddRange(authors);
+           await context.SaveChangesAsync();
+       }
+
+       if (!context.Books.Any())
+       {
+           var books = new[]
+           {
+               new Book
+               {
+                   Title = "1984",
+                   ISBN = "978-0451524935",
+                   PublicationYear = 1949,
+                   NumberOfPages = 328,
+                   Summary = "A dystopian social science fiction novel",
+                   AuthorId = 1,
+                   CategoryId = 1,
+                   CreatedAt = DateTime.UtcNow
+               },
+               new Book
+               {
+                   Title = "Pride and Prejudice",
+                   ISBN = "978-0141439518",
+                   PublicationYear = 1813,
+                   NumberOfPages = 432,
+                   Summary = "A romantic novel of manners",
+                   AuthorId = 2,
+                   CategoryId = 1,
+                   CreatedAt = DateTime.UtcNow
+               }
+           };
+           context.Books.AddRange(books);
+           await context.SaveChangesAsync();
+       }
+   }
+
+   // Configure the HTTP request pipeline
+   if (app.Environment.IsDevelopment())
+   {
+       app.UseSwagger();
+       app.UseSwaggerUI(c =>
+       {
+           var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+           foreach (var description in provider.ApiVersionDescriptions)
+           {
+               c.SwaggerEndpoint(
+                   $"/swagger/{description.GroupName}/swagger.json",
+                   $"Library API {description.GroupName.ToUpperInvariant()}");
+           }
+       });
+   }
+
+   // Security headers
+   app.Use(async (context, next) =>
+   {
+       context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+       context.Response.Headers["X-Frame-Options"] = "DENY";
+       context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+       context.Response.Headers.Remove("Server");
+       await next();
+   });
+
+   // Add the analytics middleware
+   app.UseMiddleware<ApiAnalyticsMiddleware>();
+
+   app.UseAuthentication();
+   app.UseAuthorization();
+
+   // Configure health checks
+   app.MapHealthChecks("/health", new HealthCheckOptions
+   {
+       Predicate = _ => true,
+       ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+   });
+
+   app.MapHealthChecks("/health/ready", new HealthCheckOptions
+   {
+       Predicate = check => check.Tags.Contains("critical"),
+       ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+   });
+
+   app.MapHealthChecks("/health/live", new HealthCheckOptions
+   {
+       Predicate = _ => false,
+       ResponseWriter = (context, _) =>
+       {
+           context.Response.ContentType = "text/plain";
+           return context.Response.WriteAsync("Healthy");
+       }
+   });
+
+   app.UseHealthChecksUI(options =>
+   {
+       options.UIPath = "/health-ui";
+       options.ApiPath = "/health-api";
+   });
+
+   app.MapControllers();
+
+   app.Run();
    ```
 
 2. **Create versioned controllers**:
@@ -1347,60 +1500,177 @@ namespace LibraryAPI.Models.DTOs
    }
    ```
 
-3. **Configure health checks** in Program.cs:
+3. **Create health check classes** (referenced in Program.cs):
 
+   **HealthChecks/DatabaseHealthCheck.cs**:
    ```csharp
-   // Add health checks
-   builder.Services.AddHealthChecks()
-       .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "critical" })
-       .AddCheck<ApiHealthCheck>("api", tags: new[] { "api" })
-       .AddCheck("memory", () =>
+   using LibraryAPI.Data;
+   using Microsoft.EntityFrameworkCore;
+   using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+   namespace LibraryAPI.HealthChecks
+   {
+       public class DatabaseHealthCheck : IHealthCheck
        {
-           var allocated = GC.GetTotalMemory(forceFullCollection: false);
-           var threshold = 1024L * 1024L * 1024L; // 1 GB
-           
-           return allocated < threshold
-               ? HealthCheckResult.Healthy($"Memory usage: {allocated / 1024 / 1024} MB")
-               : HealthCheckResult.Degraded($"Memory usage high: {allocated / 1024 / 1024} MB");
-       }, tags: new[] { "memory" });
+           private readonly LibraryContext _context;
 
-   // Add health checks UI
-   builder.Services.AddHealthChecksUI(options =>
-   {
-       options.SetEvaluationTimeInSeconds(30);
-       options.MaximumHistoryEntriesPerEndpoint(50);
-       options.AddHealthCheckEndpoint("Library API", "/health");
-   })
-   .AddInMemoryStorage();
+           public DatabaseHealthCheck(LibraryContext context)
+           {
+               _context = context;
+           }
 
-   // In the app configuration
-   app.MapHealthChecks("/health", new HealthCheckOptions
-   {
-       Predicate = _ => true,
-       ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-   });
+           public async Task<HealthCheckResult> CheckHealthAsync(
+               HealthCheckContext context,
+               CancellationToken cancellationToken = default)
+           {
+               try
+               {
+                   await _context.Database.CanConnectAsync(cancellationToken);
+                   var bookCount = await _context.Books.CountAsync(cancellationToken);
 
-   app.MapHealthChecks("/health/ready", new HealthCheckOptions
-   {
-       Predicate = check => check.Tags.Contains("critical"),
-       ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-   });
-
-   app.MapHealthChecks("/health/live", new HealthCheckOptions
-   {
-       Predicate = _ => false,
-       ResponseWriter = (context, _) =>
-       {
-           context.Response.ContentType = "text/plain";
-           return context.Response.WriteAsync("Healthy");
+                   return HealthCheckResult.Healthy($"Database is healthy. Books: {bookCount}");
+               }
+               catch (Exception ex)
+               {
+                   return HealthCheckResult.Unhealthy("Database is unhealthy", ex);
+               }
+           }
        }
-   });
+   }
+   ```
 
-   app.UseHealthChecksUI(options =>
+   **HealthChecks/ApiHealthCheck.cs**:
+   ```csharp
+   using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+   namespace LibraryAPI.HealthChecks
    {
-       options.UIPath = "/health-ui";
-       options.ApiPath = "/health-api";
-   });
+       public class ApiHealthCheck : IHealthCheck
+       {
+           private readonly IHttpClientFactory _httpClientFactory;
+           private readonly IConfiguration _configuration;
+
+           public ApiHealthCheck(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+           {
+               _httpClientFactory = httpClientFactory;
+               _configuration = configuration;
+           }
+
+           public async Task<HealthCheckResult> CheckHealthAsync(
+               HealthCheckContext context,
+               CancellationToken cancellationToken = default)
+           {
+               try
+               {
+                   // For this demo, we'll simply check if we can create an HTTP client
+                   // In a real scenario, you might check external dependencies
+                   using var client = _httpClientFactory.CreateClient();
+                   
+                   // Simple check - if we can create a client, consider it healthy
+                   return HealthCheckResult.Healthy("API is responding");
+               }
+               catch (Exception ex)
+               {
+                   return HealthCheckResult.Unhealthy("API is not responding", ex);
+               }
+           }
+       }
+   }
+   ```
+
+   **Services/JwtService.cs** (referenced in Program.cs):
+   ```csharp
+   using System.IdentityModel.Tokens.Jwt;
+   using System.Security.Claims;
+   using System.Text;
+   using LibraryAPI.Models.Auth;
+   using Microsoft.AspNetCore.Identity;
+   using Microsoft.IdentityModel.Tokens;
+
+   namespace LibraryAPI.Services
+   {
+       public interface IJwtService
+       {
+           Task<string> GenerateTokenAsync(User user);
+           ClaimsPrincipal? ValidateToken(string token);
+       }
+
+       public class JwtService : IJwtService
+       {
+           private readonly IConfiguration _configuration;
+           private readonly UserManager<User> _userManager;
+
+           public JwtService(IConfiguration configuration, UserManager<User> userManager)
+           {
+               _configuration = configuration;
+               _userManager = userManager;
+           }
+
+           public async Task<string> GenerateTokenAsync(User user)
+           {
+               var tokenHandler = new JwtSecurityTokenHandler();
+               var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ??
+                   throw new InvalidOperationException("JWT Key not configured"));
+               var roles = await _userManager.GetRolesAsync(user);
+
+               var claims = new List<Claim>
+               {
+                   new Claim(ClaimTypes.NameIdentifier, user.Id),
+                   new Claim(ClaimTypes.Email, user.Email!),
+                   new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
+                   new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+               };
+
+               foreach (var role in roles)
+               {
+                   claims.Add(new Claim(ClaimTypes.Role, role));
+               }
+
+               var tokenDescriptor = new SecurityTokenDescriptor
+               {
+                   Subject = new ClaimsIdentity(claims),
+                   Expires = DateTime.UtcNow.AddHours(1),
+                   Issuer = _configuration["Jwt:Issuer"],
+                   Audience = _configuration["Jwt:Audience"],
+                   SigningCredentials = new SigningCredentials(
+                       new SymmetricSecurityKey(key),
+                       SecurityAlgorithms.HmacSha256Signature)
+               };
+
+               var token = tokenHandler.CreateToken(tokenDescriptor);
+               return tokenHandler.WriteToken(token);
+           }
+
+           public ClaimsPrincipal? ValidateToken(string token)
+           {
+               var tokenHandler = new JwtSecurityTokenHandler();
+               var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ??
+                   throw new InvalidOperationException("JWT Key not configured"));
+
+               try
+               {
+                   var validationParameters = new TokenValidationParameters
+                   {
+                       ValidateIssuerSigningKey = true,
+                       IssuerSigningKey = new SymmetricSecurityKey(key),
+                       ValidateIssuer = true,
+                       ValidIssuer = _configuration["Jwt:Issuer"],
+                       ValidateAudience = true,
+                       ValidAudience = _configuration["Jwt:Audience"],
+                       ValidateLifetime = true,
+                       ClockSkew = TimeSpan.Zero
+                   };
+
+                   var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+                   return principal;
+               }
+               catch
+               {
+                   return null;
+               }
+           }
+       }
+   }
    ```
 
 ### Part 5: Add API Analytics and Metrics (5 minutes)
@@ -1581,11 +1851,7 @@ namespace LibraryAPI.Models.DTOs
 
 ### Part 6: Test Your Enhanced API (5 minutes)
 
-1. **Update Program.cs** to use the middleware:
-   ```csharp
-   // Add the analytics middleware
-   app.UseMiddleware<ApiAnalyticsMiddleware>();
-   ```
+1. **Analytics middleware** (already included in Program.cs above):
 
 2. **Run and test**:
    ```bash

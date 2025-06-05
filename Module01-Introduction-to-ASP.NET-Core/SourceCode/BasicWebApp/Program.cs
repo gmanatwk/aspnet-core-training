@@ -9,7 +9,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios.
     app.UseHsts();
 }
 
@@ -21,16 +20,5 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapRazorPages();
-
-// Add a simple middleware to demonstrate request pipeline
-app.Use(async (context, next) =>
-{
-    // Log incoming request
-    Console.WriteLine($"[{DateTime.Now}] {context.Request.Method} {context.Request.Path}");
-    await next();
-});
-
-// Add a simple endpoint
-app.MapGet("/hello", () => "Hello from ASP.NET Core!");
 
 app.Run();

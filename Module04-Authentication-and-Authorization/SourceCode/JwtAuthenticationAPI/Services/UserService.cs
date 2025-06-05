@@ -25,13 +25,14 @@ public class UserService : IUserService
         // In a real application, this would be replaced with a database
         _users = new List<User>
         {
+            // Exercise 01 & 02 users
             new User
             {
                 Id = 1,
                 Username = "admin",
-                Password = HashPassword("admin123"), // In real app, passwords should be hashed
+                Password = HashPassword("admin123"),
                 Email = "admin@example.com",
-                Roles = new List<string> { "Admin", "User" }
+                Roles = new List<string> { "Admin", "Editor", "User", "Employee" }
             },
             new User
             {
@@ -48,6 +49,23 @@ public class UserService : IUserService
                 Password = HashPassword("editor123"),
                 Email = "editor@example.com",
                 Roles = new List<string> { "Editor", "User" }
+            },
+            // Exercise 03 users - for custom policies
+            new User
+            {
+                Id = 4,
+                Username = "senior_dev",
+                Password = HashPassword("senior123"),
+                Email = "senior.dev@example.com",
+                Roles = new List<string> { "Employee", "Developer" }
+            },
+            new User
+            {
+                Id = 5,
+                Username = "junior_dev",
+                Password = HashPassword("junior123"),
+                Email = "junior.dev@example.com",
+                Roles = new List<string> { "Employee", "Developer" }
             }
         };
     }

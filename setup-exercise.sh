@@ -41,11 +41,23 @@ echo "=================================="
 
 # Step 1: Create project
 echo -n "1. Creating Web API project... "
+
+# Remove existing project if it exists
+if [ -d "$PROJECT_NAME" ]; then
+    rm -rf "$PROJECT_NAME"
+fi
+
 if dotnet new webapi -n "$PROJECT_NAME" --framework net8.0 > /dev/null 2>&1; then
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${RED}✗${NC}"
-    exit 1
+    echo "Failed to create project. Trying with --force flag..."
+    if dotnet new webapi -n "$PROJECT_NAME" --framework net8.0 --force > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        exit 1
+    fi
 fi
 
 cd "$PROJECT_NAME"
@@ -105,9 +117,9 @@ else
             dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1 > /dev/null 2>&1
             dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
             dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
-            dotnet add package AspNetCore.HealthChecks.UI --version 8.0.2 > /dev/null 2>&1
-            dotnet add package AspNetCore.HealthChecks.UI.Client --version 8.0.2 > /dev/null 2>&1
-            dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage --version 8.0.2 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI --version 9.0.0 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI.Client --version 9.0.0 > /dev/null 2>&1
+            dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage --version 9.0.0 > /dev/null 2>&1
             ;;
         "module04-exercise01-jwt")
             dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11 > /dev/null 2>&1

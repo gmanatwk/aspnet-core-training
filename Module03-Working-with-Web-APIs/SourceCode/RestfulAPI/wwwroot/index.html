@@ -98,16 +98,24 @@
     <div class="container">
         <h1>🚀 Products RESTful API</h1>
         <p class="subtitle">A comprehensive ASP.NET Core Web API for managing products</p>
+        <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 20px 0;">
+            💡 <strong>Note:</strong> This is the static welcome page. Access it directly at <code>/index.html</code>
+        </p>
         
         <div class="api-links">
-            <a href="/swagger" class="api-link">
+            <a href="/" class="api-link">
                 <h3>📚 API Documentation</h3>
                 <p>Interactive Swagger UI for testing API endpoints</p>
             </a>
             
-            <a href="/api/products" class="api-link">
-                <h3>📦 Products API</h3>
-                <p>RESTful endpoints for product management</p>
+            <a href="/api/v1/products" class="api-link">
+                <h3>📦 Products API v1</h3>
+                <p>Standard RESTful endpoints for product management</p>
+            </a>
+            
+            <a href="/api/v2/products" class="api-link">
+                <h3>🚀 Products API v2</h3>
+                <p>Enhanced API with bulk operations and statistics</p>
             </a>
             
             <a href="/api/minimal/products" class="api-link">
@@ -118,6 +126,11 @@
             <a href="/health" class="api-link">
                 <h3>💚 Health Check</h3>
                 <p>Application health status and diagnostics</p>
+            </a>
+            
+            <a href="/api/auth/login" class="api-link">
+                <h3>🔐 Authentication</h3>
+                <p>JWT authentication endpoints</p>
             </a>
         </div>
         
@@ -132,10 +145,31 @@
                 <li>CORS configuration for cross-origin requests</li>
                 <li>Health checks and monitoring</li>
                 <li>Structured logging with Serilog</li>
-                <li>Entity Framework Core with SQLite</li>
+                <li>Entity Framework Core with In-Memory Database</li>
                 <li>Swagger/OpenAPI documentation</li>
                 <li>Minimal APIs for lightweight endpoints</li>
                 <li>Global exception handling middleware</li>
+            </ul>
+        </div>
+        
+        <div class="features">
+            <h3>🔀 API Versioning Methods</h3>
+            <ul>
+                <li><strong>URL Segment:</strong> /api/v1/products, /api/v2/products</li>
+                <li><strong>Query String:</strong> /api/products?api-version=1.0</li>
+                <li><strong>Header:</strong> X-Version: 1.0</li>
+                <li><strong>Media Type:</strong> Accept: application/json;ver=1.0</li>
+            </ul>
+        </div>
+        
+        <div class="features">
+            <h3>✨ V2 Exclusive Features</h3>
+            <ul>
+                <li><strong>Bulk Operations:</strong> POST /api/v2/products/bulk</li>
+                <li><strong>Statistics:</strong> GET /api/v2/products/statistics</li>
+                <li><strong>Export to CSV:</strong> GET /api/v2/products/export</li>
+                <li><strong>Enhanced Metadata:</strong> Response includes links and pagination info</li>
+                <li><strong>Custom Headers:</strong> X-Total-Count, X-API-Version</li>
             </ul>
         </div>
         
