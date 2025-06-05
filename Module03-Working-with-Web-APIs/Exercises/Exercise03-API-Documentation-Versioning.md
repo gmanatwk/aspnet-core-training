@@ -22,20 +22,37 @@ This exercise includes several fixes for common compilation issues:
 
 These fixes ensure the code compiles and runs correctly with .NET 8.0 and the latest package versions.
 
+**Note about code consistency**: 
+- This exercise demonstrates versioning using a Books/Library theme as an example
+- If you're continuing from Exercise 1 & 2 (Products theme), you can adapt the concepts to your existing ProductsController
+- The versioning, documentation, and health check concepts apply regardless of the domain model used
+
 ## 📝 Instructions
 
 ### Part 0: Project Setup (2 minutes)
 
-**Run the setup script:**
-```bash
-# From the Module03-Working-with-Web-APIs directory
-../setup-exercise.sh exercise03-documentation
-cd RestfulAPI
-```
+**If continuing from Exercise 2:**
+- Continue using your existing RestfulAPI project
+- Skip to Part 1
 
-**Verify setup:**
+**If starting fresh or coming from Exercise 1:**
 ```bash
-../verify-packages.sh
+# Continue with your RestfulAPI project from previous exercises
+cd RestfulAPI
+
+# Add required NuGet packages
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+dotnet add package System.IdentityModel.Tokens.Jwt
+dotnet add package Asp.Versioning.Mvc
+dotnet add package Asp.Versioning.Mvc.ApiExplorer
+dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer
+dotnet add package AspNetCore.HealthChecks.UI
+dotnet add package AspNetCore.HealthChecks.UI.Client
+dotnet add package AspNetCore.HealthChecks.UI.InMemory.Storage
+dotnet add package Swashbuckle.AspNetCore.Annotations
+
+# Verify setup
 dotnet build
 ```
 

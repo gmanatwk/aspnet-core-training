@@ -15,17 +15,13 @@ Secure your RESTful API with JWT authentication, implement role-based authorizat
 
 ### Part 0: Project Setup (2 minutes)
 
-**Run the setup script:**
-```bash
-# From the Module03-Working-with-Web-APIs directory
-../setup-exercise.sh exercise02-authentication
-cd RestfulAPI
-```
+**Continue with your RestfulAPI project from Exercise 1.**
 
-**Verify setup:**
+**Add required NuGet packages for authentication:**
 ```bash
-../verify-packages.sh
-dotnet build
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+dotnet add package System.IdentityModel.Tokens.Jwt
 ```
 
 ### Part 1: Add Authentication Models and Services (10 minutes)
