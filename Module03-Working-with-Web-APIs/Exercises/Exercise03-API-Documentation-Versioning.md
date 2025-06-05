@@ -524,11 +524,12 @@ namespace LibraryAPI.Models.DTOs
    }
    ```
 
-2. **The ConfigureSwaggerOptions.cs file is already created above** and matches the source code exactly. It includes:
+2. **Create the ConfigureSwaggerOptions.cs file** as shown above. This file provides:
    - API versioning support with proper document generation
    - JWT Bearer authentication configuration
-   - XML comments inclusion
+   - XML comments inclusion with dynamic assembly name detection
    - Custom operation filters for enhanced documentation
+   - Proper API metadata (title, description, contact info)
 
 3. **Add XML documentation** to your models and controllers:
 
