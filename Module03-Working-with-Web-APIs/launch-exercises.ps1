@@ -349,12 +349,13 @@ RESTful APIs follow REST principles:
         dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11
         dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.11
         dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.11
-        dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
 
-        # Add API versioning packages
-        Write-ColorOutput "Adding API versioning packages..." -Color Cyan
-        dotnet add package Asp.Versioning.Mvc --version 8.0.0
-        dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0
+        # Enable XML documentation generation
+        Write-ColorOutput "Configuring XML documentation..." -Color Cyan
+        $csprojContent = Get-Content "RestfulAPI.csproj" -Raw
+        $csprojContent = $csprojContent -replace '(<PropertyGroup>)', '$1`n    <GenerateDocumentationFile>true</GenerateDocumentationFile>`n    <NoWarn>$(NoWarn);1591</NoWarn>'
+        Set-Content "RestfulAPI.csproj" -Value $csprojContent
+        Write-ColorOutput "XML documentation enabled" -Color Green
 
         # Create launchSettings.json to ensure consistent port
         New-Item -ItemType Directory -Path "Properties" -Force | Out-Null
@@ -684,32 +685,14 @@ namespace RestfulAPI.Controllers
 '@
 
         # Update Program.cs
-        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for RESTful API with Entity Framework and API versioning" -Content @'
+        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for RESTful API with Entity Framework" -Content @'
 using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
-using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
-
-// Add API Versioning
-builder.Services.AddApiVersioning(opt =>
-{
-    opt.DefaultApiVersion = new ApiVersion(1, 0);
-    opt.AssumeDefaultVersionWhenUnspecified = true;
-    opt.ApiVersionReader = ApiVersionReader.Combine(
-        new UrlSegmentApiVersionReader(),
-        new QueryStringApiVersionReader("version"),
-        new HeaderApiVersionReader("X-Version"),
-        new MediaTypeApiVersionReader("ver")
-    );
-}).AddApiExplorer(setup =>
-{
-    setup.GroupNameFormat = "'v'VVV";
-    setup.SubstituteApiVersionInUrl = true;
-});
 
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -720,6 +703,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Products API", Version = "v1" });
+
+    // Include XML comments for better documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
 // Add CORS for development
@@ -787,6 +778,12 @@ app.Run();
     "exercise02" {
         # Exercise 2: Add Authentication & Security
 
+        # Add authentication packages
+        Write-ColorOutput "Adding authentication packages..." -Color Cyan
+        dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11
+        dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
+        dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2
+
         Explain-Concept -Concept "JWT Authentication" -Explanation @"
 JSON Web Tokens (JWT) provide stateless authentication:
 • Self-contained tokens with user information
@@ -802,10 +799,7 @@ JSON Web Tokens (JWT) provide stateless authentication:
             exit 1
         }
 
-        # Add JWT packages
-        Write-ColorOutput "Adding JWT authentication packages..." -Color Cyan
-        dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11
-        dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.8
+
 
         # Create authentication models
         New-FileInteractive -FilePath "Models/AuthModels.cs" -Description "Authentication request and response models" -Content @'
@@ -962,6 +956,12 @@ namespace RestfulAPI.Controllers
     "exercise03" {
         # Exercise 3: API Documentation & Versioning
 
+        # Add versioning packages
+        Write-ColorOutput "Adding API versioning packages..." -Color Cyan
+        dotnet add package Asp.Versioning.Mvc --version 8.0.0
+        dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0
+        dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1
+
         Explain-Concept -Concept "API Versioning and Documentation" -Explanation @"
 Production APIs need proper versioning and documentation:
 • API versioning for backward compatibility
@@ -976,11 +976,6 @@ Production APIs need proper versioning and documentation:
             Write-ColorOutput "Controllers directory not found. Run previous exercises first." -Color Red
             exit 1
         }
-
-        # Add versioning packages
-        Write-ColorOutput "Adding API versioning packages..." -Color Cyan
-        dotnet add package Microsoft.AspNetCore.Mvc.Versioning --version 5.1.0
-        dotnet add package Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer --version 5.1.0
 
         Write-ColorOutput "Exercise 3 setup complete!" -Color Green
         Write-ColorOutput "Advanced features added:" -Color Yellow

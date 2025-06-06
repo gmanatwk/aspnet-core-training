@@ -410,20 +410,38 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         rm -f WeatherForecast.cs Controllers/WeatherForecastController.cs
 
         # Add required packages first
-        echo -e "${CYAN}Adding Entity Framework and API versioning packages...${NC}"
+        echo -e "${CYAN}Adding Entity Framework packages...${NC}"
         dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 > /dev/null 2>&1
         dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.11 > /dev/null 2>&1
         dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.11 > /dev/null 2>&1
-        dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11 > /dev/null 2>&1
-        dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
-        dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
         echo -e "${GREEN}✅ Required packages installed${NC}"
 
-        # Enable XML documentation generation
+        # Enable XML documentation generation by recreating the .csproj file
         echo -e "${CYAN}Configuring XML documentation...${NC}"
-        sed -i.bak '/<PropertyGroup>/a\
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>\
-    <NoWarn>$(NoWarn);1591</NoWarn>' RestfulAPI.csproj
+        cat > RestfulAPI.csproj << 'EOF'
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.16" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+</Project>
+EOF
         echo -e "${GREEN}✅ XML documentation enabled${NC}"
 
         # Create launchSettings.json to ensure consistent port
@@ -448,29 +466,11 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         create_file_interactive "Program.cs" \
 'using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
-using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
-
-// Add API Versioning
-builder.Services.AddApiVersioning(opt =>
-{
-    opt.DefaultApiVersion = new ApiVersion(1, 0);
-    opt.AssumeDefaultVersionWhenUnspecified = true;
-    opt.ApiVersionReader = ApiVersionReader.Combine(
-        new UrlSegmentApiVersionReader(),
-        new QueryStringApiVersionReader("version"),
-        new HeaderApiVersionReader("X-Version"),
-        new MediaTypeApiVersionReader("ver")
-    );
-}).AddApiExplorer(setup =>
-{
-    setup.GroupNameFormat = "'v'VVV";
-    setup.SubstituteApiVersionInUrl = true;
-});
 
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -534,7 +534,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();' \
-"Program.cs with Entity Framework, API versioning, and development-friendly configuration"
+"Program.cs with Entity Framework and development-friendly configuration"
     fi
     
     explain_concept "Models (Domain Entities)" \
@@ -1210,7 +1210,14 @@ Your Products API is now complete and ready for Exercise 2, where you will add a
     
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
     # Exercise 2: Add Authentication
-    
+
+    # Add authentication packages
+    echo -e "${CYAN}Adding authentication packages...${NC}"
+    dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11 > /dev/null 2>&1
+    dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11 > /dev/null 2>&1
+    dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
+    echo -e "${GREEN}✅ Authentication packages installed${NC}"
+
     explain_concept "JWT Authentication" \
 "JWT (JSON Web Tokens) provide stateless authentication:
 • Client sends credentials to login endpoint
@@ -1218,7 +1225,7 @@ elif [[ $EXERCISE_NAME == "exercise02" ]]; then
 • Client includes token in Authorization header
 • Server validates token on each request
 • Tokens contain claims (user info, roles, etc.)"
-    
+
     echo -e "${CYAN}Adding authentication to your existing API...${NC}"
     
     create_file_interactive "Models/Auth/User.cs" \
@@ -1687,14 +1694,21 @@ public class ProductsController : ControllerBase
     
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     # Exercise 3: Versioning & Documentation
-    
+
+    # Add versioning packages
+    echo -e "${CYAN}Adding API versioning packages...${NC}"
+    dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
+    dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
+    dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1 > /dev/null 2>&1
+    echo -e "${GREEN}✅ Versioning packages installed${NC}"
+
     explain_concept "API Versioning" \
 "API versioning allows multiple versions to coexist:
 • Maintains backward compatibility
 • Allows gradual migration
 • Common strategies: URL path, query string, headers
 • Each version can have different features"
-    
+
     echo -e "${CYAN}Adding versioning and documentation to your API...${NC}"
     
     create_file_interactive "Controllers/V1/ProductsV1Controller.cs" \
@@ -2077,13 +2091,6 @@ app.MapHealthChecks("/health");
 - Health: https://localhost:5001/health
 - Swagger: https://localhost:5001/swagger' \
 "Complete guide for implementing API versioning"
-    
-    # Install packages
-    echo -e "${CYAN}Installing versioning packages...${NC}"
-    dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
-    dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
-    dotnet add package Swashbuckle.AspNetCore.Annotations --version 6.8.1 > /dev/null 2>&1
-    echo -e "${GREEN}✅ Versioning packages installed${NC}"
 fi
 
 echo ""
