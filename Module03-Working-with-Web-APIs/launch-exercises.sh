@@ -419,6 +419,13 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
         echo -e "${GREEN}✅ Required packages installed${NC}"
 
+        # Enable XML documentation generation
+        echo -e "${CYAN}Configuring XML documentation...${NC}"
+        sed -i.bak '/<PropertyGroup>/a\
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>\
+    <NoWarn>$(NoWarn);1591</NoWarn>' RestfulAPI.csproj
+        echo -e "${GREEN}✅ XML documentation enabled${NC}"
+
         # Create launchSettings.json to ensure consistent port
         create_file_interactive "Properties/launchSettings.json" \
 '{
@@ -474,6 +481,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Products API", Version = "v1" });
+
+    // Include XML comments for better documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
 // Add CORS for development

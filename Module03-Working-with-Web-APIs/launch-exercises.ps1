@@ -336,14 +336,10 @@ RESTful APIs follow REST principles:
 
         if (-not $SKIP_PROJECT_CREATION) {
             Write-ColorOutput "Creating RestfulAPI project structure..." -Color Cyan
-            New-Item -ItemType Directory -Path "$PROJECT_NAME" -Force | Out-Null
-            Set-Location $PROJECT_NAME
+            # Create .NET Web API project directly
+            dotnet new webapi --framework net8.0 --name RestfulAPI --force
+            Set-Location RestfulAPI
         }
-
-        # Create .NET Web API project
-        Write-ColorOutput "Creating .NET 8.0 Web API project..." -Color Cyan
-        dotnet new webapi --framework net8.0 --name RestfulAPI --force
-        Set-Location RestfulAPI
 
         # Remove default files
         Remove-Item -Force WeatherForecast.cs, Controllers/WeatherForecastController.cs -ErrorAction SilentlyContinue
@@ -401,6 +397,10 @@ namespace RestfulAPI.Models
         public decimal Price { get; set; }
 
         [Required]
+        [StringLength(100)]
+        public string Category { get; set; } = string.Empty;
+
+        [Required]
         [StringLength(50)]
         public string Sku { get; set; } = string.Empty;
 
@@ -438,9 +438,9 @@ namespace RestfulAPI.Data
 
             // Seed data
             modelBuilder.Entity<Product>().HasData(
-                new Product { Id = 1, Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Sku = "LAP001", StockQuantity = 10 },
-                new Product { Id = 2, Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Sku = "MOU001", StockQuantity = 50 },
-                new Product { Id = 3, Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Sku = "KEY001", StockQuantity = 25 }
+                new Product { Id = 1, Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Category = "Electronics", Sku = "LAP001", StockQuantity = 10 },
+                new Product { Id = 2, Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Category = "Accessories", Sku = "MOU001", StockQuantity = 50 },
+                new Product { Id = 3, Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Category = "Accessories", Sku = "KEY001", StockQuantity = 25 }
             );
         }
     }
@@ -468,8 +468,8 @@ namespace RestfulAPI.DTOs
         public decimal Price { get; init; }
 
         [Required]
-        [StringLength(50, MinimumLength = 1)]
-        public string Sku { get; init; } = string.Empty;
+        [StringLength(100, MinimumLength = 1)]
+        public string Category { get; init; } = string.Empty;
 
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; init; }
@@ -494,6 +494,10 @@ namespace RestfulAPI.DTOs
         [Required]
         [Range(0.01, double.MaxValue)]
         public decimal Price { get; init; }
+
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string Category { get; init; } = string.Empty;
 
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; init; }
@@ -604,6 +608,7 @@ namespace RestfulAPI.Controllers
                 Name = createDto.Name,
                 Description = createDto.Description,
                 Price = createDto.Price,
+                Category = createDto.Category,
                 Sku = createDto.Sku,
                 StockQuantity = createDto.StockQuantity,
                 IsActive = createDto.IsActive ?? true,
@@ -648,6 +653,7 @@ namespace RestfulAPI.Controllers
             product.Name = updateDto.Name;
             product.Description = updateDto.Description;
             product.Price = updateDto.Price;
+            product.Category = updateDto.Category;
             product.Sku = updateDto.Sku;
             product.StockQuantity = updateDto.StockQuantity;
             product.IsActive = updateDto.IsActive ?? product.IsActive;
