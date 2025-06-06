@@ -83,11 +83,11 @@ function Show-ExerciseInfo {
         }
         "exercise02" {
             Write-Host "Building on Exercise 1, you will add:" -ForegroundColor Cyan
-            Write-Host "  👥 1. Role-based authorization to your JWT API"
-            Write-Host "  👥 2. Multiple user roles (Admin, Manager, User)"
-            Write-Host "  👥 3. [Authorize(Roles = \"...\")] attributes"
-            Write-Host "  👥 4. Role-based endpoint protection"
-            Write-Host "  👥 5. Testing role-based access control"
+            Write-Host "  1. Role-based authorization to your JWT API"
+            Write-Host "  2. Multiple user roles (Admin, Manager, User)"
+            Write-Host "  3. [Authorize(Roles = `"...`")] attributes"
+            Write-Host "  4. Role-based endpoint protection"
+            Write-Host "  5. Testing role-based access control"
             Write-Host ""
             Write-Host "New concepts:" -ForegroundColor Yellow
             Write-Host "  • Role claims in JWT tokens"
@@ -97,11 +97,11 @@ function Show-ExerciseInfo {
         }
         "exercise03" {
             Write-Host "Advanced authorization with custom policies:" -ForegroundColor Cyan
-            Write-Host "  📋 1. Custom authorization requirements"
-            Write-Host "  📋 2. Authorization handlers implementation"
-            Write-Host "  📋 3. Complex policy-based authorization"
-            Write-Host "  📋 4. Resource-based authorization"
-            Write-Host "  📋 5. Advanced security scenarios"
+            Write-Host "  1. Custom authorization requirements"
+            Write-Host "  2. Authorization handlers implementation"
+            Write-Host "  3. Complex policy-based authorization"
+            Write-Host "  4. Resource-based authorization"
+            Write-Host "  5. Advanced security scenarios"
             Write-Host ""
             Write-Host "Professional concepts:" -ForegroundColor Yellow
             Write-Host "  • Custom authorization policies"
@@ -122,22 +122,22 @@ function Show-ProjectStructure {
     
     switch ($ExerciseNum) {
         "exercise01" {
-            Write-Host "🎯 Exercise 01: Complete JWT Authentication API" -ForegroundColor Green
+            Write-Host "Exercise 01: Complete JWT Authentication API" -ForegroundColor Green
             Write-Host ""
-            Write-Host "📋 What you'll build:" -ForegroundColor Yellow
-            Write-Host "  ✅ Complete JWT authentication system"
-            Write-Host "  ✅ Secure login and registration endpoints"
-            Write-Host "  ✅ Protected API endpoints with JWT validation"
-            Write-Host "  ✅ User management with in-memory store"
-            Write-Host "  ✅ Interactive demo web interface"
-            Write-Host "  ✅ Comprehensive error handling"
-            Write-Host "  ✅ Swagger documentation with JWT support"
+            Write-Host "What you'll build:" -ForegroundColor Yellow
+            Write-Host "  - Complete JWT authentication system"
+            Write-Host "  - Secure login and registration endpoints"
+            Write-Host "  - Protected API endpoints with JWT validation"
+            Write-Host "  - User management with in-memory store"
+            Write-Host "  - Interactive demo web interface"
+            Write-Host "  - Comprehensive error handling"
+            Write-Host "  - Swagger documentation with JWT support"
             Write-Host ""
-            Write-Host "🚀 RECOMMENDED: Use the Complete Working Example" -ForegroundColor Blue
-            Write-Host "  cd SourceCode/JwtAuthenticationAPI && dotnet run" -ForegroundColor Cyan
+            Write-Host "RECOMMENDED: Use the Complete Working Example" -ForegroundColor Blue
+            Write-Host "  cd SourceCode/JwtAuthenticationAPI; dotnet run" -ForegroundColor Cyan
             Write-Host "  Then visit: http://localhost:5000 for interactive demo" -ForegroundColor Cyan
             Write-Host ""
-            Write-Host "📁 Complete Project Structure:" -ForegroundColor Green
+            Write-Host "Complete Project Structure:" -ForegroundColor Green
             Write-Host "  JwtAuthenticationAPI/"
             Write-Host "  ├── Controllers/"
             Write-Host "  │   ├── AuthController.cs       # Login, register, profile endpoints" -ForegroundColor Yellow
@@ -232,7 +232,7 @@ switch ($Exercise) {
         Write-Info "For complete implementation, please refer to the SourceCode/JwtAuthenticationAPI directory."
         
         # Create basic project structure files
-        Set-Content -Path "Models/AuthModels.cs" -Value @"
+        $authModelsContent = @'
 using System.ComponentModel.DataAnnotations;
 
 namespace JwtAuthenticationAPI.Models;
@@ -260,7 +260,9 @@ public class User
     public List<string> Roles { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
-"@
+'@
+
+        Set-Content -Path "Models/AuthModels.cs" -Value $authModelsContent
         
         Write-Status "Created basic project structure"
         Write-Info "For complete implementation, copy files from SourceCode/JwtAuthenticationAPI"
