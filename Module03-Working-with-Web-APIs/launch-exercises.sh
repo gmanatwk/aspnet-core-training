@@ -1556,21 +1556,44 @@ Add JWT configuration:
 }
 ```
 
-## Update BooksController
-Add authentication:
+## Update ProductsController
+Add authentication to protect certain endpoints:
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
 
-[Authorize] // Add this to require authentication
+// Add to the top of your ProductsController class
 [ApiController]
 [Route("api/[controller]")]
-public class BooksController : ControllerBase
+[Produces("application/json")]
+public class ProductsController : ControllerBase
 {
-    // Make GET endpoints public:
+    // Keep GET endpoints public for browsing:
     [HttpGet]
     [AllowAnonymous]
-    public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
+    public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(...)
+    {
+        // Existing implementation
+    }
+
+    // Protect create/update/delete operations:
+    [HttpPost]
+    [Authorize] // Require authentication for creating products
+    public async Task<ActionResult<ProductDto>> CreateProduct(...)
+    {
+        // Existing implementation
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")] // Only admins can update
+    public async Task<IActionResult> UpdateProduct(...)
+    {
+        // Existing implementation
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")] // Only admins can delete
+    public async Task<IActionResult> DeleteProduct(...)
     {
         // Existing implementation
     }
@@ -1602,10 +1625,82 @@ elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     
     echo -e "${CYAN}Adding versioning and documentation to your API...${NC}"
     
-    create_file_interactive "Controllers/V2/BooksV2Controller.cs" \
+    create_file_interactive "Controllers/V1/ProductsV1Controller.cs" \
 'using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
 using RestfulAPI.Models;
+using RestfulAPI.DTOs;
+using RestfulAPI.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace RestfulAPI.Controllers.V1
+{
+    [ApiVersion("1.0")]
+    [ApiController]
+    [Route("api/v{version:apiVersion}/products")]
+    [Produces("application/json")]
+    public class ProductsV1Controller : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsV1Controller> _logger;
+
+        public ProductsV1Controller(ApplicationDbContext context, ILogger<ProductsV1Controller> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get all products (V1 - basic filtering)
+        /// </summary>
+        [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<ProductDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
+            [FromQuery] string? category = null,
+            [FromQuery] string? name = null)
+        {
+            _logger.LogInformation("V1 API: Getting products with basic filters");
+
+            var query = _context.Products.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                query = query.Where(p => p.Category.Contains(category));
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(p => p.Name.Contains(name));
+            }
+
+            var products = await query
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(products);
+        }
+    }
+}' \
+"Version 1 of the Products API (basic functionality)"
+
+    create_file_interactive "Controllers/V2/ProductsV2Controller.cs" \
+'using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using RestfulAPI.Models;
+using RestfulAPI.DTOs;
 using RestfulAPI.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -1613,42 +1708,124 @@ namespace RestfulAPI.Controllers.V2
 {
     [ApiVersion("2.0")]
     [ApiController]
-    [Route("api/v{version:apiVersion}/books")]
-    public class BooksV2Controller : ControllerBase
+    [Route("api/v{version:apiVersion}/products")]
+    [Produces("application/json")]
+    public class ProductsV2Controller : ControllerBase
     {
-        private readonly LibraryContext _context;
-        
-        public BooksV2Controller(LibraryContext context)
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsV2Controller> _logger;
+
+        public ProductsV2Controller(ApplicationDbContext context, ILogger<ProductsV2Controller> logger)
         {
             _context = context;
+            _logger = logger;
         }
-        
+
+        /// <summary>
+        /// Get all products with pagination (V2 enhancement)
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetBooks(
-            [FromQuery] int page = 1, 
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetProducts(
+            [FromQuery] string? category = null,
+            [FromQuery] string? name = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
-            // V2 adds pagination support
-            var totalItems = await _context.Books.CountAsync();
-            var books = await _context.Books
+            _logger.LogInformation("V2 API: Getting products with pagination and advanced filters");
+
+            var query = _context.Products.AsQueryable();
+
+            // Apply filters
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                query = query.Where(p => p.Category.Contains(category));
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(p => p.Name.Contains(name));
+            }
+
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= maxPrice.Value);
+            }
+
+            // Get total count for pagination
+            var totalItems = await query.CountAsync();
+
+            // Apply pagination
+            var products = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Category = p.Category,
+                    StockQuantity = p.StockQuantity,
+                    Sku = p.Sku,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .ToListAsync();
-            
-            return Ok(new 
-            { 
+
+            // V2 returns paginated response with metadata
+            return Ok(new
+            {
                 page = page,
                 pageSize = pageSize,
                 totalItems = totalItems,
                 totalPages = (int)Math.Ceiling(totalItems / (double)pageSize),
-                items = books
+                hasNextPage = page < (int)Math.Ceiling(totalItems / (double)pageSize),
+                hasPreviousPage = page > 1,
+                items = products
             });
         }
-        
-        // TODO: Implement other methods with V2 enhancements
+
+        /// <summary>
+        /// Get product statistics (V2 exclusive feature)
+        /// </summary>
+        [HttpGet("statistics")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetProductStatistics()
+        {
+            var stats = await _context.Products
+                .GroupBy(p => p.Category)
+                .Select(g => new
+                {
+                    Category = g.Key,
+                    Count = g.Count(),
+                    AveragePrice = g.Average(p => p.Price),
+                    TotalStock = g.Sum(p => p.StockQuantity)
+                })
+                .ToListAsync();
+
+            var totalProducts = await _context.Products.CountAsync();
+            var totalValue = await _context.Products.SumAsync(p => p.Price * p.StockQuantity);
+
+            return Ok(new
+            {
+                TotalProducts = totalProducts,
+                TotalInventoryValue = totalValue,
+                CategoryBreakdown = stats
+            });
+        }
     }
 }' \
-"Version 2 of the Books API with pagination support"
+"Version 2 of the Products API with pagination and enhanced features"
     
     explain_concept "Swagger Documentation" \
 "Swagger/OpenAPI provides interactive API documentation:

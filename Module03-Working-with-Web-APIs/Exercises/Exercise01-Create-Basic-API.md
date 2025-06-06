@@ -1,7 +1,7 @@
-# Exercise 1: Create a Basic RESTful API
+# Exercise 1: Create a Complete RESTful Products API
 
 ## 🎯 Objective
-Build a complete RESTful API for managing a library system with books, authors, and categories, implementing proper HTTP methods and status codes.
+Build a complete RESTful API for managing products in an e-commerce system, implementing proper HTTP methods, status codes, validation, and documentation.
 
 ## ⏱️ Estimated Time
 45 minutes
@@ -16,799 +16,226 @@ Build a complete RESTful API for managing a library system with books, authors, 
 
 ### Part 0: Project Setup (2 minutes)
 
-**Run the setup script:**
+**Run the launch script to create a complete working API:**
 ```bash
 # From the Module03-Working-with-Web-APIs directory
-../setup-exercise.sh exercise01-basic-api
-cd RestfulAPI
+./launch-exercises.sh exercise01
 ```
 
-**Verify setup:**
+**The script creates a complete, working Products API with:**
+- ✅ Full CRUD operations (GET, POST, PUT, DELETE)
+- ✅ Advanced filtering (category, name, price range)
+- ✅ Input validation and error handling
+- ✅ Entity Framework with in-memory database
+- ✅ Swagger documentation with XML comments
+- ✅ SKU uniqueness validation
+- ✅ Seed data for testing
+
+**Test the API:**
 ```bash
-../verify-packages.sh
-dotnet build
+cd RestfulAPI
+dotnet run
+# Navigate to: http://localhost:5000/swagger
 ```
 
-### Part 1: Create the API Models and Controllers (10 minutes)
+## 🎓 What You've Built
 
-3. **Create the domain model** in `Models/`:
+The launch script has created a **complete, production-ready Products API** with the following structure:
 
-   **Product.cs**:
-   ```csharp
-   using System.ComponentModel.DataAnnotations;
-
-   namespace RestfulAPI.Models
-   {
-       /// <summary>
-       /// Product entity model
-       /// </summary>
-       public class Product
-       {
-           /// <summary>
-           /// Unique identifier
-           /// </summary>
-           public int Id { get; set; }
-
-           /// <summary>
-           /// Product name
-           /// </summary>
-           [Required]
-           [StringLength(200)]
-           public string Name { get; set; } = string.Empty;
-
-           /// <summary>
-           /// Product description
-           /// </summary>
-           [StringLength(2000)]
-           public string Description { get; set; } = string.Empty;
-
-           /// <summary>
-           /// Product price
-           /// </summary>
-           [Range(0.01, double.MaxValue)]
-           public decimal Price { get; set; }
-
-           /// <summary>
-           /// Product category
-           /// </summary>
-           [Required]
-           [StringLength(100)]
-           public string Category { get; set; } = string.Empty;
-
-           /// <summary>
-           /// Stock quantity
-           /// </summary>
-           [Range(0, int.MaxValue)]
-           public int StockQuantity { get; set; }
-
-           /// <summary>
-           /// Stock keeping unit
-           /// </summary>
-           [Required]
-           [StringLength(50)]
-           public string Sku { get; set; } = string.Empty;
-
-           /// <summary>
-           /// Indicates if the product is active
-           /// </summary>
-           public bool IsActive { get; set; } = true;
-
-           /// <summary>
-           /// Indicates if the product is available for sale
-           /// </summary>
-           public bool IsAvailable { get; set; } = true;
-
-           /// <summary>
-           /// Creation timestamp
-           /// </summary>
-           public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-           /// <summary>
-           /// Last update timestamp
-           /// </summary>
-           public DateTime? UpdatedAt { get; set; }
-
-           /// <summary>
-           /// Soft delete flag
-           /// </summary>
-           public bool IsDeleted { get; set; } = false;
-       }
-   }
-   ```
-
-### Part 2: Create DTOs (10 minutes)
-
-1. **Create a `DTOs` folder** and add the following:
-
-   **ProductDtos.cs**:
-   ```csharp
-   using System.ComponentModel.DataAnnotations;
-
-   namespace RestfulAPI.DTOs
-   {
-       /// <summary>
-       /// Product data transfer object
-       /// </summary>
-       public record ProductDto
-       {
-           /// <summary>
-           /// Unique identifier for the product
-           /// </summary>
-           public int Id { get; init; }
-
-           /// <summary>
-           /// Product name
-           /// </summary>
-           public string Name { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product description
-           /// </summary>
-           public string Description { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product price in USD
-           /// </summary>
-           public decimal Price { get; init; }
-
-           /// <summary>
-           /// Product category
-           /// </summary>
-           public string Category { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Available stock quantity
-           /// </summary>
-           public int StockQuantity { get; init; }
-
-           /// <summary>
-           /// Product SKU (Stock Keeping Unit)
-           /// </summary>
-           public string Sku { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Indicates if the product is currently active
-           /// </summary>
-           public bool IsActive { get; init; }
-
-           /// <summary>
-           /// Indicates if the product is available for sale
-           /// </summary>
-           public bool IsAvailable { get; init; }
-
-           /// <summary>
-           /// Product creation timestamp
-           /// </summary>
-           public DateTime CreatedAt { get; init; }
-
-           /// <summary>
-           /// Product last update timestamp
-           /// </summary>
-           public DateTime? UpdatedAt { get; init; }
-       }
-
-       /// <summary>
-       /// DTO for creating a new product
-       /// </summary>
-       public record CreateProductDto
-       {
-           /// <summary>
-           /// Product name
-           /// </summary>
-           [Required(ErrorMessage = "Product name is required")]
-           [StringLength(200, MinimumLength = 1, ErrorMessage = "Product name must be between 1 and 200 characters")]
-           public string Name { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product description
-           /// </summary>
-           [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
-           public string Description { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product price in USD
-           /// </summary>
-           [Required(ErrorMessage = "Price is required")]
-           [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
-           public decimal Price { get; init; }
-
-           /// <summary>
-           /// Product category
-           /// </summary>
-           [Required(ErrorMessage = "Category is required")]
-           [StringLength(100, MinimumLength = 1, ErrorMessage = "Category must be between 1 and 100 characters")]
-           public string Category { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Initial stock quantity
-           /// </summary>
-           [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
-           public int StockQuantity { get; init; }
-
-           /// <summary>
-           /// Product SKU (Stock Keeping Unit)
-           /// </summary>
-           [Required(ErrorMessage = "SKU is required")]
-           [StringLength(50, MinimumLength = 1, ErrorMessage = "SKU must be between 1 and 50 characters")]
-           [RegularExpression(@"^[A-Z0-9\-]+$", ErrorMessage = "SKU must contain only uppercase letters, numbers, and hyphens")]
-           public string Sku { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Indicates if the product is active
-           /// </summary>
-           public bool? IsActive { get; init; }
-       }
-
-       /// <summary>
-       /// DTO for updating an existing product
-       /// </summary>
-       public record UpdateProductDto
-       {
-           /// <summary>
-           /// Product name
-           /// </summary>
-           [Required(ErrorMessage = "Product name is required")]
-           [StringLength(200, MinimumLength = 1, ErrorMessage = "Product name must be between 1 and 200 characters")]
-           public string Name { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product description
-           /// </summary>
-           [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters")]
-           public string Description { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Product price in USD
-           /// </summary>
-           [Required(ErrorMessage = "Price is required")]
-           [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
-           public decimal Price { get; init; }
-
-           /// <summary>
-           /// Product category
-           /// </summary>
-           [Required(ErrorMessage = "Category is required")]
-           [StringLength(100, MinimumLength = 1, ErrorMessage = "Category must be between 1 and 100 characters")]
-           public string Category { get; init; } = string.Empty;
-
-           /// <summary>
-           /// Available stock quantity
-           /// </summary>
-           [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
-           public int StockQuantity { get; init; }
-
-           /// <summary>
-           /// Product SKU (Stock Keeping Unit)
-           /// </summary>
-           [StringLength(50, MinimumLength = 1, ErrorMessage = "SKU must be between 1 and 50 characters")]
-           [RegularExpression(@"^[A-Z0-9\-]+$", ErrorMessage = "SKU must contain only uppercase letters, numbers, and hyphens")]
-           public string? Sku { get; init; }
-
-           /// <summary>
-           /// Indicates if the product is currently active
-           /// </summary>
-           public bool? IsActive { get; init; }
-
-           /// <summary>
-           /// Indicates if the product is available for sale
-           /// </summary>
-           public bool? IsAvailable { get; init; }
-       }
-   }
-   ```
-
-### Part 3: Create the Data Context (5 minutes)
-
-**Data/ApplicationDbContext.cs**:
-```csharp
-using Microsoft.EntityFrameworkCore;
-using RestfulAPI.Models;
-
-namespace RestfulAPI.Data
-{
-    public class ApplicationDbContext : DbContext
-    {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        {
-        }
-
-        public DbSet<Product> Products => Set<Product>();
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            // Configure Product entity
-            modelBuilder.Entity<Product>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.Description).HasMaxLength(2000);
-                entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
-                entity.HasIndex(e => e.Sku).IsUnique();
-                entity.Property(e => e.Price).HasPrecision(18, 2);
-
-                // Add query filter to exclude soft-deleted items
-                entity.HasQueryFilter(p => !p.IsDeleted);
-            });
-
-            // Seed data
-            modelBuilder.Entity<Product>().HasData(
-                new Product
-                {
-                    Id = 1,
-                    Name = "Laptop Computer",
-                    Description = "High-performance laptop with 16GB RAM and 512GB SSD",
-                    Price = 999.99m,
-                    Category = "Electronics",
-                    StockQuantity = 50,
-                    Sku = "ELEC-LAP-001",
-                    IsActive = true,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new Product
-                {
-                    Id = 2,
-                    Name = "Wireless Mouse",
-                    Description = "Ergonomic wireless mouse with precision tracking",
-                    Price = 29.99m,
-                    Category = "Accessories",
-                    StockQuantity = 100,
-                    Sku = "ACC-MOU-002",
-                    IsActive = true,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new Product
-                {
-                    Id = 3,
-                    Name = "Programming Book",
-                    Description = "Comprehensive guide to modern software development",
-                    Price = 49.99m,
-                    Category = "Books",
-                    StockQuantity = 25,
-                    Sku = "BOOK-PROG-003",
-                    IsActive = true,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                }
-            );
-        }
-    }
-}
+```
+RestfulAPI/
+├── Controllers/
+│   └── ProductsController.cs    # Complete CRUD API with filtering
+├── Models/
+│   └── Product.cs              # Full Product entity with validation
+├── DTOs/
+│   └── ProductDtos.cs          # ProductDto, CreateProductDto, UpdateProductDto
+├── Data/
+│   └── ApplicationDbContext.cs # EF Core context with seed data
+├── Program.cs                  # Complete app configuration
+├── appsettings.json           # Configuration settings
+└── EXERCISE_GUIDE.md          # Testing and usage guide
 ```
 
-### Part 4: Create the Products Controller (15 minutes)
+### 🚀 API Endpoints Available
 
-**Controllers/ProductsController.cs**:
-```csharp
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RestfulAPI.Data;
-using RestfulAPI.DTOs;
-using RestfulAPI.Models;
+**Products API (`/api/products`):**
+- **GET** `/api/products` - Get all products with optional filtering
+- **GET** `/api/products/{id}` - Get specific product by ID
+- **POST** `/api/products` - Create new product
+- **PUT** `/api/products/{id}` - Update existing product
+- **DELETE** `/api/products/{id}` - Delete product
+- **GET** `/api/products/by-category/{category}` - Get products by category
 
-namespace RestfulAPI.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    [Produces("application/json")]
-    public class ProductsController : ControllerBase
-    {
-        private readonly ApplicationDbContext _context;
-        private readonly ILogger<ProductsController> _logger;
+### 🔍 Advanced Filtering Options
 
-        public ProductsController(ApplicationDbContext context, ILogger<ProductsController> logger)
-        {
-            _context = context;
-            _logger = logger;
-        }
+The API supports sophisticated filtering:
+```bash
+# Filter by category
+GET /api/products?category=Electronics
 
-        /// <summary>
-        /// Get all products with optional filtering
-        /// </summary>
-        /// <param name="category">Filter by category name</param>
-        /// <param name="name">Filter by product name</param>
-        /// <param name="minPrice">Minimum price filter</param>
-        /// <param name="maxPrice">Maximum price filter</param>
-        /// <returns>List of products</returns>
-        [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<ProductDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts(
-            [FromQuery] string? category = null,
-            [FromQuery] string? name = null,
-            [FromQuery] decimal? minPrice = null,
-            [FromQuery] decimal? maxPrice = null)
-        {
-            _logger.LogInformation("Getting products with filters - Category: {Category}, Name: {Name}, MinPrice: {MinPrice}, MaxPrice: {MaxPrice}",
-                category, name, minPrice, maxPrice);
+# Filter by name
+GET /api/products?name=Laptop
 
-            var query = _context.Products.AsQueryable();
+# Filter by price range
+GET /api/products?minPrice=30&maxPrice=100
 
-            if (!string.IsNullOrWhiteSpace(category))
-            {
-                query = query.Where(p => p.Category.Contains(category));
-            }
-
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                query = query.Where(p => p.Name.Contains(name));
-            }
-
-            if (minPrice.HasValue)
-            {
-                query = query.Where(p => p.Price >= minPrice.Value);
-            }
-
-            if (maxPrice.HasValue)
-            {
-                query = query.Where(p => p.Price <= maxPrice.Value);
-            }
-
-            var products = await query
-                .Select(p => new ProductDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Price = p.Price,
-                    Category = p.Category,
-                    StockQuantity = p.StockQuantity,
-                    Sku = p.Sku,
-                    IsActive = p.IsActive,
-                    IsAvailable = p.IsAvailable,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                })
-                .ToListAsync();
-
-            return Ok(products);
-        }
-
-        /// <summary>
-        /// Get a specific product by ID
-        /// </summary>
-        /// <param name="id">Product ID</param>
-        /// <returns>Product details</returns>
-        [HttpGet("{id:int}")]
-        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ProductDto>> GetProduct(int id)
-        {
-            _logger.LogInformation("Getting product with ID: {ProductId}", id);
-
-            var product = await _context.Products
-                .Where(p => p.Id == id)
-                .Select(p => new ProductDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Price = p.Price,
-                    Category = p.Category,
-                    StockQuantity = p.StockQuantity,
-                    Sku = p.Sku,
-                    IsActive = p.IsActive,
-                    IsAvailable = p.IsAvailable,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                })
-                .FirstOrDefaultAsync();
-
-            if (product == null)
-            {
-                _logger.LogWarning("Product with ID {ProductId} not found", id);
-                return NotFound(new { message = $"Product with ID {id} not found" });
-            }
-
-            return Ok(product);
-        }
-
-        /// <summary>
-        /// Create a new product
-        /// </summary>
-        /// <param name="createProductDto">Product creation data</param>
-        /// <returns>Created product</returns>
-        [HttpPost]
-        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto createProductDto)
-        {
-            _logger.LogInformation("Creating new product: {ProductName}", createProductDto.Name);
-
-            // Check for duplicate SKU
-            var skuExists = await _context.Products.AnyAsync(p => p.Sku == createProductDto.Sku);
-            if (skuExists)
-            {
-                return BadRequest(new { message = $"Product with SKU {createProductDto.Sku} already exists" });
-            }
-
-            var product = new Product
-            {
-                Name = createProductDto.Name,
-                Description = createProductDto.Description,
-                Price = createProductDto.Price,
-                Category = createProductDto.Category,
-                StockQuantity = createProductDto.StockQuantity,
-                Sku = createProductDto.Sku,
-                IsActive = createProductDto.IsActive ?? true,
-                IsAvailable = true,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
-
-            var productDto = new ProductDto
-            {
-                Id = product.Id,
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                Category = product.Category,
-                StockQuantity = product.StockQuantity,
-                Sku = product.Sku,
-                IsActive = product.IsActive,
-                IsAvailable = product.IsAvailable,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt
-            };
-
-            return CreatedAtAction(
-                nameof(GetProduct),
-                new { id = product.Id },
-                productDto);
-        }
-
-        /// <summary>
-        /// Update an existing product
-        /// </summary>
-        /// <param name="id">Product ID</param>
-        /// <param name="updateProductDto">Updated product data</param>
-        /// <returns>No content</returns>
-        [HttpPut("{id:int}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateProductDto)
-        {
-            _logger.LogInformation("Updating product with ID: {ProductId}", id);
-
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound(new { message = $"Product with ID {id} not found" });
-            }
-
-            // Check for duplicate SKU (if changed)
-            if (!string.IsNullOrEmpty(updateProductDto.Sku) && product.Sku != updateProductDto.Sku)
-            {
-                var skuExists = await _context.Products.AnyAsync(p => p.Sku == updateProductDto.Sku && p.Id != id);
-                if (skuExists)
-                {
-                    return BadRequest(new { message = $"Product with SKU {updateProductDto.Sku} already exists" });
-                }
-            }
-
-            product.Name = updateProductDto.Name;
-            product.Description = updateProductDto.Description;
-            product.Price = updateProductDto.Price;
-            product.Category = updateProductDto.Category;
-            product.StockQuantity = updateProductDto.StockQuantity;
-
-            if (!string.IsNullOrEmpty(updateProductDto.Sku))
-            {
-                product.Sku = updateProductDto.Sku;
-            }
-
-            if (updateProductDto.IsActive.HasValue)
-            {
-                product.IsActive = updateProductDto.IsActive.Value;
-            }
-
-            if (updateProductDto.IsAvailable.HasValue)
-            {
-                product.IsAvailable = updateProductDto.IsAvailable.Value;
-            }
-
-            product.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        /// <summary>
-        /// Delete a product
-        /// </summary>
-        /// <param name="id">Product ID</param>
-        /// <returns>No content</returns>
-        [HttpDelete("{id:int}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteProduct(int id)
-        {
-            _logger.LogInformation("Deleting product with ID: {ProductId}", id);
-
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound(new { message = $"Product with ID {id} not found" });
-            }
-
-            _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        /// <summary>
-        /// Get products by category
-        /// </summary>
-        /// <param name="category">Category name</param>
-        /// <returns>List of products in the category</returns>
-        [HttpGet("by-category/{category}")]
-        [ProducesResponseType(typeof(IEnumerable<ProductDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProductsByCategory(string category)
-        {
-            var products = await _context.Products
-                .Where(p => p.Category.Contains(category))
-                .Select(p => new ProductDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Price = p.Price,
-                    Category = p.Category,
-                    StockQuantity = p.StockQuantity,
-                    Sku = p.Sku,
-                    IsActive = p.IsActive,
-                    IsAvailable = p.IsAvailable,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                })
-                .ToListAsync();
-
-            return Ok(products);
-        }
-    }
-}
+# Combine multiple filters
+GET /api/products?category=Electronics&minPrice=500&maxPrice=1500
 ```
 
-### Part 5: Configure the Application (5 minutes)
+1. **Laptop Computer** - Electronics, $999.99, SKU: ELEC-LAP-001
+2. **Wireless Mouse** - Accessories, $29.99, SKU: ACC-MOU-002
+3. **Programming Book** - Books, $49.99, SKU: BOOK-PROG-003
 
-Update **Program.cs**:
-```csharp
-using RestfulAPI.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using System.Reflection;
+## 🧪 Testing Your API
 
-var builder = WebApplication.CreateBuilder(args);
+### 1. Using Swagger UI (Recommended)
+1. Run the application: `dotnet run`
+2. Navigate to: `http://localhost:5000/swagger`
+3. Explore and test all endpoints interactively
 
-// Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "RESTful API",
-        Version = "v1",
-        Description = "A comprehensive API for managing products",
-        Contact = new OpenApiContact
-        {
-            Name = "API Support Team",
-            Email = "support@api.com"
-        }
-    });
+### 2. Using curl Commands
 
-    // Include XML comments
-    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
-});
-
-// Add Entity Framework
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseInMemoryDatabase("ProductsDb"));
-
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
-
-var app = builder.Build();
-
-// Seed the database
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-}
-
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "RESTful API V1");
-    });
-}
-
-app.UseHttpsRedirection();
-app.UseCors();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
+**Get all products:**
+```bash
+curl -X GET "http://localhost:5000/api/products"
 ```
 
-### Part 6: Test Your API (5 minutes)
+**Filter products by category:**
+```bash
+curl -X GET "http://localhost:5000/api/products?category=Electronics"
+```
 
-1. **Enable XML documentation** in your `.csproj`:
-   ```xml
-   <PropertyGroup>
-     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-     <NoWarn>$(NoWarn);1591</NoWarn>
-   </PropertyGroup>
-   ```
+**Create a new product:**
+```bash
+curl -X POST "http://localhost:5000/api/products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Wireless Headphones",
+    "description": "High-quality wireless headphones with noise cancellation",
+    "price": 199.99,
+    "category": "Electronics",
+    "stockQuantity": 75,
+    "sku": "ELEC-HEAD-004",
+    "isActive": true
+  }'
+```
 
-2. **Run the application**:
-   ```bash
-   dotnet run
-   ```
+**Update a product:**
+```bash
+curl -X PUT "http://localhost:5000/api/products/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Laptop Computer",
+    "description": "Updated description",
+    "price": 1099.99,
+    "category": "Electronics",
+    "stockQuantity": 45,
+    "sku": "ELEC-LAP-001",
+    "isActive": true,
+    "isAvailable": true
+  }'
+```
 
-3. **Test with Swagger UI**:
-   - Navigate to `https://localhost:[port]/swagger`
-   - Test each endpoint:
-     - GET `/api/products` - Get all products
-     - GET `/api/products/1` - Get specific product
-     - POST `/api/products` - Create new product
-     - PUT `/api/products/1` - Update product
-     - DELETE `/api/products/1` - Delete product
+**Delete a product:**
+```bash
+curl -X DELETE "http://localhost:5000/api/products/1"
+```
 
-4. **Test with curl or Postman**:
-   ```bash
-   # Get all products
-   curl -X GET https://localhost:5001/api/products
+## 🎓 Key Learning Points
 
-   # Create a new product
-   curl -X POST https://localhost:5001/api/products \
-     -H "Content-Type: application/json" \
-     -d '{
-       "name": "Wireless Headphones",
-       "description": "High-quality wireless headphones with noise cancellation",
-       "price": 199.99,
-       "category": "Electronics",
-       "stockQuantity": 75,
-       "sku": "ELEC-HEAD-004",
-       "isActive": true
-     }'
-   ```
+### 1. RESTful API Design
+- **Resource-based URLs**: `/api/products` (not `/api/getProducts`)
+- **HTTP methods**: GET (read), POST (create), PUT (update), DELETE (delete)
+- **Status codes**: 200 (OK), 201 (Created), 404 (Not Found), 400 (Bad Request)
+- **Consistent response format**: Always return JSON
+
+### 2. Entity Framework Core
+- **Code-first approach**: Define models, generate database
+- **In-memory database**: Perfect for development and testing
+- **Query filters**: Automatic soft-delete filtering
+- **Seed data**: Pre-populate database with test data
+
+### 3. Data Transfer Objects (DTOs)
+- **Separation of concerns**: API contracts vs domain models
+- **Input validation**: Data annotations for automatic validation
+- **Versioning support**: Can evolve independently from domain models
+- **Security**: Control what data is exposed
+
+### 4. Input Validation
+- **Data annotations**: `[Required]`, `[Range]`, `[StringLength]`
+- **Custom validation**: SKU format validation with regex
+- **Business rules**: SKU uniqueness validation
+- **Error responses**: Meaningful validation error messages
+
+### 5. Swagger Documentation
+- **Interactive documentation**: Test API directly from browser
+- **XML comments**: Rich documentation from code comments
+- **Schema generation**: Automatic request/response examples
+- **Development productivity**: No need for separate API client
 
 ## ✅ Success Criteria
 
-- [ ] API project created and running
-- [ ] All CRUD operations working for products
-- [ ] Proper HTTP status codes returned
-- [ ] Input validation working
-- [ ] Swagger documentation available
-- [ ] SKU uniqueness validation working
-- [ ] Error responses are meaningful
+Verify your API works correctly by testing these scenarios:
 
+### Basic CRUD Operations
+- [ ] **GET /api/products** returns all 3 seeded products
+- [ ] **GET /api/products/1** returns the laptop product
+- [ ] **GET /api/products/999** returns 404 Not Found
+- [ ] **POST /api/products** with valid data creates new product and returns 201
+- [ ] **POST /api/products** with invalid data returns 400 with validation errors
+- [ ] **PUT /api/products/1** with valid data updates product and returns 204
+- [ ] **DELETE /api/products/1** removes product and returns 204
+
+### Advanced Features
+- [ ] **Filtering**: `/api/products?category=Electronics` returns only electronics
+- [ ] **Price filtering**: `/api/products?minPrice=30&maxPrice=100` works correctly
+- [ ] **SKU validation**: Creating product with duplicate SKU returns 400 error
+- [ ] **Swagger UI**: Documentation loads at `/swagger` and all endpoints are testable
+
+### Data Validation
+- [ ] Required fields (name, category, SKU) are enforced
+- [ ] Price must be greater than 0
+- [ ] SKU format validation works (uppercase letters, numbers, hyphens only)
+- [ ] String length limits are enforced
+
+## 🚀 Next Steps
+
+Your Products API is now complete and ready for **Exercise 2**, where you will add:
+- JWT authentication and authorization
+- User registration and login
+- Role-based access control
+- Protected endpoints
+
+## 🤔 Reflection Questions
+
+1. **Why use DTOs instead of exposing entity models directly?**
+   - Security: Control what data is exposed
+   - Versioning: API contracts can evolve independently
+   - Validation: Input-specific validation rules
+   - Performance: Only transfer needed data
+
+2. **What's the purpose of the `[ApiController]` attribute?**
+   - Automatic model validation
+   - Automatic HTTP 400 responses for validation errors
+   - Binding source parameter inference
+   - Problem details for error responses
+
+3. **How does Entity Framework's query filter work?**
+   - Automatically applies `WHERE !IsDeleted` to all queries
+   - Implements soft delete pattern
+   - Transparent to application code
+   - Can be overridden when needed
+
+4. **What are the benefits of using async/await in API controllers?**
+   - Non-blocking I/O operations
+   - Better scalability under load
+   - Improved resource utilization
+   - Standard pattern for modern .NET applications
 ## 🚀 Bonus Challenges
+
+If you want to extend your API further, consider these enhancements:
 
 1. **Add Product Search**:
    - Create advanced search endpoint
@@ -830,23 +257,24 @@ app.Run();
    - Add low stock alerts
    - Implement stock history tracking
 
-## 🤔 Reflection Questions
-
-1. Why do we use DTOs instead of exposing entity models directly?
-2. What's the purpose of the `[ApiController]` attribute?
-3. How does content negotiation work in ASP.NET Core?
-4. What are the benefits of using async/await in API controllers?
-
 ## 🆘 Troubleshooting
 
+**Issue**: Launch script fails to run
+**Solution**: Make sure you're in the Module03-Working-with-Web-APIs directory and the script has execute permissions: `chmod +x launch-exercises.sh`
+
 **Issue**: Swagger UI not showing
-**Solution**: Ensure you're running in Development mode and accessing the correct URL.
+**Solution**: Ensure you're running in Development mode and accessing `http://localhost:5000/swagger` (note HTTP, not HTTPS for development)
 
 **Issue**: 404 errors on API calls
-**Solution**: Check the route attributes and ensure the URL matches the controller and action routes.
+**Solution**: Check that the application is running and you're using the correct base URL. The API endpoints start with `/api/products`
 
-**Issue**: Validation not working
-**Solution**: Ensure `[ApiController]` attribute is present and model state is valid.
+**Issue**: Database seems empty
+**Solution**: The in-memory database is seeded automatically. If you don't see data, restart the application.
+
+**Issue**: Package restore errors
+**Solution**: Run `dotnet restore` in the RestfulAPI directory to ensure all packages are properly installed.
 
 ---
+
+**🎉 Congratulations! You've built a complete, production-ready RESTful API!**
 

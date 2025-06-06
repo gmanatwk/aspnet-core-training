@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Authentication Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 10px; width: 100%; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .token-display { background: #f8f9fa; padding: 15px; border-radius: 4px; word-break: break-all; }
+        .response { margin-top: 15px; padding: 15px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .endpoint-btn { margin: 5px; padding: 8px 15px; width: auto; }
+        h1 { text-align: center; color: #333; }
+        h2 { color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 JWT Authentication Demo</h1>
+
+    <div class="container">
+        <div class="section">
+            <h2>Authentication</h2>
+
+            <div class="form-group">
+                <label>Test Users:</label>
+                <p><strong>admin/admin123</strong> (Admin, User roles)</p>
+                <p><strong>manager/manager123</strong> (Manager, User roles)</p>
+                <p><strong>user/user123</strong> (User role)</p>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" value="admin">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="admin123">
+            </div>
+
+            <button onclick="login()">Login</button>
+
+            <div id="loginResponse" class="response" style="display: none;"></div>
+
+            <div id="tokenSection" style="display: none;">
+                <h3>JWT Token:</h3>
+                <div id="tokenDisplay" class="token-display"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>API Testing</h2>
+
+            <div class="form-group">
+                <label>Protected Endpoints:</label>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/auth/profile')">Get Profile</button>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/secure/public')">Public Data</button>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/secure/user-data')">User Data</button>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/secure/claims')">View Claims</button>
+            </div>
+
+            <div class="form-group">
+                <label>Role-Based Endpoints:</label>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/secure/admin')">Admin Only</button>
+                <button class="endpoint-btn" onclick="testEndpoint('/api/secure/manager')">Manager/Admin</button>
+            </div>
+
+            <div id="apiResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="section" style="margin-top: 20px;">
+        <h2>API Documentation</h2>
+        <p><strong>Swagger UI:</strong> <a href="/swagger" target="_blank">Open API Documentation</a></p>
+        <p><strong>Base URL:</strong> <code>http://localhost:5000</code></p>
+
+        <h3>Available Endpoints:</h3>
+        <ul>
+            <li><strong>POST /api/auth/login</strong> - Authenticate and get JWT token</li>
+            <li><strong>POST /api/auth/register</strong> - Register new user</li>
+            <li><strong>GET /api/auth/profile</strong> - Get current user profile (requires auth)</li>
+            <li><strong>GET /api/secure/public</strong> - Public data (requires auth)</li>
+            <li><strong>GET /api/secure/user-data</strong> - User-specific data (requires auth)</li>
+            <li><strong>GET /api/secure/claims</strong> - View JWT claims (requires auth)</li>
+            <li><strong>GET /api/secure/admin</strong> - Admin-only data (requires Admin role)</li>
+            <li><strong>GET /api/secure/manager</strong> - Manager/Admin data (requires Manager or Admin role)</li>
+        </ul>
+    </div>
+
+    <script>
+        let currentToken = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                const responseDiv = document.getElementById('loginResponse');
+
+                if (response.ok && data.success) {
+                    currentToken = data.data.token;
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<strong>Login Successful!</strong><br>
+                        Username: ${data.data.username}<br>
+                        Roles: ${data.data.roles.join(', ')}`;
+
+                    document.getElementById('tokenDisplay').textContent = currentToken;
+                    document.getElementById('tokenSection').style.display = 'block';
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<strong>Login Failed:</strong> ${data.message}`;
+                }
+
+                responseDiv.style.display = 'block';
+            } catch (error) {
+                const responseDiv = document.getElementById('loginResponse');
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                responseDiv.style.display = 'block';
+            }
+        }
+
+        async function testEndpoint(endpoint) {
+            if (!currentToken) {
+                alert('Please login first to get a JWT token');
+                return;
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                const responseDiv = document.getElementById('apiResponse');
+
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<strong>Success (${response.status}):</strong><br>
+                        <strong>Endpoint:</strong> ${endpoint}<br>
+                        <strong>Response:</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<strong>Error (${response.status}):</strong><br>
+                        <strong>Endpoint:</strong> ${endpoint}<br>
+                        <strong>Message:</strong> ${data.message || 'Access denied'}`;
+                }
+
+                responseDiv.style.display = 'block';
+            } catch (error) {
+                const responseDiv = document.getElementById('apiResponse');
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<strong>Network Error:</strong> ${error.message}`;
+                responseDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
