@@ -474,6 +474,10 @@ namespace RestfulAPI.DTOs
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; init; }
 
+        [Required]
+        [StringLength(50, MinimumLength = 1)]
+        public string Sku { get; init; } = string.Empty;
+
         public bool? IsActive { get; init; }
         public bool? IsAvailable { get; init; }
     }
@@ -801,7 +805,7 @@ JSON Web Tokens (JWT) provide stateless authentication:
         New-FileInteractive -FilePath "Models/AuthModels.cs" -Description "Authentication request and response models" -Content @'
 using System.ComponentModel.DataAnnotations;
 
-namespace LibraryAPI.Models
+namespace RestfulAPI.Models
 {
     public class LoginRequest
     {
@@ -827,6 +831,116 @@ namespace LibraryAPI.Models
         public string Email { get; set; } = string.Empty;
         public string Role { get; set; } = "User";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+}
+'@
+
+        # Create JWT Service
+        New-Item -ItemType Directory -Path "Services" -Force | Out-Null
+        New-FileInteractive -FilePath "Services/JwtService.cs" -Description "JWT token generation and validation service" -Content @'
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using RestfulAPI.Models;
+
+namespace RestfulAPI.Services
+{
+    public class JwtService
+    {
+        private readonly IConfiguration _configuration;
+
+        public JwtService(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public string GenerateToken(User user)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long"));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"] ?? "RestfulAPI",
+                audience: _configuration["Jwt:Audience"] ?? "RestfulAPI",
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(24),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+    }
+}
+'@
+
+        # Create Auth Controller
+        New-FileInteractive -FilePath "Controllers/AuthController.cs" -Description "Authentication controller for login and user management" -Content @'
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Data;
+using RestfulAPI.Models;
+using RestfulAPI.Services;
+using System.Security.Claims;
+
+namespace RestfulAPI.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly JwtService _jwtService;
+
+        public AuthController(ApplicationDbContext context, JwtService jwtService)
+        {
+            _context = context;
+            _jwtService = jwtService;
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+
+            if (user == null || user.Password != request.Password) // In production, use proper password hashing
+            {
+                return Unauthorized(new { message = "Invalid username or password" });
+            }
+
+            var token = _jwtService.GenerateToken(user);
+
+            return Ok(new LoginResponse
+            {
+                Token = token,
+                Expiration = DateTime.UtcNow.AddHours(24),
+                Username = user.Username
+            });
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<ActionResult<User>> GetProfile()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new { user.Id, user.Username, user.Email, user.Role });
+        }
     }
 }
 '@
