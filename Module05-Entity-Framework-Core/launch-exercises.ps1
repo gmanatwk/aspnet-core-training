@@ -47,10 +47,10 @@ function Show-FilePreview {
         [string]$Description
     )
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-    Write-Host "📄 Will create: $FilePath" -ForegroundColor Blue
-    Write-Host "📝 Purpose: $Description" -ForegroundColor Yellow
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "[FILE] Will create: $FilePath" -ForegroundColor Blue
+    Write-Host "[PURPOSE] Purpose: $Description" -ForegroundColor Yellow
+    Write-Host "============================================================" -ForegroundColor Cyan
 }
 
 # Function to create file with preview
@@ -79,12 +79,12 @@ function New-FileInteractive {
         
         switch ($Response.ToLower()) {
             "n" {
-                Write-Host "⏭️  Skipped: $FilePath" -ForegroundColor Red
+                Write-Host "[SKIP]  Skipped: $FilePath" -ForegroundColor Red
                 return
             }
             "s" {
                 $script:InteractiveMode = $false
-                Write-Host "📌 Switching to automatic mode..." -ForegroundColor Cyan
+                Write-Host "[PIN] Switching to automatic mode..." -ForegroundColor Cyan
             }
         }
     }
@@ -97,7 +97,7 @@ function New-FileInteractive {
     
     # Write content to file
     $Content | Out-File -FilePath $FilePath -Encoding UTF8
-    Write-Host "✅ Created: $FilePath" -ForegroundColor Green
+    Write-Host "[OK] Created: $FilePath" -ForegroundColor Green
     Write-Host ""
 }
 
@@ -105,53 +105,53 @@ function New-FileInteractive {
 function Show-LearningObjectives {
     param([string]$Exercise)
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
-    Write-Host "🎯 Learning Objectives" -ForegroundColor Magenta
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
+    Write-Host "============================================================" -ForegroundColor Magenta
+    Write-Host "[TARGET] Learning Objectives" -ForegroundColor Magenta
+    Write-Host "============================================================" -ForegroundColor Magenta
     
     switch ($Exercise) {
         "exercise01" {
             Write-Host "In this exercise, you will learn:" -ForegroundColor Cyan
-            Write-Host "  📚 1. Setting up Entity Framework Core with SQL Server" -ForegroundColor White
-            Write-Host "  📚 2. Creating entity models with data annotations" -ForegroundColor White
-            Write-Host "  📚 3. Configuring DbContext with Fluent API" -ForegroundColor White
-            Write-Host "  📚 4. Implementing basic CRUD operations" -ForegroundColor White
+            Write-Host "  [LEARN] 1. Setting up Entity Framework Core with SQL Server" -ForegroundColor White
+            Write-Host "  [LEARN] 2. Creating entity models with data annotations" -ForegroundColor White
+            Write-Host "  [LEARN] 3. Configuring DbContext with Fluent API" -ForegroundColor White
+            Write-Host "  [LEARN] 4. Implementing basic CRUD operations" -ForegroundColor White
             Write-Host ""
             Write-Host "Key concepts:" -ForegroundColor Yellow
-            Write-Host "  • Code-First approach with EF Core" -ForegroundColor White
-            Write-Host "  • Entity relationships and navigation properties" -ForegroundColor White
-            Write-Host "  • Database migrations and seeding" -ForegroundColor White
-            Write-Host "  • Async/await patterns with EF Core" -ForegroundColor White
+            Write-Host "  - Code-First approach with EF Core" -ForegroundColor White
+            Write-Host "  - Entity relationships and navigation properties" -ForegroundColor White
+            Write-Host "  - Database migrations and seeding" -ForegroundColor White
+            Write-Host "  - Async/await patterns with EF Core" -ForegroundColor White
         }
         "exercise02" {
             Write-Host "Building on Exercise 1, you will add:" -ForegroundColor Cyan
-            Write-Host "  🔍 1. Complex LINQ queries with navigation properties" -ForegroundColor White
-            Write-Host "  🔍 2. Advanced filtering and sorting capabilities" -ForegroundColor White
-            Write-Host "  🔍 3. Efficient loading strategies (Include, ThenInclude)" -ForegroundColor White
-            Write-Host "  🔍 4. Query performance optimization" -ForegroundColor White
+            Write-Host "  [SEARCH] 1. Complex LINQ queries with navigation properties" -ForegroundColor White
+            Write-Host "  [SEARCH] 2. Advanced filtering and sorting capabilities" -ForegroundColor White
+            Write-Host "  [SEARCH] 3. Efficient loading strategies (Include, ThenInclude)" -ForegroundColor White
+            Write-Host "  [SEARCH] 4. Query performance optimization" -ForegroundColor White
             Write-Host ""
             Write-Host "Advanced concepts:" -ForegroundColor Yellow
-            Write-Host "  • LINQ query optimization" -ForegroundColor White
-            Write-Host "  • Eager vs Lazy loading" -ForegroundColor White
-            Write-Host "  • Query performance monitoring" -ForegroundColor White
-            Write-Host "  • Database indexing strategies" -ForegroundColor White
+            Write-Host "  - LINQ query optimization" -ForegroundColor White
+            Write-Host "  - Eager vs Lazy loading" -ForegroundColor White
+            Write-Host "  - Query performance monitoring" -ForegroundColor White
+            Write-Host "  - Database indexing strategies" -ForegroundColor White
         }
         "exercise03" {
             Write-Host "Implementing professional patterns:" -ForegroundColor Cyan
-            Write-Host "  🏗️ 1. Repository pattern implementation" -ForegroundColor White
-            Write-Host "  🏗️ 2. Unit of Work pattern" -ForegroundColor White
-            Write-Host "  🏗️ 3. Generic repository with specific implementations" -ForegroundColor White
-            Write-Host "  🏗️ 4. Dependency injection with repositories" -ForegroundColor White
+            Write-Host "  [BUILD] 1. Repository pattern implementation" -ForegroundColor White
+            Write-Host "  [BUILD] 2. Unit of Work pattern" -ForegroundColor White
+            Write-Host "  [BUILD] 3. Generic repository with specific implementations" -ForegroundColor White
+            Write-Host "  [BUILD] 4. Dependency injection with repositories" -ForegroundColor White
             Write-Host ""
             Write-Host "Design patterns:" -ForegroundColor Yellow
-            Write-Host "  • Separation of concerns" -ForegroundColor White
-            Write-Host "  • Testable architecture" -ForegroundColor White
-            Write-Host "  • Clean code principles" -ForegroundColor White
-            Write-Host "  • SOLID principles application" -ForegroundColor White
+            Write-Host "  - Separation of concerns" -ForegroundColor White
+            Write-Host "  - Testable architecture" -ForegroundColor White
+            Write-Host "  - Clean code principles" -ForegroundColor White
+            Write-Host "  - SOLID principles application" -ForegroundColor White
         }
     }
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
+    Write-Host "============================================================" -ForegroundColor Magenta
     Wait-ForUser
 }
 
@@ -159,21 +159,21 @@ function Show-LearningObjectives {
 function Show-CreationOverview {
     param([string]$Exercise)
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-    Write-Host "📋 Overview: What will be created" -ForegroundColor Cyan
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "[OVERVIEW] Overview: What will be created" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
     
     switch ($Exercise) {
         "exercise01" {
-            Write-Host "🎯 Exercise 01: Basic EF Core Setup and CRUD Operations" -ForegroundColor Green
+            Write-Host "[TARGET] Exercise 01: Basic EF Core Setup and CRUD Operations" -ForegroundColor Green
             Write-Host ""
-            Write-Host "📋 What you'll build:" -ForegroundColor Yellow
-            Write-Host "  ✅ BookStore API with Entity Framework Core" -ForegroundColor White
-            Write-Host "  ✅ SQL Server database with Code-First approach" -ForegroundColor White
-            Write-Host "  ✅ Book entity with proper validation and relationships" -ForegroundColor White
-            Write-Host "  ✅ Complete CRUD operations with async patterns" -ForegroundColor White
+            Write-Host "[OVERVIEW] What you'll build:" -ForegroundColor Yellow
+            Write-Host "  [OK] BookStore API with Entity Framework Core" -ForegroundColor White
+            Write-Host "  [OK] SQL Server database with Code-First approach" -ForegroundColor White
+            Write-Host "  [OK] Book entity with proper validation and relationships" -ForegroundColor White
+            Write-Host "  [OK] Complete CRUD operations with async patterns" -ForegroundColor White
             Write-Host ""
-            Write-Host "🚀 RECOMMENDED: Use the Complete Working Example" -ForegroundColor Blue
+            Write-Host "[LAUNCH] RECOMMENDED: Use the Complete Working Example" -ForegroundColor Blue
             Write-Host "  Set-Location SourceCode\EFCoreDemo; dotnet run" -ForegroundColor Cyan
             Write-Host "  Then visit: http://localhost:5000 for the demo interface" -ForegroundColor Cyan
             Write-Host ""
@@ -189,26 +189,26 @@ function Show-CreationOverview {
             Write-Host "  └── appsettings.json            # Connection strings" -ForegroundColor Yellow
         }
         "exercise02" {
-            Write-Host "🎯 Exercise 02: Advanced Querying with LINQ" -ForegroundColor Green
+            Write-Host "[TARGET] Exercise 02: Advanced Querying with LINQ" -ForegroundColor Green
             Write-Host ""
-            Write-Host "📋 Building on Exercise 1:" -ForegroundColor Yellow
-            Write-Host "  ✅ Product and Category entities with relationships" -ForegroundColor White
-            Write-Host "  ✅ Complex LINQ queries with navigation properties" -ForegroundColor White
-            Write-Host "  ✅ Advanced filtering, sorting, and pagination" -ForegroundColor White
-            Write-Host "  ✅ Query performance optimization techniques" -ForegroundColor White
+            Write-Host "[OVERVIEW] Building on Exercise 1:" -ForegroundColor Yellow
+            Write-Host "  [OK] Product and Category entities with relationships" -ForegroundColor White
+            Write-Host "  [OK] Complex LINQ queries with navigation properties" -ForegroundColor White
+            Write-Host "  [OK] Advanced filtering, sorting, and pagination" -ForegroundColor White
+            Write-Host "  [OK] Query performance optimization techniques" -ForegroundColor White
         }
         "exercise03" {
-            Write-Host "🎯 Exercise 03: Repository Pattern Implementation" -ForegroundColor Green
+            Write-Host "[TARGET] Exercise 03: Repository Pattern Implementation" -ForegroundColor Green
             Write-Host ""
-            Write-Host "📋 Professional architecture patterns:" -ForegroundColor Yellow
-            Write-Host "  ✅ Generic repository interface and implementation" -ForegroundColor White
-            Write-Host "  ✅ Specific repositories for entities" -ForegroundColor White
-            Write-Host "  ✅ Unit of Work pattern for transaction management" -ForegroundColor White
-            Write-Host "  ✅ Dependency injection configuration" -ForegroundColor White
+            Write-Host "[OVERVIEW] Professional architecture patterns:" -ForegroundColor Yellow
+            Write-Host "  [OK] Generic repository interface and implementation" -ForegroundColor White
+            Write-Host "  [OK] Specific repositories for entities" -ForegroundColor White
+            Write-Host "  [OK] Unit of Work pattern for transaction management" -ForegroundColor White
+            Write-Host "  [OK] Dependency injection configuration" -ForegroundColor White
         }
     }
     
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
     Wait-ForUser
 }
 
@@ -219,10 +219,10 @@ function Show-Concept {
         [string]$Explanation
     )
     
-    Write-Host "💡 Concept: $ConceptName" -ForegroundColor Magenta
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "[TIP] Concept: $ConceptName" -ForegroundColor Magenta
+    Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host $Explanation -ForegroundColor White
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
     Wait-ForUser
 }
 
@@ -251,7 +251,7 @@ if ($List) {
 }
 
 if (-not $ExerciseName) {
-    Write-Host "❌ Usage: .\launch-exercises.ps1 <exercise-name> [options]" -ForegroundColor Red
+    Write-Host "[ERROR] Usage: .\launch-exercises.ps1 <exercise-name> [options]" -ForegroundColor Red
     Write-Host ""
     Show-Exercises
     exit 1
@@ -262,21 +262,21 @@ $ProjectName = "EFCoreDemo"
 # Validate exercise name
 $ValidExercises = @("exercise01", "exercise02", "exercise03")
 if ($ExerciseName -notin $ValidExercises) {
-    Write-Host "❌ Unknown exercise: $ExerciseName" -ForegroundColor Red
+    Write-Host "[ERROR] Unknown exercise: $ExerciseName" -ForegroundColor Red
     Write-Host ""
     Show-Exercises
     exit 1
 }
 
 # Welcome screen
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
-Write-Host "🚀 Module 5: Entity Framework Core" -ForegroundColor Magenta
+Write-Host "============================================================" -ForegroundColor Magenta
+Write-Host "[LAUNCH] Module 5: Entity Framework Core" -ForegroundColor Magenta
 Write-Host "Exercise: $ExerciseName" -ForegroundColor Magenta
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
+Write-Host "============================================================" -ForegroundColor Magenta
 Write-Host ""
 
 # Show the recommended approach
-Write-Host "🎯 RECOMMENDED APPROACH:" -ForegroundColor Green
+Write-Host "[TARGET] RECOMMENDED APPROACH:" -ForegroundColor Green
 Write-Host "For the best learning experience, use the complete working implementation:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "1. Use the working source code:" -ForegroundColor Yellow
@@ -289,21 +289,21 @@ Write-Host "   Set-Location SourceCode" -ForegroundColor Cyan
 Write-Host "   docker-compose up --build" -ForegroundColor Cyan
 Write-Host "   # Includes SQL Server and demo application" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "⚠️  The template created by this script is basic and may not match" -ForegroundColor Yellow
+Write-Host "[WARNING]  The template created by this script is basic and may not match" -ForegroundColor Yellow
 Write-Host "   all exercise requirements. The SourceCode version is complete!" -ForegroundColor Yellow
 Write-Host ""
 
 if ($InteractiveMode) {
-    Write-Host "🎮 Interactive Mode: ON" -ForegroundColor Yellow
+    Write-Host "[INTERACTIVE] Interactive Mode: ON" -ForegroundColor Yellow
     Write-Host "You'll see what each file does before it's created" -ForegroundColor Cyan
 } else {
-    Write-Host "⚡ Automatic Mode: ON" -ForegroundColor Yellow
+    Write-Host "[AUTO] Automatic Mode: ON" -ForegroundColor Yellow
 }
 
 Write-Host ""
 $Response = Read-Host "Continue with template creation? (y/N)"
 if ($Response -notmatch "^[Yy]$") {
-    Write-Host "💡 Great choice! Use the SourceCode version for the best experience." -ForegroundColor Cyan
+    Write-Host "[TIP] Great choice! Use the SourceCode version for the best experience." -ForegroundColor Cyan
     exit 0
 }
 
@@ -327,7 +327,7 @@ if (Test-Path -Path $ProjectName) {
         Set-Location -Path $ProjectName
         $SkipProjectCreation = $true
     } else {
-        Write-Host "⚠️  Project '$ProjectName' already exists!" -ForegroundColor Yellow
+        Write-Host "[WARNING]  Project '$ProjectName' already exists!" -ForegroundColor Yellow
         $Response = Read-Host "Do you want to overwrite it? (y/N)"
         if ($Response -notmatch "^[Yy]$") {
             exit 1
@@ -345,11 +345,11 @@ if ($ExerciseName -eq "exercise01") {
 
     Show-Concept -ConceptName "Entity Framework Core" -Explanation @"
 Entity Framework Core is a lightweight, extensible ORM for .NET:
-• Code-First approach: Define models in C#, generate database
-• DbContext: Represents a session with the database
-• DbSet<T>: Represents a table in the database
-• Migrations: Version control for your database schema
-• LINQ: Query your database using C# syntax
+- Code-First approach: Define models in C#, generate database
+- DbContext: Represents a session with the database
+- DbSet<T>: Represents a table in the database
+- Migrations: Version control for your database schema
+- LINQ: Query your database using C# syntax
 "@
 
     if (-not $SkipProjectCreation) {
@@ -433,10 +433,10 @@ app.Run();
 
     Show-Concept -ConceptName "Entity Models" -Explanation @"
 Entity models represent your database tables:
-• Properties become database columns
-• Data annotations provide validation and constraints
-• Navigation properties define relationships
-• Fluent API in DbContext provides advanced configuration
+- Properties become database columns
+- Data annotations provide validation and constraints
+- Navigation properties define relationships
+- Fluent API in DbContext provides advanced configuration
 "@
 
     # Create Book entity model
@@ -487,7 +487,7 @@ public class Book
     $ExerciseGuideContent = @'
 # Exercise 1: Basic EF Core Setup and CRUD Operations
 
-## 🎯 Objective
+## [TARGET] Objective
 Set up Entity Framework Core in an ASP.NET Core application and implement basic CRUD operations.
 
 ## ⏱️ Time Allocation
@@ -496,7 +496,7 @@ Set up Entity Framework Core in an ASP.NET Core application and implement basic 
 - Entity and DbContext Creation: 10 minutes
 - CRUD Operations: 10 minutes
 
-## 🚀 Getting Started
+## [LAUNCH] Getting Started
 
 ### Step 1: Run Initial Migration
 ```powershell
@@ -526,12 +526,12 @@ if (book == null)
 return Ok(book);
 ```
 
-## 🧪 Testing Your Implementation
+## [TEST] Testing Your Implementation
 1. Run: `dotnet run`
 2. Navigate to: http://localhost:5000/swagger
 3. Test each endpoint with sample data
 
-## ✅ Success Criteria
+## [OK] Success Criteria
 - [ ] Entity Framework Core is properly configured
 - [ ] Book entity is created with validation
 - [ ] DbContext is configured with Fluent API
@@ -547,7 +547,7 @@ After completing this exercise, move on to Exercise 2 for advanced querying tech
 
     Write-Host "🎉 Exercise 1 template created successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📋 Next steps:" -ForegroundColor Yellow
+    Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
     Write-Host "1. Run: dotnet ef migrations add InitialCreate" -ForegroundColor Cyan
     Write-Host "2. Run: dotnet ef database update" -ForegroundColor Cyan
     Write-Host "3. Run: dotnet run" -ForegroundColor Cyan
@@ -564,5 +564,5 @@ After completing this exercise, move on to Exercise 2 for advanced querying tech
 }
 
 Write-Host ""
-Write-Host "✅ Module 5 Exercise Setup Complete!" -ForegroundColor Green
-Write-Host "Happy coding! 🚀" -ForegroundColor Cyan
+Write-Host "[OK] Module 5 Exercise Setup Complete!" -ForegroundColor Green
+Write-Host "Happy coding! [LAUNCH]" -ForegroundColor Cyan

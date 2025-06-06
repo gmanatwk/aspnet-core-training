@@ -40,10 +40,10 @@ function Preview-File {
         [string]$Description
     )
     
-    Write-ColorOutput ("=" * 60) -Color Cyan
-    Write-ColorOutput "[FILE] Will create: $FilePath" -Color Blue
-    Write-ColorOutput "[PURPOSE] Purpose: $Description" -Color Yellow
-    Write-ColorOutput ("=" * 60) -Color Cyan
+    Write-ColorOutput ("━" * 60) -Color Cyan
+    Write-ColorOutput "📄 Will create: $FilePath" -Color Blue
+    Write-ColorOutput "📝 Purpose: $Description" -Color Yellow
+    Write-ColorOutput ("━" * 60) -Color Cyan
 }
 
 # Function to create file with preview
@@ -72,12 +72,12 @@ function New-FileInteractive {
         
         switch ($response.ToLower()) {
             'n' {
-                Write-ColorOutput "[SKIP]  Skipped: $FilePath" -Color Red
+                Write-ColorOutput "⏭️  Skipped: $FilePath" -Color Red
                 return
             }
             's' {
                 $script:InteractiveMode = $false
-                Write-ColorOutput "[PIN] Switching to automatic mode..." -Color Cyan
+                Write-ColorOutput "📌 Switching to automatic mode..." -Color Cyan
             }
         }
     }
@@ -90,7 +90,7 @@ function New-FileInteractive {
     
     # Write content to file
     Set-Content -Path $FilePath -Value $Content -Encoding UTF8
-    Write-ColorOutput "[OK] Created: $FilePath" -Color Green
+    Write-ColorOutput "✅ Created: $FilePath" -Color Green
     Write-Host ""
 }
 
@@ -101,10 +101,10 @@ function Explain-Concept {
         [string]$Explanation
     )
     
-    Write-ColorOutput "[TIP] Concept: $Concept" -Color Magenta
-    Write-ColorOutput ("=" * 60) -Color Cyan
+    Write-ColorOutput "💡 Concept: $Concept" -Color Magenta
+    Write-ColorOutput ("━" * 60) -Color Cyan
     Write-Host $Explanation
-    Write-ColorOutput ("=" * 60) -Color Cyan
+    Write-ColorOutput ("━" * 60) -Color Cyan
     Pause-ForUser
 }
 
@@ -123,66 +123,66 @@ function Show-Exercises {
 function Show-LearningObjectivesInteractive {
     param([string]$Exercise)
     
-    Write-ColorOutput ("=" * 60) -Color Magenta
-    Write-ColorOutput "[TARGET] Learning Objectives for $Exercise" -Color Magenta
-    Write-ColorOutput ("=" * 60) -Color Magenta
+    Write-ColorOutput ("━" * 60) -Color Magenta
+    Write-ColorOutput "🎯 Learning Objectives for $Exercise" -Color Magenta
+    Write-ColorOutput ("━" * 60) -Color Magenta
     
     switch ($Exercise) {
         "exercise01" {
             Write-ColorOutput "In this exercise, you will learn:" -Color Cyan
-            Write-Host "  [REACT] 1. Setting up React with ASP.NET Core"
-            Write-Host "  [REACT] 2. Creating a React SPA frontend"
-            Write-Host "  [REACT] 3. Configuring development proxy"
-            Write-Host "  [REACT] 4. Basic component structure"
+            Write-Host "  ⚛️ 1. Setting up React with ASP.NET Core"
+            Write-Host "  ⚛️ 2. Creating a React SPA frontend"
+            Write-Host "  ⚛️ 3. Configuring development proxy"
+            Write-Host "  ⚛️ 4. Basic component structure"
             Write-Host ""
             Write-ColorOutput "Key concepts:" -Color Yellow
-            Write-Host "  - React project setup with Vite"
-            Write-Host "  - ASP.NET Core as API backend"
-            Write-Host "  - Development server configuration"
-            Write-Host "  - Component-based architecture"
+            Write-Host "  • React project setup with Vite"
+            Write-Host "  • ASP.NET Core as API backend"
+            Write-Host "  • Development server configuration"
+            Write-Host "  • Component-based architecture"
         }
         "exercise02" {
             Write-ColorOutput "Building on Exercise 1, you will add:" -Color Cyan
-            Write-Host "  [UPDATE] 1. React Router for navigation"
-            Write-Host "  [UPDATE] 2. State management with Context API"
-            Write-Host "  [UPDATE] 3. Form handling and validation"
-            Write-Host "  [UPDATE] 4. Component lifecycle management"
+            Write-Host "  🔄 1. React Router for navigation"
+            Write-Host "  🔄 2. State management with Context API"
+            Write-Host "  🔄 3. Form handling and validation"
+            Write-Host "  🔄 4. Component lifecycle management"
             Write-Host ""
             Write-ColorOutput "Advanced concepts:" -Color Yellow
-            Write-Host "  - Client-side routing"
-            Write-Host "  - Global state management"
-            Write-Host "  - Controlled components"
-            Write-Host "  - Effect hooks and cleanup"
+            Write-Host "  • Client-side routing"
+            Write-Host "  • Global state management"
+            Write-Host "  • Controlled components"
+            Write-Host "  • Effect hooks and cleanup"
         }
         "exercise03" {
             Write-ColorOutput "Integrating with APIs and optimization:" -Color Cyan
-            Write-Host "  [LAUNCH] 1. HTTP client configuration"
-            Write-Host "  [LAUNCH] 2. API integration patterns"
-            Write-Host "  [LAUNCH] 3. Error handling and loading states"
-            Write-Host "  [LAUNCH] 4. Performance optimization"
+            Write-Host "  🚀 1. HTTP client configuration"
+            Write-Host "  🚀 2. API integration patterns"
+            Write-Host "  🚀 3. Error handling and loading states"
+            Write-Host "  🚀 4. Performance optimization"
             Write-Host ""
             Write-ColorOutput "Production concepts:" -Color Yellow
-            Write-Host "  - Fetch API and error handling"
-            Write-Host "  - Loading and error states"
-            Write-Host "  - Code splitting and lazy loading"
-            Write-Host "  - Build optimization"
+            Write-Host "  • Fetch API and error handling"
+            Write-Host "  • Loading and error states"
+            Write-Host "  • Code splitting and lazy loading"
+            Write-Host "  • Build optimization"
         }
         "exercise04" {
             Write-ColorOutput "Docker integration for full-stack development:" -Color Cyan
-            Write-Host "  [DOCKER] 1. Containerizing ASP.NET Core API"
-            Write-Host "  [DOCKER] 2. Containerizing React application"
-            Write-Host "  [DOCKER] 3. Docker Compose for multi-container setup"
-            Write-Host "  [DOCKER] 4. Development and production configurations"
+            Write-Host "  🐳 1. Containerizing ASP.NET Core API"
+            Write-Host "  🐳 2. Containerizing React application"
+            Write-Host "  🐳 3. Docker Compose for multi-container setup"
+            Write-Host "  🐳 4. Development and production configurations"
             Write-Host ""
             Write-ColorOutput "DevOps concepts:" -Color Yellow
-            Write-Host "  - Multi-stage Docker builds"
-            Write-Host "  - Container networking"
-            Write-Host "  - Environment configuration"
-            Write-Host "  - Development workflow with containers"
+            Write-Host "  • Multi-stage Docker builds"
+            Write-Host "  • Container networking"
+            Write-Host "  • Environment configuration"
+            Write-Host "  • Development workflow with containers"
         }
     }
     
-    Write-ColorOutput ("=" * 60) -Color Magenta
+    Write-ColorOutput ("━" * 60) -Color Magenta
     Pause-ForUser
 }
 
@@ -190,9 +190,9 @@ function Show-LearningObjectivesInteractive {
 function Show-CreationOverview {
     param([string]$Exercise)
     
-    Write-ColorOutput ("=" * 60) -Color Cyan
-    Write-ColorOutput "[OVERVIEW] Overview: What will be created" -Color Cyan
-    Write-ColorOutput ("=" * 60) -Color Cyan
+    Write-ColorOutput ("━" * 60) -Color Cyan
+    Write-ColorOutput "📋 Overview: What will be created" -Color Cyan
+    Write-ColorOutput ("━" * 60) -Color Cyan
     
     switch ($Exercise) {
         "exercise01" {
@@ -263,7 +263,7 @@ function Show-CreationOverview {
         }
     }
     
-    Write-ColorOutput ("=" * 60) -Color Cyan
+    Write-ColorOutput ("━" * 60) -Color Cyan
     Pause-ForUser
 }
 
@@ -274,7 +274,7 @@ if ($List) {
 }
 
 if (-not $ExerciseName) {
-    Write-ColorOutput "[ERROR] Usage: .\launch-exercises.ps1 <exercise-name> [options]" -Color Red
+    Write-ColorOutput "❌ Usage: .\launch-exercises.ps1 <exercise-name> [options]" -Color Red
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -List          Show all available exercises"
@@ -295,7 +295,7 @@ $EXERCISE_TITLE = switch ($ExerciseName) {
     "exercise03" { "API Integration & Performance"; break }
     "exercise04" { "Docker Integration"; break }
     default {
-        Write-ColorOutput "[ERROR] Unknown exercise: $ExerciseName" -Color Red
+        Write-ColorOutput "❌ Unknown exercise: $ExerciseName" -Color Red
         Write-Host ""
         Show-Exercises
         exit 1
@@ -303,19 +303,19 @@ $EXERCISE_TITLE = switch ($ExerciseName) {
 }
 
 # Welcome screen
-Write-ColorOutput ("=" * 60) -Color Magenta
-Write-ColorOutput "[LAUNCH] Module 02 - ASP.NET Core with React" -Color Magenta
-Write-ColorOutput ("=" * 60) -Color Magenta
+Write-ColorOutput ("━" * 60) -Color Magenta
+Write-ColorOutput "🚀 Module 02 - ASP.NET Core with React" -Color Magenta
+Write-ColorOutput ("━" * 60) -Color Magenta
 Write-Host ""
-Write-ColorOutput "[PURPOSE] Exercise: $EXERCISE_TITLE" -Color Blue
-Write-ColorOutput "[PACKAGE] Project: $PROJECT_NAME" -Color Blue
+Write-ColorOutput "📝 Exercise: $EXERCISE_TITLE" -Color Blue
+Write-ColorOutput "📦 Project: $PROJECT_NAME" -Color Blue
 Write-Host ""
 
 if ($InteractiveMode) {
-    Write-ColorOutput "[INTERACTIVE] Interactive Mode: ON" -Color Yellow
+    Write-ColorOutput "🎮 Interactive Mode: ON" -Color Yellow
     Write-ColorOutput "You'll see what each file does before it's created" -Color Cyan
 } else {
-    Write-ColorOutput "[AUTO] Automatic Mode: ON" -Color Yellow
+    Write-ColorOutput "⚡ Automatic Mode: ON" -Color Yellow
 }
 
 Write-Host ""
@@ -360,10 +360,10 @@ switch ($ExerciseName) {
         
         Explain-Concept -Concept "React SPA with ASP.NET Core" -Explanation @"
 Single Page Applications (SPAs) with React and ASP.NET Core:
-- Frontend: React handles UI and user interactions
-- Backend: ASP.NET Core provides API endpoints
-- Development: Vite dev server proxies API calls
-- Production: React builds to static files served by ASP.NET Core
+• Frontend: React handles UI and user interactions
+• Backend: ASP.NET Core provides API endpoints
+• Development: Vite dev server proxies API calls
+• Production: React builds to static files served by ASP.NET Core
 "@
         
         if (-not $SKIP_PROJECT_CREATION) {
@@ -375,10 +375,10 @@ Single Page Applications (SPAs) with React and ASP.NET Core:
         # Create backend API
         Explain-Concept -Concept "ASP.NET Core API Backend" -Explanation @"
 The backend provides RESTful API endpoints:
-- Minimal API or Controller-based
-- CORS configuration for React frontend
-- Development and production configurations
-- JSON serialization for API responses
+• Minimal API or Controller-based
+• CORS configuration for React frontend
+• Development and production configurations
+• JSON serialization for API responses
 "@
         
         Write-ColorOutput "Creating ASP.NET Core backend..." -Color Cyan
@@ -464,10 +464,10 @@ app.Run();
         Set-Location ../..
         Explain-Concept -Concept "React Frontend with Vite" -Explanation @"
 Vite is a modern build tool for React:
-- Fast development server with hot reload
-- TypeScript support out of the box
-- Optimized production builds
-- Easy proxy configuration for API calls
+• Fast development server with hot reload
+• TypeScript support out of the box
+• Optimized production builds
+• Easy proxy configuration for API calls
 "@
         
         Write-ColorOutput "Creating React frontend with Vite..." -Color Cyan
@@ -747,7 +747,7 @@ code {
         npm install
         Set-Location ..
         
-        Write-ColorOutput "[OK] Exercise 1 setup complete!" -Color Green
+        Write-ColorOutput "✅ Exercise 1 setup complete!" -Color Green
         Write-ColorOutput "To run the application:" -Color Yellow
         Write-Host ""
         Write-ColorOutput "Terminal 1 (Backend):" -Color Cyan
@@ -769,16 +769,16 @@ code {
         
         Explain-Concept -Concept "React Router and State Management" -Explanation @"
 Advanced React patterns for larger applications:
-- React Router for client-side navigation
-- Context API for global state management
-- Custom hooks for reusable logic
-- Component composition patterns
+• React Router for client-side navigation
+• Context API for global state management
+• Custom hooks for reusable logic
+• Component composition patterns
 "@
         
         Write-ColorOutput "Adding routing and state management to existing project..." -Color Cyan
         
         if (-not (Test-Path "frontend")) {
-            Write-ColorOutput "[ERROR] Frontend directory not found. Run exercise01 first." -Color Red
+            Write-ColorOutput "❌ Frontend directory not found. Run exercise01 first." -Color Red
             exit 1
         }
         
@@ -1148,13 +1148,13 @@ function App() {
 export default App;
 '@
         
-        Write-ColorOutput "[OK] Exercise 2 setup complete!" -Color Green
+        Write-ColorOutput "✅ Exercise 2 setup complete!" -Color Green
         Write-ColorOutput "New features added:" -Color Yellow
-        Write-Host "- React Router for navigation"
-        Write-Host "- Context API for global state"
-        Write-Host "- Custom hooks for API calls"
-        Write-Host "- Theme switching"
-        Write-Host "- Notification system"
+        Write-Host "• React Router for navigation"
+        Write-Host "• Context API for global state"
+        Write-Host "• Custom hooks for API calls"
+        Write-Host "• Theme switching"
+        Write-Host "• Notification system"
     }
     
     "exercise03" {
@@ -1162,16 +1162,16 @@ export default App;
         
         Explain-Concept -Concept "Production-Ready API Integration" -Explanation @"
 Advanced patterns for robust React applications:
-- Centralized API client configuration
-- Error boundaries for graceful error handling
-- Loading states and user feedback
-- Performance optimization techniques
+• Centralized API client configuration
+• Error boundaries for graceful error handling
+• Loading states and user feedback
+• Performance optimization techniques
 "@
         
         Write-ColorOutput "Adding production-ready API integration..." -Color Cyan
         
         if (-not (Test-Path "frontend")) {
-            Write-ColorOutput "[ERROR] Frontend directory not found. Run previous exercises first." -Color Red
+            Write-ColorOutput "❌ Frontend directory not found. Run previous exercises first." -Color Red
             exit 1
         }
         
@@ -1275,11 +1275,11 @@ export class ApiError extends Error {
 export const apiClient = new ApiClient(API_BASE_URL);
 '@
         
-        Write-ColorOutput "[OK] Exercise 3 setup complete!" -Color Green
+        Write-ColorOutput "✅ Exercise 3 setup complete!" -Color Green
         Write-ColorOutput "Production features added:" -Color Yellow
-        Write-Host "- Centralized API client"
-        Write-Host "- Error handling utilities"
-        Write-Host "- Performance optimizations"
+        Write-Host "• Centralized API client"
+        Write-Host "• Error handling utilities"
+        Write-Host "• Performance optimizations"
     }
     
     "exercise04" {
@@ -1287,16 +1287,16 @@ export const apiClient = new ApiClient(API_BASE_URL);
         
         Explain-Concept -Concept "Containerized Full-Stack Development" -Explanation @"
 Docker provides consistent development environments:
-- Multi-stage builds for optimized production images
-- Docker Compose for orchestrating multiple services
-- Environment-specific configurations
-- Simplified deployment and scaling
+• Multi-stage builds for optimized production images
+• Docker Compose for orchestrating multiple services
+• Environment-specific configurations
+• Simplified deployment and scaling
 "@
         
         Write-ColorOutput "Adding Docker integration for full-stack development..." -Color Cyan
         
         if (-not (Test-Path "backend") -or -not (Test-Path "frontend")) {
-            Write-ColorOutput "[ERROR] Backend and frontend directories not found. Run previous exercises first." -Color Red
+            Write-ColorOutput "❌ Backend and frontend directories not found. Run previous exercises first." -Color Red
             exit 1
         }
         
@@ -1427,35 +1427,35 @@ networks:
         # Create startup scripts
         New-Item -ItemType Directory -Path "scripts" -Force | Out-Null
         New-FileInteractive -FilePath "scripts/start-dev.ps1" -Description "Development startup script" -Content @'
-Write-Host "[LAUNCH] Starting React + ASP.NET Core in development mode..." -ForegroundColor Cyan
+Write-Host "🚀 Starting React + ASP.NET Core in development mode..." -ForegroundColor Cyan
 
 # Check if Docker is running
 $dockerInfo = docker info 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Docker is not running. Please start Docker first." -ForegroundColor Red
+    Write-Host "❌ Docker is not running. Please start Docker first." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[PACKAGE] Building and starting containers..." -ForegroundColor Yellow
+Write-Host "📦 Building and starting containers..." -ForegroundColor Yellow
 docker-compose up --build
 
-Write-Host "[OK] Development environment started!" -ForegroundColor Green
+Write-Host "✅ Development environment started!" -ForegroundColor Green
 Write-Host "🌐 Frontend: http://localhost:5173" -ForegroundColor Blue
 Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
 '@
         
-        Write-ColorOutput "[OK] Exercise 4 setup complete!" -Color Green
+        Write-ColorOutput "✅ Exercise 4 setup complete!" -Color Green
         Write-ColorOutput "Docker integration added:" -Color Yellow
-        Write-Host "- Multi-stage Dockerfiles for both frontend and backend"
-        Write-Host "- Docker Compose orchestration"
-        Write-Host "- Startup scripts for easy deployment"
+        Write-Host "• Multi-stage Dockerfiles for both frontend and backend"
+        Write-Host "• Docker Compose orchestration"
+        Write-Host "• Startup scripts for easy deployment"
         Write-Host ""
         
         # Check if Docker is running
-        Write-ColorOutput "[DOCKER] Starting Docker containers..." -Color Cyan
+        Write-ColorOutput "🐳 Starting Docker containers..." -Color Cyan
         $dockerInfo = docker info 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-ColorOutput "[ERROR] Docker is not running. Please start Docker first." -Color Red
+            Write-ColorOutput "❌ Docker is not running. Please start Docker first." -Color Red
             Write-ColorOutput "Then run: docker-compose up --build" -Color Yellow
             exit 1
         }
@@ -1467,7 +1467,7 @@ Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
         Write-ColorOutput "🎉 Docker containers are now running!" -Color Green
         Write-ColorOutput "🌐 Frontend: http://localhost:3000" -Color Blue
         Write-ColorOutput "🔧 Backend API: http://localhost:5001" -Color Blue
-        Write-ColorOutput "[LEARN] Swagger UI: http://localhost:5001/swagger/index.html" -Color Blue
+        Write-ColorOutput "📚 Swagger UI: http://localhost:5001/swagger/index.html" -Color Blue
         Write-Host ""
         Write-ColorOutput "Container status:" -Color Yellow
         docker-compose ps
@@ -1478,14 +1478,14 @@ Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
 }
 
 Write-Host ""
-Write-ColorOutput ("=" * 60) -Color Green
+Write-ColorOutput ("━" * 60) -Color Green
 Write-ColorOutput "🎉 Module 02 Exercise setup complete!" -Color Green
-Write-ColorOutput ("=" * 60) -Color Green
+Write-ColorOutput ("━" * 60) -Color Green
 Write-Host ""
-Write-ColorOutput "[OVERVIEW] Next Steps:" -Color Yellow
+Write-ColorOutput "📋 Next Steps:" -Color Yellow
 Write-Host "1. Review the created files and understand their purpose"
 Write-Host "2. Test your application using the provided startup commands"
 Write-Host "3. Experiment with the features implemented in this exercise"
 Write-Host "4. Move on to the next exercise to build upon this foundation"
 Write-Host ""
-Write-ColorOutput "Happy learning! [LAUNCH]" -Color Cyan
+Write-ColorOutput "Happy learning! 🚀" -Color Cyan

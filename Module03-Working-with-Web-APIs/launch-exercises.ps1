@@ -183,25 +183,27 @@ function Show-CreationOverview {
     switch ($Exercise) {
         "exercise01" {
             Write-ColorOutput "Project Structure:" -Color Green
-            Write-Host "  LibraryAPI/"
+            Write-Host "  RestfulAPI/"
             Write-Host "  ├── Controllers/"
-            Write-Host "  │   └── BooksController.cs      # CRUD operations for books"
+            Write-Host "  │   └── ProductsController.cs   # CRUD operations for products"
             Write-Host "  ├── Models/"
-            Write-Host "  │   └── Book.cs                 # Book entity model"
-            Write-Host "  ├── Services/"
-            Write-Host "  │   └── BookService.cs          # Business logic layer"
-            Write-Host "  ├── Program.cs                  # API configuration"
+            Write-Host "  │   └── Product.cs              # Product entity model"
+            Write-Host "  ├── Data/"
+            Write-Host "  │   └── ApplicationDbContext.cs # Entity Framework context"
+            Write-Host "  ├── DTOs/"
+            Write-Host "  │   └── ProductDtos.cs          # Data transfer objects"
+            Write-Host "  ├── Program.cs                  # API configuration with EF"
             Write-Host "  └── appsettings.json            # Application settings"
             Write-Host ""
-            Write-ColorOutput "This creates a basic RESTful API for book management" -Color Blue
+            Write-ColorOutput "This creates a RESTful API with Entity Framework for product management" -Color Blue
         }
         
         "exercise02" {
             Write-ColorOutput "Building on Exercise 1, adding:" -Color Green
-            Write-Host "  LibraryAPI/"
+            Write-Host "  RestfulAPI/"
             Write-Host "  ├── Controllers/"
             Write-Host "  │   ├── AuthController.cs       # Authentication endpoints"
-            Write-Host "  │   └── BooksController.cs      # Now with [Authorize] attributes"
+            Write-Host "  │   └── ProductsController.cs   # Now with [Authorize] attributes"
             Write-Host "  ├── Models/"
             Write-Host "  │   ├── User.cs                 # User entity"
             Write-Host "  │   └── AuthModels.cs           # Login/register models"
@@ -215,14 +217,14 @@ function Show-CreationOverview {
         
         "exercise03" {
             Write-ColorOutput "Advanced API features:" -Color Green
-            Write-Host "  LibraryAPI/"
+            Write-Host "  RestfulAPI/"
             Write-Host "  ├── Controllers/"
-            Write-Host "  │   ├── V1/BooksController.cs   # Version 1 API"
-            Write-Host "  │   └── V2/BooksController.cs   # Version 2 API"
-            Write-Host "  ├── Documentation/"
+            Write-Host "  │   ├── V1/ProductsV1Controller.cs # Version 1 API"
+            Write-Host "  │   └── V2/ProductsV2Controller.cs # Version 2 API"
+            Write-Host "  ├── Configuration/"
             Write-Host "  │   └── SwaggerConfig.cs        # Enhanced Swagger setup"
-            Write-Host "  ├── Middleware/"
-            Write-Host "  │   └── RateLimitingMiddleware.cs # Rate limiting"
+            Write-Host "  ├── HealthChecks/"
+            Write-Host "  │   └── ApiHealthCheck.cs       # Health monitoring"
             Write-Host "  └── Program.cs                  # Production-ready config"
             Write-Host ""
             Write-ColorOutput "Adds versioning, documentation, and performance features" -Color Blue
@@ -251,7 +253,7 @@ if (-not $ExerciseName) {
     exit 1
 }
 
-$PROJECT_NAME = "LibraryAPI"
+$PROJECT_NAME = "RestfulAPI"
 $PREVIEW_ONLY = $Preview
 
 # Validate exercise name
@@ -333,205 +335,318 @@ RESTful APIs follow REST principles:
 "@
 
         if (-not $SKIP_PROJECT_CREATION) {
-            Write-ColorOutput "Creating LibraryAPI project structure..." -Color Cyan
+            Write-ColorOutput "Creating RestfulAPI project structure..." -Color Cyan
             New-Item -ItemType Directory -Path "$PROJECT_NAME" -Force | Out-Null
             Set-Location $PROJECT_NAME
         }
 
         # Create .NET Web API project
         Write-ColorOutput "Creating .NET 8.0 Web API project..." -Color Cyan
-        dotnet new webapi --framework net8.0 --name LibraryAPI --force
-        Set-Location LibraryAPI
+        dotnet new webapi --framework net8.0 --name RestfulAPI --force
+        Set-Location RestfulAPI
 
         # Remove default files
         Remove-Item -Force WeatherForecast.cs, Controllers/WeatherForecastController.cs -ErrorAction SilentlyContinue
 
+        # Add required Entity Framework packages
+        Write-ColorOutput "Adding Entity Framework packages..." -Color Cyan
+        dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11
+        dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.11
+        dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.11
+        dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11
+
+        # Add API versioning packages
+        Write-ColorOutput "Adding API versioning packages..." -Color Cyan
+        dotnet add package Asp.Versioning.Mvc --version 8.0.0
+        dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0
+
         # Create Models
-        New-FileInteractive -FilePath "Models/Book.cs" -Description "Book entity model with validation attributes" -Content @'
+        New-FileInteractive -FilePath "Models/Product.cs" -Description "Product entity model with validation attributes" -Content @'
 using System.ComponentModel.DataAnnotations;
 
-namespace LibraryAPI.Models
+namespace RestfulAPI.Models
 {
-    public class Book
+    public class Product
     {
         public int Id { get; set; }
 
         [Required]
-        [StringLength(200)]
-        public string Title { get; set; } = string.Empty;
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string? Description { get; set; }
 
         [Required]
-        [StringLength(100)]
-        public string Author { get; set; } = string.Empty;
+        [Range(0.01, double.MaxValue)]
+        public decimal Price { get; set; }
 
-        [StringLength(13)]
-        public string? ISBN { get; set; }
-
-        [Range(1, 10000)]
-        public int? PublicationYear { get; set; }
-
+        [Required]
         [StringLength(50)]
-        public string? Genre { get; set; }
+        public string Sku { get; set; } = string.Empty;
 
+        [Range(0, int.MaxValue)]
+        public int StockQuantity { get; set; }
+
+        public bool IsActive { get; set; } = true;
         public bool IsAvailable { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
     }
 }
 '@
 
-        # Create Services
-        New-Item -ItemType Directory -Path "Services" -Force | Out-Null
-        New-FileInteractive -FilePath "Services/BookService.cs" -Description "Business logic service for book operations" -Content @'
-using LibraryAPI.Models;
+        # Create Data Context
+        New-Item -ItemType Directory -Path "Data" -Force | Out-Null
+        New-FileInteractive -FilePath "Data/ApplicationDbContext.cs" -Description "Entity Framework DbContext for the application" -Content @'
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Models;
 
-namespace LibraryAPI.Services
+namespace RestfulAPI.Data
 {
-    public interface IBookService
+    public class ApplicationDbContext : DbContext
     {
-        Task<IEnumerable<Book>> GetAllBooksAsync();
-        Task<Book?> GetBookByIdAsync(int id);
-        Task<Book> CreateBookAsync(Book book);
-        Task<Book?> UpdateBookAsync(int id, Book book);
-        Task<bool> DeleteBookAsync(int id);
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+        }
+
+        public DbSet<Product> Products { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Seed data
+            modelBuilder.Entity<Product>().HasData(
+                new Product { Id = 1, Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Sku = "LAP001", StockQuantity = 10 },
+                new Product { Id = 2, Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Sku = "MOU001", StockQuantity = 50 },
+                new Product { Id = 3, Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Sku = "KEY001", StockQuantity = 25 }
+            );
+        }
+    }
+}
+'@
+
+        # Create DTOs
+        New-Item -ItemType Directory -Path "DTOs" -Force | Out-Null
+        New-FileInteractive -FilePath "DTOs/ProductDtos.cs" -Description "Data Transfer Objects for Product operations" -Content @'
+using System.ComponentModel.DataAnnotations;
+
+namespace RestfulAPI.DTOs
+{
+    public record CreateProductDto
+    {
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string Name { get; init; } = string.Empty;
+
+        [StringLength(500)]
+        public string? Description { get; init; }
+
+        [Required]
+        [Range(0.01, double.MaxValue)]
+        public decimal Price { get; init; }
+
+        [Required]
+        [StringLength(50, MinimumLength = 1)]
+        public string Sku { get; init; } = string.Empty;
+
+        [Range(0, int.MaxValue)]
+        public int StockQuantity { get; init; }
+
+        public bool? IsActive { get; init; }
+        public bool? IsAvailable { get; init; }
     }
 
-    public class BookService : IBookService
+    public record UpdateProductDto
     {
-        private readonly List<Book> _books = new();
-        private int _nextId = 1;
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string Name { get; init; } = string.Empty;
 
-        public BookService()
-        {
-            // Seed with sample data
-            _books.AddRange(new[]
-            {
-                new Book { Id = _nextId++, Title = "The Great Gatsby", Author = "F. Scott Fitzgerald", ISBN = "9780743273565", PublicationYear = 1925, Genre = "Fiction" },
-                new Book { Id = _nextId++, Title = "To Kill a Mockingbird", Author = "Harper Lee", ISBN = "9780061120084", PublicationYear = 1960, Genre = "Fiction" },
-                new Book { Id = _nextId++, Title = "1984", Author = "George Orwell", ISBN = "9780451524935", PublicationYear = 1949, Genre = "Dystopian" }
-            });
-        }
+        [StringLength(500)]
+        public string? Description { get; init; }
 
-        public Task<IEnumerable<Book>> GetAllBooksAsync()
-        {
-            return Task.FromResult<IEnumerable<Book>>(_books);
-        }
+        [Required]
+        [Range(0.01, double.MaxValue)]
+        public decimal Price { get; init; }
 
-        public Task<Book?> GetBookByIdAsync(int id)
-        {
-            var book = _books.FirstOrDefault(b => b.Id == id);
-            return Task.FromResult(book);
-        }
+        [Range(0, int.MaxValue)]
+        public int StockQuantity { get; init; }
 
-        public Task<Book> CreateBookAsync(Book book)
-        {
-            book.Id = _nextId++;
-            book.CreatedAt = DateTime.UtcNow;
-            _books.Add(book);
-            return Task.FromResult(book);
-        }
+        [Required]
+        [StringLength(50, MinimumLength = 1)]
+        public string Sku { get; init; } = string.Empty;
 
-        public Task<Book?> UpdateBookAsync(int id, Book book)
-        {
-            var existingBook = _books.FirstOrDefault(b => b.Id == id);
-            if (existingBook == null) return Task.FromResult<Book?>(null);
+        public bool? IsActive { get; init; }
+        public bool? IsAvailable { get; init; }
+    }
 
-            existingBook.Title = book.Title;
-            existingBook.Author = book.Author;
-            existingBook.ISBN = book.ISBN;
-            existingBook.PublicationYear = book.PublicationYear;
-            existingBook.Genre = book.Genre;
-            existingBook.IsAvailable = book.IsAvailable;
-
-            return Task.FromResult<Book?>(existingBook);
-        }
-
-        public Task<bool> DeleteBookAsync(int id)
-        {
-            var book = _books.FirstOrDefault(b => b.Id == id);
-            if (book == null) return Task.FromResult(false);
-
-            _books.Remove(book);
-            return Task.FromResult(true);
-        }
+    public record ProductResponseDto
+    {
+        public int Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public decimal Price { get; init; }
+        public string Sku { get; init; } = string.Empty;
+        public int StockQuantity { get; init; }
+        public bool IsActive { get; init; }
+        public bool IsAvailable { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
     }
 }
 '@
 
         # Create Controllers
-        New-FileInteractive -FilePath "Controllers/BooksController.cs" -Description "RESTful API controller for book operations" -Content @'
+        New-FileInteractive -FilePath "Controllers/ProductsController.cs" -Description "RESTful API controller for product operations" -Content @'
 using Microsoft.AspNetCore.Mvc;
-using LibraryAPI.Models;
-using LibraryAPI.Services;
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Data;
+using RestfulAPI.Models;
+using RestfulAPI.DTOs;
 
-namespace LibraryAPI.Controllers
+namespace RestfulAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class BooksController : ControllerBase
+    public class ProductsController : ControllerBase
     {
-        private readonly IBookService _bookService;
+        private readonly ApplicationDbContext _context;
 
-        public BooksController(IBookService bookService)
+        public ProductsController(ApplicationDbContext context)
         {
-            _bookService = bookService;
+            _context = context;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
+        public async Task<ActionResult<IEnumerable<ProductResponseDto>>> GetProducts()
         {
-            var books = await _bookService.GetAllBooksAsync();
-            return Ok(books);
+            var products = await _context.Products
+                .Select(p => new ProductResponseDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Sku = p.Sku,
+                    StockQuantity = p.StockQuantity,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(products);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Book>> GetBook(int id)
+        public async Task<ActionResult<ProductResponseDto>> GetProduct(int id)
         {
-            var book = await _bookService.GetBookByIdAsync(id);
-            if (book == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
-                return NotFound($"Book with ID {id} not found.");
+                return NotFound($"Product with ID {id} not found.");
             }
-            return Ok(book);
+
+            var productDto = new ProductResponseDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                Sku = product.Sku,
+                StockQuantity = product.StockQuantity,
+                IsActive = product.IsActive,
+                IsAvailable = product.IsAvailable,
+                CreatedAt = product.CreatedAt,
+                UpdatedAt = product.UpdatedAt
+            };
+
+            return Ok(productDto);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Book>> CreateBook(Book book)
+        public async Task<ActionResult<ProductResponseDto>> CreateProduct(CreateProductDto createDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var createdBook = await _bookService.CreateBookAsync(book);
-            return CreatedAtAction(nameof(GetBook), new { id = createdBook.Id }, createdBook);
+            var product = new Product
+            {
+                Name = createDto.Name,
+                Description = createDto.Description,
+                Price = createDto.Price,
+                Sku = createDto.Sku,
+                StockQuantity = createDto.StockQuantity,
+                IsActive = createDto.IsActive ?? true,
+                IsAvailable = createDto.IsAvailable ?? true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Products.Add(product);
+            await _context.SaveChangesAsync();
+
+            var productDto = new ProductResponseDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                Sku = product.Sku,
+                StockQuantity = product.StockQuantity,
+                IsActive = product.IsActive,
+                IsAvailable = product.IsAvailable,
+                CreatedAt = product.CreatedAt,
+                UpdatedAt = product.UpdatedAt
+            };
+
+            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, productDto);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateBook(int id, Book book)
+        public async Task<IActionResult> UpdateProduct(int id, UpdateProductDto updateDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var updatedBook = await _bookService.UpdateBookAsync(id, book);
-            if (updatedBook == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
-                return NotFound($"Book with ID {id} not found.");
+                return NotFound($"Product with ID {id} not found.");
             }
 
-            return Ok(updatedBook);
+            product.Name = updateDto.Name;
+            product.Description = updateDto.Description;
+            product.Price = updateDto.Price;
+            product.Sku = updateDto.Sku;
+            product.StockQuantity = updateDto.StockQuantity;
+            product.IsActive = updateDto.IsActive ?? product.IsActive;
+            product.IsAvailable = updateDto.IsAvailable ?? product.IsAvailable;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteBook(int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
-            var deleted = await _bookService.DeleteBookAsync(id);
-            if (!deleted)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
-                return NotFound($"Book with ID {id} not found.");
+                return NotFound($"Product with ID {id} not found.");
             }
+
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -540,21 +655,43 @@ namespace LibraryAPI.Controllers
 '@
 
         # Update Program.cs
-        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for RESTful API with Swagger" -Content @'
-using LibraryAPI.Services;
+        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for RESTful API with Entity Framework and API versioning" -Content @'
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Data;
+using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
+
+// Add API Versioning
+builder.Services.AddApiVersioning(opt =>
+{
+    opt.DefaultApiVersion = new ApiVersion(1, 0);
+    opt.AssumeDefaultVersionWhenUnspecified = true;
+    opt.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new QueryStringApiVersionReader("version"),
+        new HeaderApiVersionReader("X-Version"),
+        new MediaTypeApiVersionReader("ver")
+    );
+}).AddApiExplorer(setup =>
+{
+    setup.GroupNameFormat = "'v'VVV";
+    setup.SubstituteApiVersionInUrl = true;
+});
+
+// Add Entity Framework with In-Memory Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("ProductsDB"));
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Library API", Version = "v1" });
+    c.SwaggerDoc("v1", new() { Title = "Products API", Version = "v1" });
 });
-
-// Register custom services
-builder.Services.AddSingleton<IBookService, BookService>();
 
 // Add CORS for development
 builder.Services.AddCors(options =>
@@ -575,12 +712,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Library API v1");
-        c.RoutePrefix = string.Empty; // Serve Swagger UI at root
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Products API v1");
+        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
     });
 }
 
+// Seed the database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+}
+
 app.UseCors("AllowAll");
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
@@ -590,16 +735,18 @@ app.Run();
         Write-ColorOutput "Exercise 1 setup complete!" -Color Green
         Write-ColorOutput "To run the application:" -Color Yellow
         Write-Host ""
-        Write-ColorOutput "1. dotnet run" -Color Cyan
-        Write-Host "2. Open browser to: http://localhost:5000"
+        Write-ColorOutput "1. dotnet run --urls `"http://localhost:5000`"" -Color Cyan
+        Write-Host "2. Open browser to: http://localhost:5000/swagger"
         Write-Host "3. Test the API endpoints using Swagger UI"
         Write-Host ""
         Write-ColorOutput "Available endpoints:" -Color Blue
-        Write-Host "  GET    /api/books       - Get all books"
-        Write-Host "  GET    /api/books/{id}  - Get book by ID"
-        Write-Host "  POST   /api/books       - Create new book"
-        Write-Host "  PUT    /api/books/{id}  - Update book"
-        Write-Host "  DELETE /api/books/{id}  - Delete book"
+        Write-Host "  GET    /api/products       - Get all products"
+        Write-Host "  GET    /api/products/{id}  - Get product by ID"
+        Write-Host "  POST   /api/products       - Create new product"
+        Write-Host "  PUT    /api/products/{id}  - Update product"
+        Write-Host "  DELETE /api/products/{id}  - Delete product"
+        Write-Host ""
+        Write-ColorOutput "Sample product data is automatically seeded!" -Color Green
     }
 
     "exercise02" {

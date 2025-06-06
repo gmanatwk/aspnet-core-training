@@ -10,22 +10,22 @@ param(
 # Function to print colored output
 function Write-Status {
     param([string]$Message)
-    Write-Host "✅ $Message" -ForegroundColor Green
+    Write-Host "[OK] $Message" -ForegroundColor Green
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "ℹ️  $Message" -ForegroundColor Blue
+    Write-Host "[INFO] $Message" -ForegroundColor Blue
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "⚠️  $Message" -ForegroundColor Yellow
+    Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
 function Write-Error {
     param([string]$Message)
-    Write-Host "❌ $Message" -ForegroundColor Red
+    Write-Host "[ERROR] $Message" -ForegroundColor Red
 }
 
 function Write-Header {
@@ -41,7 +41,7 @@ function New-ProjectFile {
         [string]$Description
     )
     
-    Write-Host "📝 Creating: $FilePath" -ForegroundColor Yellow
+    Write-Host "[CREATE] Creating: $FilePath" -ForegroundColor Yellow
     if ($Description) {
         Write-Host "   Description: $Description" -ForegroundColor Blue
     }
@@ -63,17 +63,17 @@ function Show-ExerciseInfo {
     param([string]$ExerciseNum)
     
     Write-Host ""
-    Write-Header "🎯 Exercise Information"
+    Write-Header "Exercise Information"
     Write-Host ""
     
     switch ($ExerciseNum) {
         "exercise01" {
             Write-Host "In this exercise, you will learn:" -ForegroundColor Cyan
-            Write-Host "  🔐 1. JWT token structure and validation"
-            Write-Host "  🔐 2. Configuring JWT authentication in ASP.NET Core"
-            Write-Host "  🔐 3. Implementing secure login endpoints"
-            Write-Host "  🔐 4. Testing protected API endpoints"
-            Write-Host "  🔐 5. Handling authentication errors properly"
+            Write-Host "  1. JWT token structure and validation"
+            Write-Host "  2. Configuring JWT authentication in ASP.NET Core"
+            Write-Host "  3. Implementing secure login endpoints"
+            Write-Host "  4. Testing protected API endpoints"
+            Write-Host "  5. Handling authentication errors properly"
             Write-Host ""
             Write-Host "Key concepts:" -ForegroundColor Yellow
             Write-Host "  • JWT token generation and validation"
@@ -117,7 +117,7 @@ function Show-ProjectStructure {
     param([string]$ExerciseNum)
     
     Write-Host ""
-    Write-Header "📁 Project Structure"
+    Write-Header "Project Structure"
     Write-Host ""
     
     switch ($ExerciseNum) {
@@ -165,7 +165,7 @@ function Show-ProjectStructure {
 
 # Main script logic
 Clear-Host
-Write-Header "🔐 Module 04: Authentication and Authorization - Exercise Launcher"
+Write-Header "Module 04: Authentication and Authorization - Exercise Launcher"
 Write-Header "=================================================================="
 Write-Host ""
 
@@ -181,7 +181,7 @@ if ($response -notmatch "^[Yy]$") {
 }
 
 Write-Host ""
-Write-Header "🚀 Creating Exercise: $Exercise"
+Write-Header "Creating Exercise: $Exercise"
 Write-Host ""
 
 # Create the exercise
@@ -278,7 +278,7 @@ public class User
 }
 
 Write-Host ""
-Write-Header "🎉 Exercise Created Successfully!"
+Write-Header "Exercise Created Successfully!"
 Write-Host ""
 Write-Info "Next steps:"
 Write-Host "  1. cd JwtAuthenticationAPI"
@@ -287,9 +287,9 @@ Write-Host "  3. Visit http://localhost:5000 for interactive demo"
 Write-Host "  4. Visit http://localhost:5000/swagger for API documentation"
 Write-Host ""
 Write-Info "For complete implementation, use:"
-Write-Host "  cd SourceCode/JwtAuthenticationAPI && dotnet run" -ForegroundColor Cyan
+Write-Host "  cd SourceCode/JwtAuthenticationAPI; dotnet run" -ForegroundColor Cyan
 Write-Host ""
 Write-Info "Test users available:"
-Write-Host "  • admin/admin123 (Admin, User roles)"
-Write-Host "  • manager/manager123 (Manager, User roles)"  
-Write-Host "  • user/user123 (User role)"
+Write-Host "  - admin/admin123 (Admin, User roles)"
+Write-Host "  - manager/manager123 (Manager, User roles)"
+Write-Host "  - user/user123 (User role)"
