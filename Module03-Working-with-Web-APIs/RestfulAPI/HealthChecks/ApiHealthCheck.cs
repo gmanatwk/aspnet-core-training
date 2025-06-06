@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
 
 namespace RestfulAPI.HealthChecks

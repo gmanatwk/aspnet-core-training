@@ -409,15 +409,43 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         cd "$PROJECT_NAME"
         rm -f WeatherForecast.cs Controllers/WeatherForecastController.cs
 
+        # Add required packages first
+        echo -e "${CYAN}Adding Entity Framework and API versioning packages...${NC}"
+        dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.11 > /dev/null 2>&1
+        dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.11 > /dev/null 2>&1
+        dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.11 > /dev/null 2>&1
+        dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11 > /dev/null 2>&1
+        dotnet add package Asp.Versioning.Mvc --version 8.0.0 > /dev/null 2>&1
+        dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
+        echo -e "${GREEN}✅ Required packages installed${NC}"
+
         # Update Program.cs with proper configuration
         create_file_interactive "Program.cs" \
 'using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
+using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
+
+// Add API Versioning
+builder.Services.AddApiVersioning(opt =>
+{
+    opt.DefaultApiVersion = new ApiVersion(1, 0);
+    opt.AssumeDefaultVersionWhenUnspecified = true;
+    opt.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new QueryStringApiVersionReader("version"),
+        new HeaderApiVersionReader("X-Version"),
+        new MediaTypeApiVersionReader("ver")
+    );
+}).AddApiExplorer(setup =>
+{
+    setup.GroupNameFormat = "'v'VVV";
+    setup.SubstituteApiVersionInUrl = true;
+});
 
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -462,12 +490,18 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors("AllowAll");
-app.UseHttpsRedirection();
+
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();' \
-"Program.cs with Entity Framework and Swagger configuration"
+"Program.cs with Entity Framework, API versioning, and development-friendly configuration"
     fi
     
     explain_concept "Models (Domain Entities)" \
@@ -643,6 +677,10 @@ namespace RestfulAPI.DTOs
 
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; init; }
+
+        [Required]
+        [StringLength(50, MinimumLength = 1)]
+        public string Sku { get; init; } = string.Empty;
 
         public bool? IsActive { get; init; }
         public bool? IsAvailable { get; init; }

@@ -255,10 +255,10 @@ switch ($ExerciseName) {
     "exercise01" {
         $conceptExplanation = @"
 Razor Pages is a page-based programming model:
-- Simpler than MVC for page-focused scenarios
-- Each page has a .cshtml file (view) and .cshtml.cs file (code-behind)
-- Uses the @page directive to make it a Razor Page
-- Great for CRUD operations and form handling
+* Simpler than MVC for page-focused scenarios
+* Each page has a .cshtml file (view) and .cshtml.cs file (code-behind)
+* Uses the @page directive to make it a Razor Page
+* Great for CRUD operations and form handling
 "@
         Explain-Concept -Concept "ASP.NET Core Razor Pages" -Explanation $conceptExplanation
         
@@ -343,11 +343,11 @@ Navigate to: https://localhost:5001
     "exercise02" {
         $conceptExplanation = @"
 Understanding the ASP.NET Core project structure:
-- Program.cs - The entry point that configures services and middleware
-- Pages folder - Contains Razor Pages (.cshtml and .cshtml.cs files)
-- wwwroot - Static files served directly (CSS, JS, images)
-- appsettings.json - Configuration settings
-- Properties/launchSettings.json - Development server settings
+* Program.cs - The entry point that configures services and middleware
+* Pages folder - Contains Razor Pages (.cshtml and .cshtml.cs files)
+* wwwroot - Static files served directly (CSS, JS, images)
+* appsettings.json - Configuration settings
+* Properties/launchSettings.json - Development server settings
 "@
         Explain-Concept -Concept "Project Structure Deep Dive" -Explanation $conceptExplanation
         
@@ -462,16 +462,16 @@ public class MyAppOptions
     "exercise03" {
         $conceptExplanation = @"
 The middleware pipeline handles HTTP requests and responses:
-- Middleware components execute in order
-- Each can process the request and/or response
-- Can short-circuit the pipeline or pass to the next
-- Order matters! (e.g., UseAuthentication before UseAuthorization)
+* Middleware components execute in order
+* Each can process the request and/or response
+* Can short-circuit the pipeline or pass to the next
+* Order matters! (e.g., UseAuthentication before UseAuthorization)
 
 Common middleware:
-- UseStaticFiles - Serves files from wwwroot
-- UseRouting - Matches URLs to endpoints
-- UseAuthentication - Who are you?
-- UseAuthorization - What can you do?
+* UseStaticFiles - Serves files from wwwroot
+* UseRouting - Matches URLs to endpoints
+* UseAuthentication - Who are you?
+* UseAuthorization - What can you do?
 "@
         Explain-Concept -Concept "Middleware Pipeline" -Explanation $conceptExplanation
         

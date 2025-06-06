@@ -360,10 +360,10 @@ switch ($ExerciseName) {
         
         Explain-Concept -Concept "React SPA with ASP.NET Core" -Explanation @"
 Single Page Applications (SPAs) with React and ASP.NET Core:
-- Frontend: React handles UI and user interactions
-- Backend: ASP.NET Core provides API endpoints
-- Development: Vite dev server proxies API calls
-- Production: React builds to static files served by ASP.NET Core
+* Frontend: React handles UI and user interactions
+* Backend: ASP.NET Core provides API endpoints
+* Development: Vite dev server proxies API calls
+* Production: React builds to static files served by ASP.NET Core
 "@
         
         if (-not $SKIP_PROJECT_CREATION) {
@@ -375,10 +375,10 @@ Single Page Applications (SPAs) with React and ASP.NET Core:
         # Create backend API
         Explain-Concept -Concept "ASP.NET Core API Backend" -Explanation @"
 The backend provides RESTful API endpoints:
-- Minimal API or Controller-based
-- CORS configuration for React frontend
-- Development and production configurations
-- JSON serialization for API responses
+* Minimal API or Controller-based
+* CORS configuration for React frontend
+* Development and production configurations
+* JSON serialization for API responses
 "@
         
         Write-ColorOutput "Creating ASP.NET Core backend..." -Color Cyan
@@ -464,10 +464,10 @@ app.Run();
         Set-Location ../..
         Explain-Concept -Concept "React Frontend with Vite" -Explanation @"
 Vite is a modern build tool for React:
-- Fast development server with hot reload
-- TypeScript support out of the box
-- Optimized production builds
-- Easy proxy configuration for API calls
+* Fast development server with hot reload
+* TypeScript support out of the box
+* Optimized production builds
+* Easy proxy configuration for API calls
 "@
         
         Write-ColorOutput "Creating React frontend with Vite..." -Color Cyan
@@ -769,10 +769,10 @@ code {
         
         Explain-Concept -Concept "React Router and State Management" -Explanation @"
 Advanced React patterns for larger applications:
-- React Router for client-side navigation
-- Context API for global state management
-- Custom hooks for reusable logic
-- Component composition patterns
+* React Router for client-side navigation
+* Context API for global state management
+* Custom hooks for reusable logic
+* Component composition patterns
 "@
         
         Write-ColorOutput "Adding routing and state management to existing project..." -Color Cyan
@@ -1162,10 +1162,10 @@ export default App;
         
         Explain-Concept -Concept "Production-Ready API Integration" -Explanation @"
 Advanced patterns for robust React applications:
-- Centralized API client configuration
-- Error boundaries for graceful error handling
-- Loading states and user feedback
-- Performance optimization techniques
+* Centralized API client configuration
+* Error boundaries for graceful error handling
+* Loading states and user feedback
+* Performance optimization techniques
 "@
         
         Write-ColorOutput "Adding production-ready API integration..." -Color Cyan
@@ -1287,10 +1287,10 @@ export const apiClient = new ApiClient(API_BASE_URL);
         
         Explain-Concept -Concept "Containerized Full-Stack Development" -Explanation @"
 Docker provides consistent development environments:
-- Multi-stage builds for optimized production images
-- Docker Compose for orchestrating multiple services
-- Environment-specific configurations
-- Simplified deployment and scaling
+* Multi-stage builds for optimized production images
+* Docker Compose for orchestrating multiple services
+* Environment-specific configurations
+* Simplified deployment and scaling
 "@
         
         Write-ColorOutput "Adding Docker integration for full-stack development..." -Color Cyan
@@ -1440,8 +1440,8 @@ Write-Host "[PACKAGE] Building and starting containers..." -ForegroundColor Yell
 docker-compose up --build
 
 Write-Host "[OK] Development environment started!" -ForegroundColor Green
-Write-Host "🌐 Frontend: http://localhost:5173" -ForegroundColor Blue
-Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
+Write-Host "[WEB] Frontend: http://localhost:5173" -ForegroundColor Blue
+Write-Host "[API] Backend API: http://localhost:5000" -ForegroundColor Blue
 '@
         
         Write-ColorOutput "[OK] Exercise 4 setup complete!" -Color Green
@@ -1464,9 +1464,9 @@ Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
         docker-compose up --build -d
         
         Write-Host ""
-        Write-ColorOutput "🎉 Docker containers are now running!" -Color Green
-        Write-ColorOutput "🌐 Frontend: http://localhost:3000" -Color Blue
-        Write-ColorOutput "🔧 Backend API: http://localhost:5001" -Color Blue
+        Write-ColorOutput "[OK] Docker containers are now running!" -Color Green
+        Write-ColorOutput "[WEB] Frontend: http://localhost:3000" -Color Blue
+        Write-ColorOutput "[API] Backend API: http://localhost:5001" -Color Blue
         Write-ColorOutput "[LEARN] Swagger UI: http://localhost:5001/swagger/index.html" -Color Blue
         Write-Host ""
         Write-ColorOutput "Container status:" -Color Yellow
@@ -1479,7 +1479,7 @@ Write-Host "🔧 Backend API: http://localhost:5000" -ForegroundColor Blue
 
 Write-Host ""
 Write-ColorOutput ("=" * 60) -Color Green
-Write-ColorOutput "🎉 Module 02 Exercise setup complete!" -Color Green
+Write-ColorOutput "[COMPLETE] Module 02 Exercise setup complete!" -Color Green
 Write-ColorOutput ("=" * 60) -Color Green
 Write-Host ""
 Write-ColorOutput "[OVERVIEW] Next Steps:" -Color Yellow

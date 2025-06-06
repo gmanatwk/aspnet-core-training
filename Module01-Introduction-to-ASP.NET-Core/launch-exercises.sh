@@ -621,7 +621,7 @@ Create middleware that:
 ## Tips:
 - Middleware order matters!
 - Use app.Environment to check environment
-- Don'"'"'t forget to register services before using them' \
+- Do not forget to register services before using them' \
 "Comprehensive middleware exercise guide"
 fi
 
