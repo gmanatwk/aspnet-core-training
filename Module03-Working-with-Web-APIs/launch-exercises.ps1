@@ -360,6 +360,25 @@ RESTful APIs follow REST principles:
         dotnet add package Asp.Versioning.Mvc --version 8.0.0
         dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0
 
+        # Create launchSettings.json to ensure consistent port
+        New-Item -ItemType Directory -Path "Properties" -Force | Out-Null
+        New-FileInteractive -FilePath "Properties/launchSettings.json" -Description "Launch settings to ensure consistent port 5000" -Content @'
+{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+'@
+
         # Create Models
         New-FileInteractive -FilePath "Models/Product.cs" -Description "Product entity model with validation attributes" -Content @'
 using System.ComponentModel.DataAnnotations;

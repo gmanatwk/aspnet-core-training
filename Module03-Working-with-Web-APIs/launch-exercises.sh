@@ -419,6 +419,24 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         dotnet add package Asp.Versioning.Mvc.ApiExplorer --version 8.0.0 > /dev/null 2>&1
         echo -e "${GREEN}✅ Required packages installed${NC}"
 
+        # Create launchSettings.json to ensure consistent port
+        create_file_interactive "Properties/launchSettings.json" \
+'{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}' \
+"Launch settings to ensure consistent port 5000"
+
         # Update Program.cs with proper configuration
         create_file_interactive "Program.cs" \
 'using Microsoft.EntityFrameworkCore;
@@ -1396,6 +1414,7 @@ using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
 using RestfulAPI.Models.Auth;
 using RestfulAPI.Services;
+using System.Security.Claims;
 
 namespace RestfulAPI.Controllers
 {
@@ -1945,15 +1964,16 @@ namespace RestfulAPI.Configuration
     
     create_file_interactive "HealthChecks/ApiHealthCheck.cs" \
 'using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
 
 namespace RestfulAPI.HealthChecks
 {
     public class ApiHealthCheck : IHealthCheck
     {
-        private readonly LibraryContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public ApiHealthCheck(LibraryContext context)
+        public ApiHealthCheck(ApplicationDbContext context)
         {
             _context = context;
         }
