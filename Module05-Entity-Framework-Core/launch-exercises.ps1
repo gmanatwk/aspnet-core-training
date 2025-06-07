@@ -112,7 +112,7 @@ function Show-LearningObjectives {
     switch ($Exercise) {
         "exercise01" {
             Write-Host "In this exercise, you will learn:" -ForegroundColor Cyan
-            Write-Host "  [LEARN] 1. Setting up Entity Framework Core with SQL Server" -ForegroundColor White
+            Write-Host "  [LEARN] 1. Setting up Entity Framework Core with SQLite" -ForegroundColor White
             Write-Host "  [LEARN] 2. Creating entity models with data annotations" -ForegroundColor White
             Write-Host "  [LEARN] 3. Configuring DbContext with Fluent API" -ForegroundColor White
             Write-Host "  [LEARN] 4. Implementing basic CRUD operations" -ForegroundColor White
@@ -169,7 +169,7 @@ function Show-CreationOverview {
             Write-Host ""
             Write-Host "[OVERVIEW] What you'll build:" -ForegroundColor Yellow
             Write-Host "  [OK] BookStore API with Entity Framework Core" -ForegroundColor White
-            Write-Host "  [OK] SQL Server database with Code-First approach" -ForegroundColor White
+            Write-Host "  [OK] SQLite database with Code-First approach" -ForegroundColor White
             Write-Host "  [OK] Book entity with proper validation and relationships" -ForegroundColor White
             Write-Host "  [OK] Complete CRUD operations with async patterns" -ForegroundColor White
             Write-Host ""
@@ -287,7 +287,7 @@ Write-Host ""
 Write-Host "2. Or use Docker for database setup:" -ForegroundColor Yellow
 Write-Host "   Set-Location SourceCode" -ForegroundColor Cyan
 Write-Host "   docker-compose up --build" -ForegroundColor Cyan
-Write-Host "   # Includes SQL Server and demo application" -ForegroundColor Cyan
+Write-Host "   # Includes SQLite database and demo application" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "[WARNING]  The template created by this script is basic and may not match" -ForegroundColor Yellow
 Write-Host "   all exercise requirements. The SourceCode version is complete!" -ForegroundColor Yellow
@@ -361,7 +361,7 @@ Entity Framework Core is a lightweight, extensible ORM for .NET:
 
         # Install EF Core packages
         Write-Host "Installing Entity Framework Core packages..." -ForegroundColor Cyan
-        dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+        dotnet add package Microsoft.EntityFrameworkCore.Sqlite
         dotnet add package Microsoft.EntityFrameworkCore.Tools
         dotnet add package Microsoft.EntityFrameworkCore.Design
 
@@ -375,9 +375,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
-// Add Entity Framework with SQL Server
+// Add Entity Framework with SQLite
 builder.Services.AddDbContext<BookStoreContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -428,7 +428,7 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 app.Run();
 '@
 
-        New-FileInteractive -FilePath "Program.cs" -Content $ProgramContent -Description "Program.cs with Entity Framework Core and SQL Server configuration"
+        New-FileInteractive -FilePath "Program.cs" -Content $ProgramContent -Description "Program.cs with Entity Framework Core and SQLite configuration"
     }
 
     Show-Concept -ConceptName "Entity Models" -Explanation @"
@@ -734,7 +734,7 @@ public class BookStoreContext : DbContext
     $AppSettingsContent = @'
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=BookStoreDB;Trusted_Connection=true;MultipleActiveResultSets=true"
+    "DefaultConnection": "Data Source=BookStore.db"
   },
   "Logging": {
     "LogLevel": {
@@ -747,7 +747,7 @@ public class BookStoreContext : DbContext
 }
 '@
 
-    New-FileInteractive -FilePath "appsettings.json" -Content $AppSettingsContent -Description "Configuration file with SQL Server connection string and EF Core logging"
+    New-FileInteractive -FilePath "appsettings.json" -Content $AppSettingsContent -Description "Configuration file with SQLite connection string and EF Core logging"
 
     Show-Concept -ConceptName "CRUD Operations with EF Core" -Explanation @"
 CRUD operations using Entity Framework Core:

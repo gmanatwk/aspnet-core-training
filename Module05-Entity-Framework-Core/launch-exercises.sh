@@ -88,7 +88,7 @@ show_learning_objectives() {
     case $exercise in
         "exercise01")
             echo -e "${CYAN}In this exercise, you will learn:${NC}"
-            echo "  📚 1. Setting up Entity Framework Core with SQL Server"
+            echo "  📚 1. Setting up Entity Framework Core with SQLite"
             echo "  📚 2. Creating entity models with data annotations"
             echo "  📚 3. Configuring DbContext with Fluent API"
             echo "  📚 4. Implementing basic CRUD operations"
@@ -145,7 +145,7 @@ show_creation_overview() {
             echo ""
             echo -e "${YELLOW}📋 What you'll build:${NC}"
             echo "  ✅ BookStore API with Entity Framework Core"
-            echo "  ✅ SQL Server database with Code-First approach"
+            echo "  ✅ SQLite database with Code-First approach"
             echo "  ✅ Book entity with proper validation and relationships"
             echo "  ✅ Complete CRUD operations with async patterns"
             echo ""
@@ -309,7 +309,7 @@ echo ""
 echo -e "${YELLOW}2. Or use Docker for database setup:${NC}"
 echo -e "   ${CYAN}cd SourceCode${NC}"
 echo -e "   ${CYAN}docker-compose up --build${NC}"
-echo -e "   ${CYAN}# Includes SQL Server and demo application${NC}"
+echo -e "   ${CYAN}# Includes SQLite database and demo application${NC}"
 echo ""
 echo -e "${YELLOW}⚠️  The template created by this script is basic and may not match${NC}"
 echo -e "${YELLOW}   all exercise requirements. The SourceCode version is complete!${NC}"
@@ -382,7 +382,7 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
 
         # Install EF Core packages
         echo -e "${CYAN}Installing Entity Framework Core packages...${NC}"
-        dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+        dotnet add package Microsoft.EntityFrameworkCore.Sqlite
         dotnet add package Microsoft.EntityFrameworkCore.Tools
         dotnet add package Microsoft.EntityFrameworkCore.Design
 
@@ -396,9 +396,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
-// Add Entity Framework with SQL Server
+// Add Entity Framework with SQLite
 builder.Services.AddDbContext<BookStoreContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -447,7 +447,7 @@ app.MapControllers();
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.Run();' \
-"Program.cs with Entity Framework Core and SQL Server configuration"
+"Program.cs with Entity Framework Core and SQLite configuration"
     fi
 
     explain_concept "Entity Models" \
@@ -741,7 +741,7 @@ public class BookStoreContext : DbContext
     create_file_interactive "appsettings.json" \
 '{
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=BookStoreDB;Trusted_Connection=true;MultipleActiveResultSets=true"
+    "DefaultConnection": "Data Source=BookStore.db"
   },
   "Logging": {
     "LogLevel": {
@@ -752,7 +752,7 @@ public class BookStoreContext : DbContext
   },
   "AllowedHosts": "*"
 }' \
-"Configuration file with SQL Server connection string and EF Core logging"
+"Configuration file with SQLite connection string and EF Core logging"
 
     explain_concept "CRUD Operations with EF Core" \
 "CRUD operations using Entity Framework Core:
