@@ -823,6 +823,66 @@ JSON Web Tokens (JWT) provide stateless authentication:
 
 
 
+        # Update ApplicationDbContext to include Users
+        Write-ColorOutput "Updating ApplicationDbContext to include Users..." -Color Cyan
+        New-FileInteractive -FilePath "Data/ApplicationDbContext.cs" -Description "Updated Entity Framework DbContext with Users support" -Content @'
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Models;
+
+namespace RestfulAPI.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+        }
+
+        public DbSet<Product> Products { get; set; }
+        public DbSet<User> Users { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure Product entity
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
+                entity.HasIndex(e => e.Sku).IsUnique();
+                entity.Property(e => e.Price).HasPrecision(18, 2);
+            });
+
+            // Configure User entity
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+                entity.HasIndex(e => e.Username).IsUnique();
+                entity.HasIndex(e => e.Email).IsUnique();
+            });
+
+            // Seed Product data
+            modelBuilder.Entity<Product>().HasData(
+                new Product { Id = 1, Name = "Laptop", Description = "High-performance laptop", Price = 999.99m, Category = "Electronics", Sku = "LAP001", StockQuantity = 10 },
+                new Product { Id = 2, Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Category = "Accessories", Sku = "MOU001", StockQuantity = 50 },
+                new Product { Id = 3, Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Category = "Accessories", Sku = "KEY001", StockQuantity = 25 }
+            );
+
+            // Seed User data
+            modelBuilder.Entity<User>().HasData(
+                new User { Id = 1, Username = "admin", Password = "admin123", Email = "admin@example.com", Role = "Admin" },
+                new User { Id = 2, Username = "user", Password = "user123", Email = "user@example.com", Role = "User" }
+            );
+        }
+    }
+}
+'@
+
         # Create authentication models
         New-FileInteractive -FilePath "Models/AuthModels.cs" -Description "Authentication request and response models" -Content @'
 using System.ComponentModel.DataAnnotations;
@@ -965,6 +1025,137 @@ namespace RestfulAPI.Controllers
         }
     }
 }
+'@
+
+        # Update Program.cs to include JWT authentication
+        Write-ColorOutput "Updating Program.cs with JWT authentication..." -Color Cyan
+        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured with JWT authentication" -Content @'
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using RestfulAPI.Data;
+using RestfulAPI.Services;
+using System.Text;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+
+// Add Entity Framework with In-Memory Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("ProductsDB"));
+
+// Add JWT Service
+builder.Services.AddScoped<JwtService>();
+
+// Add JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestfulAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestfulAPIUsers";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Products API", Version = "v1" });
+
+    // Include XML comments for better documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+});
+
+// Add CORS for development
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Products API v1");
+        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
+    });
+}
+
+// Seed the database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+}
+
+app.UseCors("AllowAll");
+
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
 '@
 
         Write-ColorOutput "Exercise 2 setup complete!" -Color Green
