@@ -816,12 +816,874 @@ After completing this exercise, move on to Exercise 2 for advanced querying tech
     echo "5. Follow the EXERCISE_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
-    echo -e "${CYAN}Exercise 2 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise builds on Exercise 1 with advanced LINQ queries${NC}"
+    # Exercise 2: Advanced LINQ Queries and Navigation Properties
+
+    explain_concept "Advanced LINQ Queries" \
+"Advanced LINQ with Entity Framework Core:
+• Navigation Properties: Define relationships between entities
+• Include() and ThenInclude(): Eager loading of related data
+• Complex Joins: Multi-table queries with proper relationships
+• Aggregation: Count, Sum, Average, Min, Max operations
+• Grouping: Group data and calculate statistics
+• Projection: Select specific fields for performance"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 2 requires Exercise 1 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run: ./launch-exercises.sh exercise01${NC}"
+        exit 1
+    fi
+
+    # Add Author entity
+    create_file_interactive "Models/Author.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Author entity from Exercise 02 - Advanced LINQ Queries
+/// </summary>
+public class Author
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(50)]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string Email { get; set; } = string.Empty;
+
+    public DateTime? BirthDate { get; set; }
+
+    [StringLength(50)]
+    public string Country { get; set; } = string.Empty;
+
+    // Navigation properties
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
+    // Computed property
+    public string FullName => $"{FirstName} {LastName}";
+}' \
+"Author entity with navigation properties for many-to-many relationship"
+
+    # Add Publisher entity
+    create_file_interactive "Models/Publisher.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Publisher entity from Exercise 02 - Advanced LINQ Queries
+/// </summary>
+public class Publisher
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    public string Address { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string Website { get; set; } = string.Empty;
+
+    public int FoundedYear { get; set; }
+
+    // Navigation properties
+    public virtual ICollection<Book> Books { get; set; } = new List<Book>();
+}' \
+"Publisher entity with one-to-many relationship to books"
+
+    # Add BookAuthor junction entity
+    create_file_interactive "Models/BookAuthor.cs" \
+'namespace EFCoreDemo.Models;
+
+/// <summary>
+/// BookAuthor junction entity from Exercise 02 - Advanced LINQ Queries
+/// Represents many-to-many relationship between Books and Authors
+/// </summary>
+public class BookAuthor
+{
+    public int BookId { get; set; }
+    public int AuthorId { get; set; }
+    public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
+
+    // Navigation properties
+    public virtual Book Book { get; set; } = null!;
+    public virtual Author Author { get; set; } = null!;
+}' \
+"Junction entity for many-to-many relationship between Books and Authors"
+
+    # Update Book entity to include relationships
+    create_file_interactive "Models/BookUpdated.cs" \
+'using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Updated Book entity from Exercise 02 with relationships
+/// </summary>
+public class BookUpdated
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required(ErrorMessage = "Title is required")]
+    [StringLength(200, ErrorMessage = "Title cannot exceed 200 characters")]
+    public string Title { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "ISBN is required")]
+    [StringLength(20, ErrorMessage = "ISBN cannot exceed 20 characters")]
+    public string ISBN { get; set; } = string.Empty;
+
+    [Column(TypeName = "decimal(18,2)")]
+    [Range(0.01, 9999.99, ErrorMessage = "Price must be between 0.01 and 9999.99")]
+    public decimal Price { get; set; }
+
+    [Required(ErrorMessage = "Published date is required")]
+    public DateTime PublishedDate { get; set; }
+
+    public bool IsAvailable { get; set; } = true;
+
+    // Foreign Key for Publisher (added in Exercise 02)
+    public int? PublisherId { get; set; }
+
+    // Navigation properties
+    public virtual Publisher? Publisher { get; set; }
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
+    // Computed property for display
+    [NotMapped]
+    public string DisplayTitle => $"{Title} by {string.Join(", ", BookAuthors.Select(ba => ba.Author.FullName))}";
+}' \
+"Updated Book entity with Publisher relationship and Author many-to-many"
+
+    # Create BookQueryService for advanced LINQ queries
+    create_file_interactive "Services/BookQueryService.cs" \
+'using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace EFCoreDemo.Services;
+
+/// <summary>
+/// Book query service from Exercise 02 - Advanced LINQ Queries
+/// Implements all required query methods from the exercise
+/// </summary>
+public class BookQueryService
+{
+    private readonly BookStoreContext _context;
+    private readonly ILogger<BookQueryService> _logger;
+
+    public BookQueryService(BookStoreContext context, ILogger<BookQueryService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get all books with their publishers (Basic LINQ Query #1)
+    /// </summary>
+    public async Task<IEnumerable<Book>> GetBooksWithPublishersAsync()
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Get books by a specific author (Basic LINQ Query #2)
+    /// </summary>
+    public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Get authors with their book count (Basic LINQ Query #3)
+    /// </summary>
+    public async Task<IEnumerable<object>> GetAuthorsWithBookCountAsync()
+    {
+        return await _context.Authors
+            .Select(a => new
+            {
+                AuthorId = a.Id,
+                FullName = a.FirstName + " " + a.LastName,
+                Email = a.Email,
+                BookCount = a.BookAuthors.Count()
+            })
+            .OrderByDescending(a => a.BookCount)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Full-text search across book title, author name, and publisher - Search (Advanced Query #5)
+    /// </summary>
+    public async Task<IEnumerable<object>> SearchBooksAsync(string searchTerm)
+    {
+        var term = searchTerm.ToLower();
+
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.Title.ToLower().Contains(term) ||
+                       b.ISBN.Contains(term) ||
+                       (b.Publisher != null && b.Publisher.Name.ToLower().Contains(term)) ||
+                       b.BookAuthors.Any(ba =>
+                           ba.Author.FirstName.ToLower().Contains(term) ||
+                           ba.Author.LastName.ToLower().Contains(term)))
+            .Select(b => new
+            {
+                Id = b.Id,
+                Title = b.Title,
+                ISBN = b.ISBN,
+                Price = b.Price,
+                PublisherName = b.Publisher != null ? b.Publisher.Name : "Unknown",
+                Authors = b.BookAuthors.Select(ba => new
+                {
+                    Name = ba.Author.FullName,
+                    Role = ba.Role
+                }).ToList()
+            })
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+}' \
+"BookQueryService with advanced LINQ query implementations"
+
+    # Create Exercise Guide for Exercise 2
+    create_file_interactive "EXERCISE_02_GUIDE.md" \
+'# Exercise 2: Advanced LINQ Queries and Navigation Properties
+
+## 🎯 Objective
+Master advanced LINQ queries with Entity Framework Core, including joins, navigation properties, and complex filtering scenarios.
+
+## ⏱️ Time Allocation
+**Total Time**: 25 minutes
+- Entity Relationships Setup: 8 minutes
+- Basic LINQ Queries: 7 minutes
+- Advanced Query Scenarios: 10 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Update DbContext Configuration
+Add the new entities to your BookStoreContext:
+
+```csharp
+public DbSet<Author> Authors { get; set; } = null!;
+public DbSet<Publisher> Publishers { get; set; } = null!;
+public DbSet<BookAuthor> BookAuthors { get; set; } = null!;
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    // Configure Book-Author many-to-many relationship
+    modelBuilder.Entity<BookAuthor>(entity =>
+    {
+        entity.HasKey(ba => new { ba.BookId, ba.AuthorId });
+
+        entity.HasOne(ba => ba.Book)
+              .WithMany(b => b.BookAuthors)
+              .HasForeignKey(ba => ba.BookId);
+
+        entity.HasOne(ba => ba.Author)
+              .WithMany(a => a.BookAuthors)
+              .HasForeignKey(ba => ba.AuthorId);
+    });
+
+    // Configure Book-Publisher relationship
+    modelBuilder.Entity<Book>()
+        .HasOne(b => b.Publisher)
+        .WithMany(p => p.Books)
+        .HasForeignKey(b => b.PublisherId);
+}
+```
+
+### Step 2: Register BookQueryService
+Add to Program.cs:
+
+```csharp
+builder.Services.AddScoped<BookQueryService>();
+```
+
+### Step 3: Create Migration
+```bash
+dotnet ef migrations add AddAuthorPublisherRelationships
+dotnet ef database update
+```
+
+## ✅ Success Criteria
+- [ ] All entities are properly configured with relationships
+- [ ] Database migrations are created and applied successfully
+- [ ] All basic LINQ queries return correct results
+- [ ] Advanced queries with joins and aggregations work correctly
+- [ ] Search functionality works across multiple tables
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test query methods through API endpoints
+4. Verify complex relationships are loaded correctly
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- Entity relationships and navigation properties
+- Advanced LINQ query techniques
+- Include() and ThenInclude() for eager loading
+- Complex joins and aggregations
+- Search across multiple entities
+' \
+"Complete exercise guide for Advanced LINQ Queries"
+
+    echo -e "${GREEN}🎉 Exercise 2 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Update BookStoreContext with new entities and relationships"
+    echo "2. Register BookQueryService in Program.cs"
+    echo "3. Run: ${CYAN}dotnet ef migrations add AddAuthorPublisherRelationships${NC}"
+    echo "4. Run: ${CYAN}dotnet ef database update${NC}"
+    echo "5. Run: ${CYAN}dotnet run${NC}"
+    echo "6. Test advanced LINQ queries through API endpoints"
+    echo "7. Follow the EXERCISE_02_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
-    echo -e "${CYAN}Exercise 3 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise implements the Repository pattern${NC}"
+    # Exercise 3: Repository Pattern and Unit of Work Implementation
+
+    explain_concept "Repository Pattern" \
+"Repository Pattern benefits:
+• Separation of Concerns: Isolate data access logic
+• Testability: Easy to mock repositories for unit testing
+• Maintainability: Centralized data access logic
+• Flexibility: Easy to switch data sources
+• Clean Architecture: Domain logic separated from data access"
+
+    explain_concept "Unit of Work Pattern" \
+"Unit of Work Pattern coordinates multiple repositories:
+• Transaction Management: Ensure data consistency
+• Change Tracking: Manage entity state across operations
+• Performance: Batch database operations
+• Rollback Capability: Handle errors gracefully"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 3 requires Exercises 1 and 2 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03${NC}"
+        exit 1
+    fi
+
+    # Create Generic Repository Interface
+    create_file_interactive "Repositories/IRepository.cs" \
+'using System.Linq.Expressions;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Generic repository interface from Exercise 03 - Repository Pattern
+/// </summary>
+public interface IRepository<T> where T : class
+{
+    // Basic CRUD operations
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T?> GetByIdAsync(int id);
+    Task<T> AddAsync(T entity);
+    Task<T> UpdateAsync(T entity);
+    Task<bool> DeleteAsync(int id);
+
+    // Advanced operations
+    Task<bool> ExistsAsync(int id);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+    Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
+    Task<int> CountAsync();
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+
+    // Pagination
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
+    Task<IEnumerable<T>> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        int page = 1,
+        int pageSize = 10);
+}' \
+"Generic repository interface with common CRUD and query operations"
+
+    # Create Generic Repository Implementation
+    create_file_interactive "Repositories/Repository.cs" \
+'using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+using System.Linq.Expressions;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Generic repository implementation from Exercise 03
+/// </summary>
+public class Repository<T> : IRepository<T> where T : class
+{
+    protected readonly BookStoreContext _context;
+    protected readonly DbSet<T> _dbSet;
+
+    public Repository(BookStoreContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<T>();
+    }
+
+    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+
+    public virtual async Task<T?> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+
+    public virtual async Task<T> AddAsync(T entity)
+    {
+        var result = await _dbSet.AddAsync(entity);
+        return result.Entity;
+    }
+
+    public virtual async Task<T> UpdateAsync(T entity)
+    {
+        _dbSet.Update(entity);
+        return entity;
+    }
+
+    public virtual async Task<bool> DeleteAsync(int id)
+    {
+        var entity = await GetByIdAsync(id);
+        if (entity == null)
+            return false;
+
+        _dbSet.Remove(entity);
+        return true;
+    }
+
+    public virtual async Task<bool> ExistsAsync(int id)
+    {
+        return await _dbSet.FindAsync(id) != null;
+    }
+
+    public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.Where(predicate).ToListAsync();
+    }
+
+    public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.FirstOrDefaultAsync(predicate);
+    }
+
+    public virtual async Task<int> CountAsync()
+    {
+        return await _dbSet.CountAsync();
+    }
+
+    public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.CountAsync(predicate);
+    }
+
+    public virtual async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize)
+    {
+        return await _dbSet
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public virtual async Task<IEnumerable<T>> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        int page = 1,
+        int pageSize = 10)
+    {
+        IQueryable<T> query = _dbSet;
+
+        if (filter != null)
+        {
+            query = query.Where(filter);
+        }
+
+        if (orderBy != null)
+        {
+            query = orderBy(query);
+        }
+
+        return await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+}' \
+"Generic repository implementation with all CRUD and query operations"
+
+    # Create Book Repository Interface
+    create_file_interactive "Repositories/IBookRepository.cs" \
+'using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Book repository interface from Exercise 03 - Repository Pattern
+/// </summary>
+public interface IBookRepository : IRepository<Book>
+{
+    Task<IEnumerable<Book>> GetBooksWithPublisherAsync();
+    Task<Book?> GetBookWithDetailsAsync(int id);
+    Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId);
+    Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId);
+    Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm);
+    Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice);
+    Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null);
+    Task<decimal> GetAveragePriceAsync();
+    Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year);
+}' \
+"Book repository interface with book-specific operations"
+
+    # Create Book Repository Implementation
+    create_file_interactive "Repositories/BookRepository.cs" \
+'using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Book repository implementation from Exercise 03
+/// </summary>
+public class BookRepository : Repository<Book>, IBookRepository
+{
+    public BookRepository(BookStoreContext context) : base(context)
+    {
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksWithPublisherAsync()
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    public async Task<Book?> GetBookWithDetailsAsync(int id)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .FirstOrDefaultAsync(b => b.Id == id);
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.PublisherId == publisherId && b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm)
+    {
+        var term = searchTerm.ToLower();
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.Title.ToLower().Contains(term) ||
+                       b.ISBN.Contains(term) ||
+                       (b.Publisher != null && b.Publisher.Name.ToLower().Contains(term)) ||
+                       b.BookAuthors.Any(ba =>
+                           ba.Author.FirstName.ToLower().Contains(term) ||
+                           ba.Author.LastName.ToLower().Contains(term)))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.Price >= minPrice && b.Price <= maxPrice && b.IsAvailable)
+            .OrderBy(b => b.Price)
+            .ToListAsync();
+    }
+
+    public async Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null)
+    {
+        var query = _context.Books.Where(b => b.ISBN == isbn);
+
+        if (excludeBookId.HasValue)
+        {
+            query = query.Where(b => b.Id != excludeBookId.Value);
+        }
+
+        return await query.AnyAsync();
+    }
+
+    public async Task<decimal> GetAveragePriceAsync()
+    {
+        return await _context.Books
+            .Where(b => b.IsAvailable)
+            .AverageAsync(b => b.Price);
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.PublishedDate.Year == year && b.IsAvailable)
+            .OrderBy(b => b.PublishedDate)
+            .ToListAsync();
+    }
+}' \
+"Book repository implementation with all book-specific operations"
+
+    # Create Unit of Work Interface
+    create_file_interactive "UnitOfWork/IUnitOfWork.cs" \
+'using EFCoreDemo.Models;
+using EFCoreDemo.Repositories;
+
+namespace EFCoreDemo.UnitOfWork;
+
+/// <summary>
+/// Unit of Work interface from Exercise 03 - Repository Pattern
+/// Coordinates multiple repositories and manages transactions
+/// </summary>
+public interface IUnitOfWork : IDisposable
+{
+    IBookRepository Books { get; }
+    IRepository<Author> Authors { get; }
+    IRepository<Publisher> Publishers { get; }
+
+    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
+}' \
+"Unit of Work interface for coordinating repositories and transactions"
+
+    # Create Unit of Work Implementation
+    create_file_interactive "UnitOfWork/UnitOfWork.cs" \
+'using Microsoft.EntityFrameworkCore.Storage;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+using EFCoreDemo.Repositories;
+
+namespace EFCoreDemo.UnitOfWork;
+
+/// <summary>
+/// Unit of Work implementation from Exercise 03
+/// Manages multiple repositories and ensures transactional consistency
+/// </summary>
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly BookStoreContext _context;
+    private IDbContextTransaction? _transaction;
+
+    public IBookRepository Books { get; }
+    public IRepository<Author> Authors { get; }
+    public IRepository<Publisher> Publishers { get; }
+
+    public UnitOfWork(BookStoreContext context)
+    {
+        _context = context;
+        Books = new BookRepository(_context);
+        Authors = new Repository<Author>(_context);
+        Publishers = new Repository<Publisher>(_context);
+    }
+
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+
+    public async Task BeginTransactionAsync()
+    {
+        _transaction = await _context.Database.BeginTransactionAsync();
+    }
+
+    public async Task CommitTransactionAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.CommitAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    public async Task RollbackTransactionAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.RollbackAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        _context.Dispose();
+    }
+}' \
+"Unit of Work implementation with transaction management"
+
+    # Create Exercise Guide for Exercise 3
+    create_file_interactive "EXERCISE_03_GUIDE.md" \
+'# Exercise 3: Repository Pattern and Unit of Work Implementation
+
+## 🎯 Objective
+Refactor direct Entity Framework Core usage to implement the Repository Pattern and Unit of Work Pattern for better separation of concerns, testability, and maintainability.
+
+## ⏱️ Time Allocation
+**Total Time**: 35 minutes
+- Generic Repository Implementation: 12 minutes
+- Specific Repository Implementation: 10 minutes
+- Unit of Work Pattern: 8 minutes
+- Controller Refactoring: 5 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Register Services in Program.cs
+Add the following to your Program.cs service registration:
+
+```csharp
+// Register repositories
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+// Register Unit of Work
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+```
+
+### Step 2: Refactor BooksController
+Update your BooksController to use the Unit of Work pattern:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class BooksController : ControllerBase
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<BooksController> _logger;
+
+    public BooksController(IUnitOfWork unitOfWork, ILogger<BooksController> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
+    {
+        try
+        {
+            var books = await _unitOfWork.Books.GetBooksWithPublisherAsync();
+            return Ok(books);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving books");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Book>> CreateBook(Book book)
+    {
+        try
+        {
+            // Validate ISBN uniqueness
+            if (await _unitOfWork.Books.IsbnExistsAsync(book.ISBN))
+            {
+                return Conflict($"Book with ISBN {book.ISBN} already exists");
+            }
+
+            await _unitOfWork.BeginTransactionAsync();
+
+            var createdBook = await _unitOfWork.Books.AddAsync(book);
+            await _unitOfWork.SaveChangesAsync();
+
+            await _unitOfWork.CommitTransactionAsync();
+
+            return CreatedAtAction(nameof(GetBook), new { id = createdBook.Id }, createdBook);
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Error creating book");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+}
+```
+
+## ✅ Success Criteria
+- [ ] Generic repository interface and implementation are complete
+- [ ] Specific repositories are implemented with domain-specific methods
+- [ ] Unit of Work pattern is properly implemented
+- [ ] Transaction management works correctly
+- [ ] Controllers are refactored to use repositories
+- [ ] Proper error handling and logging are in place
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test repository methods through API endpoints
+4. Verify transaction rollback by causing intentional errors
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- Repository pattern implementation and benefits
+- Unit of Work pattern for transaction management
+- Dependency injection with repositories
+- Clean architecture principles
+- Testable code design
+' \
+"Complete exercise guide for Repository Pattern implementation"
+
+    echo -e "${GREEN}🎉 Exercise 3 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Update Program.cs with repository registrations"
+    echo "2. Refactor controllers to use Unit of Work"
+    echo "3. Run: ${CYAN}dotnet run${NC}"
+    echo "4. Test repository patterns through API endpoints"
+    echo "5. Follow the EXERCISE_03_GUIDE.md for implementation steps"
 
 fi
 

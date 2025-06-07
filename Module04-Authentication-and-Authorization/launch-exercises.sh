@@ -1388,13 +1388,890 @@ Your JWT authentication system is now complete and ready for Exercise 2, where y
 
 # Placeholder functions for other exercises
 create_exercise02() {
-    print_info "Exercise 02 will enhance Exercise 01 with advanced role-based authorization"
-    print_info "This will be implemented in a future update"
+    print_status "Creating Exercise 02: Role-Based Authorization"
+
+    # Ensure we're in the JwtAuthenticationAPI directory
+    if [ ! -d "JwtAuthenticationAPI" ]; then
+        print_error "JwtAuthenticationAPI directory not found. Please run exercise01 first."
+        exit 1
+    fi
+    cd JwtAuthenticationAPI
+
+    print_info "Building on Exercise 01 - Adding role-based authorization..."
+
+    # Create AdminController.cs
+    create_file_interactive "Controllers/AdminController.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using JwtAuthenticationAPI.Models;
+
+namespace JwtAuthenticationAPI.Controllers;
+
+/// <summary>
+/// Admin-only endpoints from Exercise 02
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class AdminController : ControllerBase
+{
+    /// <summary>
+    /// Admin dashboard - requires Admin role
+    /// </summary>
+    [HttpGet("dashboard")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult GetDashboard()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Admin Dashboard Data",
+            Data = new
+            {
+                TotalUsers = 150,
+                ActiveSessions = 45,
+                SystemHealth = "Good",
+                LastBackup = DateTime.UtcNow.AddHours(-2)
+            }
+        });
+    }
+
+    /// <summary>
+    /// Get all users - Admin only policy
+    /// </summary>
+    [HttpGet("users")]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult GetAllUsers()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "List of all users",
+            Data = new[]
+            {
+                new { Id = 1, Username = "admin", Role = "Admin", LastLogin = DateTime.UtcNow.AddMinutes(-30) },
+                new { Id = 2, Username = "editor", Role = "Editor", LastLogin = DateTime.UtcNow.AddHours(-1) },
+                new { Id = 3, Username = "user", Role = "User", LastLogin = DateTime.UtcNow.AddDays(-1) }
+            }
+        });
+    }
+}' \
+"Admin-only controller for Exercise 02"
+
+    # Create EditorController.cs
+    create_file_interactive "Controllers/EditorController.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using JwtAuthenticationAPI.Models;
+
+namespace JwtAuthenticationAPI.Controllers;
+
+/// <summary>
+/// Editor endpoints from Exercise 02
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class EditorController : ControllerBase
+{
+    /// <summary>
+    /// Content management - Editor or Admin access
+    /// </summary>
+    [HttpGet("content")]
+    [Authorize(Policy = "EditorOrAdmin")]
+    public IActionResult GetContent()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Content Management Data",
+            Data = new
+            {
+                Articles = new[]
+                {
+                    new { Id = 1, Title = "Getting Started with JWT", Status = "Published" },
+                    new { Id = 2, Title = "Role-Based Authorization", Status = "Draft" },
+                    new { Id = 3, Title = "Custom Policies", Status = "Review" }
+                },
+                CanPublish = User.IsInRole("Editor") || User.IsInRole("Admin"),
+                CanDelete = User.IsInRole("Admin")
+            }
+        });
+    }
+
+    /// <summary>
+    /// Create content - requires Editor role
+    /// </summary>
+    [HttpPost("content")]
+    [Authorize(Roles = "Editor,Admin")]
+    public IActionResult CreateContent([FromBody] object content)
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Content created successfully",
+            Data = new { Id = 4, CreatedAt = DateTime.UtcNow }
+        });
+    }
+}' \
+"Editor controller for Exercise 02"
+
+    # Create UsersController.cs
+    create_file_interactive "Controllers/UsersController.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using JwtAuthenticationAPI.Models;
+using JwtAuthenticationAPI.Services;
+using System.Security.Claims;
+
+namespace JwtAuthenticationAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize] // All endpoints in this controller require authentication
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get all users (Admin only)
+    /// </summary>
+    /// <returns>List of all users</returns>
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        try
+        {
+            var users = await _userService.GetAllUsersAsync();
+
+            var userProfiles = users.Select(u => new UserProfile
+            {
+                Id = u.Id,
+                Username = u.Username,
+                Email = u.Email,
+                Roles = u.Roles,
+                CreatedAt = u.CreatedAt
+            }).ToList();
+
+            return Ok(new ApiResponse<List<UserProfile>>
+            {
+                Success = true,
+                Message = "Users retrieved successfully",
+                Data = userProfiles
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all users");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "An error occurred while retrieving users"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get current user'\''s information
+    /// </summary>
+    /// <returns>Current user profile</returns>
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+            {
+                return Unauthorized(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid user token"
+                });
+            }
+
+            var user = await _userService.GetUserByIdAsync(id);
+
+            if (user == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "User not found"
+                });
+            }
+
+            var profile = new UserProfile
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Roles = user.Roles,
+                CreatedAt = user.CreatedAt
+            };
+
+            return Ok(new ApiResponse<UserProfile>
+            {
+                Success = true,
+                Message = "Current user retrieved successfully",
+                Data = profile
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving current user");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "An error occurred while retrieving current user"
+            });
+        }
+    }
+}' \
+"Users management controller for Exercise 02"
+
+    # Update Program.cs to add authorization policies
+    print_info "Updating Program.cs with role-based authorization policies..."
+    
+    # Back up existing Program.cs
+    cp Program.cs Program.cs.ex01.backup
+
+    # Create updated Program.cs with authorization policies
+    create_file_interactive "Program.cs" \
+'using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using JwtAuthenticationAPI.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+// Configure Swagger with JWT support
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "JWT Authentication API - Exercise 02",
+        Version = "v1",
+        Description = "JWT authentication with role-based authorization"
+    });
+
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme.
+                      Enter '\''Bearer'\'' [space] and then your token in the text input below.
+                      Example: '\''Bearer 12345abcdef'\''",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+});
+
+// Register services
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Configure JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+            {
+                context.Response.Headers.Add("Token-Expired", "true");
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+// Configure Authorization with role-based policies
+builder.Services.AddAuthorization(options =>
+{
+    // Exercise 02 - Role-Based Policies
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
+    options.AddPolicy("EditorOrAdmin", policy => policy.RequireRole("Editor", "Admin"));
+    options.AddPolicy("UserOrAbove", policy => policy.RequireRole("User", "Editor", "Admin"));
+});
+
+// Add CORS for development
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "JWT Authentication API V1");
+    });
+}
+
+// Serve static files for demo interface
+app.UseStaticFiles();
+
+app.UseRouting();
+app.UseCors();
+
+// Authentication & Authorization middleware (ORDER MATTERS!)
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Default route to demo page
+app.MapFallbackToFile("index.html");
+
+app.Run();' \
+"Updated Program.cs with role-based authorization policies"
+
+    print_status "Exercise 02 created successfully!"
+    print_info "New features added:"
+    echo "  • Role-based authorization policies"
+    echo "  • Admin, Editor, and User controllers"
+    echo "  • Different access levels for each role"
 }
 
 create_exercise03() {
-    print_info "Exercise 03 will add custom authorization policies and handlers"
-    print_info "This will be implemented in a future update"
+    print_status "Creating Exercise 03: Custom Authorization Policies"
+
+    # Ensure we're in the JwtAuthenticationAPI directory
+    if [ ! -d "JwtAuthenticationAPI" ]; then
+        print_error "JwtAuthenticationAPI directory not found. Please run exercise01 first."
+        exit 1
+    fi
+    cd JwtAuthenticationAPI
+
+    print_info "Building on Exercises 01 & 02 - Adding custom authorization policies..."
+
+    # Create Requirements directory
+    mkdir -p Requirements
+
+    # Create MinimumAgeRequirement.cs
+    create_file_interactive "Requirements/MinimumAgeRequirement.cs" \
+'using Microsoft.AspNetCore.Authorization;
+
+namespace JwtAuthenticationAPI.Requirements;
+
+public class MinimumAgeRequirement : IAuthorizationRequirement
+{
+    public int MinimumAge { get; }
+
+    public MinimumAgeRequirement(int minimumAge)
+    {
+        MinimumAge = minimumAge;
+    }
+}' \
+"Minimum age requirement for Exercise 03"
+
+    # Create DepartmentRequirement.cs
+    create_file_interactive "Requirements/DepartmentRequirement.cs" \
+'using Microsoft.AspNetCore.Authorization;
+
+namespace JwtAuthenticationAPI.Requirements;
+
+public class DepartmentRequirement : IAuthorizationRequirement
+{
+    public string[] AllowedDepartments { get; }
+
+    public DepartmentRequirement(params string[] departments)
+    {
+        AllowedDepartments = departments;
+    }
+}' \
+"Department requirement for Exercise 03"
+
+    # Create WorkingHoursRequirement.cs
+    create_file_interactive "Requirements/WorkingHoursRequirement.cs" \
+'using Microsoft.AspNetCore.Authorization;
+
+namespace JwtAuthenticationAPI.Requirements;
+
+public class WorkingHoursRequirement : IAuthorizationRequirement
+{
+    public TimeSpan StartTime { get; }
+    public TimeSpan EndTime { get; }
+
+    public WorkingHoursRequirement(TimeSpan startTime, TimeSpan endTime)
+    {
+        StartTime = startTime;
+        EndTime = endTime;
+    }
+}' \
+"Working hours requirement for Exercise 03"
+
+    # Create Handlers directory
+    mkdir -p Handlers
+
+    # Create MinimumAgeHandler.cs
+    create_file_interactive "Handlers/MinimumAgeHandler.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using JwtAuthenticationAPI.Requirements;
+
+namespace JwtAuthenticationAPI.Handlers;
+
+public class MinimumAgeHandler : AuthorizationHandler<MinimumAgeRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        MinimumAgeRequirement requirement)
+    {
+        var birthDateClaim = context.User.FindFirst("birthdate");
+
+        if (birthDateClaim != null && DateTime.TryParse(birthDateClaim.Value, out var birthDate))
+        {
+            var age = DateTime.Today.Year - birthDate.Year;
+            if (birthDate > DateTime.Today.AddYears(-age)) age--;
+
+            if (age >= requirement.MinimumAge)
+            {
+                context.Succeed(requirement);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+}' \
+"Minimum age authorization handler for Exercise 03"
+
+    # Create DepartmentHandler.cs
+    create_file_interactive "Handlers/DepartmentHandler.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using JwtAuthenticationAPI.Requirements;
+
+namespace JwtAuthenticationAPI.Handlers;
+
+public class DepartmentHandler : AuthorizationHandler<DepartmentRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        DepartmentRequirement requirement)
+    {
+        var departmentClaim = context.User.FindFirst("department");
+
+        if (departmentClaim != null)
+        {
+            var userDepartment = departmentClaim.Value;
+
+            if (requirement.AllowedDepartments.Contains(userDepartment, StringComparer.OrdinalIgnoreCase))
+            {
+                context.Succeed(requirement);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+}' \
+"Department authorization handler for Exercise 03"
+
+    # Create WorkingHoursHandler.cs
+    create_file_interactive "Handlers/WorkingHoursHandler.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using JwtAuthenticationAPI.Requirements;
+
+namespace JwtAuthenticationAPI.Handlers;
+
+public class WorkingHoursHandler : AuthorizationHandler<WorkingHoursRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        WorkingHoursRequirement requirement)
+    {
+        var currentTime = DateTime.Now.TimeOfDay;
+
+        // Check if current time is within working hours
+        if (currentTime >= requirement.StartTime && currentTime <= requirement.EndTime)
+        {
+            context.Succeed(requirement);
+        }
+
+        return Task.CompletedTask;
+    }
+}' \
+"Working hours authorization handler for Exercise 03"
+
+    # Create PolicyController.cs
+    create_file_interactive "Controllers/PolicyController.cs" \
+'using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using JwtAuthenticationAPI.Models;
+using System.Security.Claims;
+
+namespace JwtAuthenticationAPI.Controllers;
+
+/// <summary>
+/// Custom policy endpoints from Exercise 03
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class PolicyController : ControllerBase
+{
+    /// <summary>
+    /// Adult content - requires minimum age of 18
+    /// </summary>
+    [HttpGet("adult-content")]
+    [Authorize(Policy = "Adult")]
+    public IActionResult GetAdultContent()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Adult content accessed",
+            Data = new { Content = "This content is restricted to users 18 and older" }
+        });
+    }
+
+    /// <summary>
+    /// IT Department resources - requires IT or Development department
+    /// </summary>
+    [HttpGet("it-resources")]
+    [Authorize(Policy = "ITDepartment")]
+    public IActionResult GetITResources()
+    {
+        var department = User.FindFirst("department")?.Value;
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "IT Department Resources",
+            Data = new
+            {
+                Department = department,
+                Resources = new[]
+                {
+                    "Source Code Repository",
+                    "Development Servers",
+                    "CI/CD Pipeline",
+                    "Technical Documentation"
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Business hours only endpoint - accessible 9 AM to 5 PM
+    /// </summary>
+    [HttpGet("business-hours")]
+    [Authorize(Policy = "BusinessHours")]
+    public IActionResult GetBusinessHoursData()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Business hours data accessed",
+            Data = new
+            {
+                CurrentTime = DateTime.Now.ToString("HH:mm"),
+                BusinessData = "This data is only available during business hours (9:00 - 17:00)"
+            }
+        });
+    }
+
+    /// <summary>
+    /// Senior IT Staff endpoint - combined requirements
+    /// </summary>
+    [HttpGet("senior-it-data")]
+    [Authorize(Policy = "SeniorITStaff")]
+    public IActionResult GetSeniorITData()
+    {
+        var username = User.FindFirst(ClaimTypes.Name)?.Value;
+        var department = User.FindFirst("department")?.Value;
+
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Senior IT Staff Data",
+            Data = new
+            {
+                User = username,
+                Department = department,
+                AccessLevel = "Senior",
+                SensitiveData = new
+                {
+                    ServerPasswords = "********",
+                    DatabaseConnections = "Encrypted",
+                    APIKeys = "Secured"
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Public info - no authentication required
+    /// </summary>
+    [HttpGet("public-info")]
+    public IActionResult GetPublicInfo()
+    {
+        return Ok(new ApiResponse<object>
+        {
+            Success = true,
+            Message = "Public information",
+            Data = new
+            {
+                CompanyName = "Tech Corp",
+                Address = "123 Tech Street",
+                Phone = "555-0123",
+                OpenHours = "Mon-Fri 9:00-17:00"
+            }
+        });
+    }
+}' \
+"Policy controller for Exercise 03"
+
+    # Update Program.cs with custom policies
+    print_info "Updating Program.cs with custom authorization policies..."
+    
+    # Back up existing Program.cs
+    cp Program.cs Program.cs.ex02.backup
+
+    # Create final Program.cs with all policies
+    create_file_interactive "Program.cs" \
+'using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using JwtAuthenticationAPI.Services;
+using JwtAuthenticationAPI.Requirements;
+using JwtAuthenticationAPI.Handlers;
+using Microsoft.AspNetCore.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+// Configure Swagger with JWT support
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "JWT Authentication API - Exercise 03",
+        Version = "v1",
+        Description = "JWT authentication with custom authorization policies"
+    });
+
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme.
+                      Enter '\''Bearer'\'' [space] and then your token in the text input below.
+                      Example: '\''Bearer 12345abcdef'\''",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+});
+
+// Register services
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Register authorization handlers from Exercise 03
+builder.Services.AddScoped<IAuthorizationHandler, MinimumAgeHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, DepartmentHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, WorkingHoursHandler>();
+
+// Configure JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+            {
+                context.Response.Headers.Add("Token-Expired", "true");
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+// Configure Authorization with custom policies
+builder.Services.AddAuthorization(options =>
+{
+    // Exercise 02 - Role-Based Policies
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
+    options.AddPolicy("EditorOrAdmin", policy => policy.RequireRole("Editor", "Admin"));
+    options.AddPolicy("UserOrAbove", policy => policy.RequireRole("User", "Editor", "Admin"));
+
+    // Exercise 03 - Custom Authorization Policies
+    // Age-based policy
+    options.AddPolicy("Adult", policy =>
+        policy.Requirements.Add(new MinimumAgeRequirement(18)));
+
+    // Department-based policy
+    options.AddPolicy("ITDepartment", policy =>
+        policy.Requirements.Add(new DepartmentRequirement("IT", "Development")));
+
+    // Working hours policy
+    options.AddPolicy("BusinessHours", policy =>
+        policy.Requirements.Add(new WorkingHoursRequirement(
+            new TimeSpan(9, 0, 0),
+            new TimeSpan(17, 0, 0))));
+
+    // Complex combined policy
+    options.AddPolicy("SeniorITStaff", policy =>
+    {
+        policy.RequireRole("Employee");
+        policy.Requirements.Add(new MinimumAgeRequirement(25));
+        policy.Requirements.Add(new DepartmentRequirement("IT"));
+    });
+});
+
+// Add CORS for development
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "JWT Authentication API V1");
+    });
+}
+
+// Serve static files for demo interface
+app.UseStaticFiles();
+
+app.UseRouting();
+app.UseCors();
+
+// Authentication & Authorization middleware (ORDER MATTERS!)
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Default route to demo page
+app.MapFallbackToFile("index.html");
+
+app.Run();' \
+"Final Program.cs with all authorization features"
+
+    print_status "Exercise 03 created successfully!"
+    print_info "New features added:"
+    echo "  • Custom authorization requirements and handlers"
+    echo "  • Age-based policies (18+ for adult content)"
+    echo "  • Department-based access (IT department)"
+    echo "  • Time-based access (business hours 9-5)"
+    echo "  • Combined policies (Senior IT Staff)"
 }
 
 # Run main function

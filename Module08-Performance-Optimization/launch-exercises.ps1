@@ -37,8 +37,8 @@ function Show-FilePreview {
     )
     
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-    Write-Host "📄 Will create: $FilePath" -ForegroundColor Blue
-    Write-Host "📝 Purpose: $Description" -ForegroundColor Yellow
+    Write-Host "[FILE] Will create: $FilePath" -ForegroundColor Blue
+    Write-Host "[INFO] Purpose: $Description" -ForegroundColor Yellow
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
 }
 
@@ -68,7 +68,7 @@ function New-FileInteractive {
         
         switch ($Response.ToLower()) {
             "n" {
-                Write-Host "⏭️  Skipped: $FilePath" -ForegroundColor Red
+                Write-Host "[SKIP] Skipped: $FilePath" -ForegroundColor Red
                 return
             }
             "s" {
