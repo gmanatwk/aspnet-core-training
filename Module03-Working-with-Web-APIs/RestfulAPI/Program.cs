@@ -1,29 +1,73 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using RestfulAPI.Data;
+using RestfulAPI.Services;
+using RestfulAPI.Configuration;
+using RestfulAPI.HealthChecks;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
 
+// Add API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("x-api-version"),
+        new MediaTypeApiVersionReader("x-api-version")
+    );
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseInMemoryDatabase("ProductsDB"));
+    options.UseInMemoryDatabase("RestfulAPIDb"));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new() { Title = "Products API", Version = "v1" });
+// Add JWT Service
+builder.Services.AddScoped<JwtService>();
 
-    // Include XML comments for better documentation
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
+// Add JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestfulAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestfulAPIUsers";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        c.IncludeXmlComments(xmlPath);
-    }
-});
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+// Configure Swagger for multiple API versions
+builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
+builder.Services.AddSwaggerGen();
+
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<ApiHealthCheck>("api_health_check");
 
 // Add CORS for development
 builder.Services.AddCors(options =>
@@ -42,10 +86,17 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
+
+    // Configure Swagger UI for multiple versions
+    var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+    app.UseSwaggerUI(options =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Products API v1");
-        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
+        foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+        {
+            options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json",
+                $"Products API {description.GroupName.ToUpperInvariant()}");
+        }
+        options.RoutePrefix = "swagger";
     });
 }
 
@@ -64,7 +115,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Add health check endpoint
+app.MapHealthChecks("/health");
 
 app.Run();
