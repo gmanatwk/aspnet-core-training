@@ -898,6 +898,25 @@ namespace RestfulAPI.Models
         public string Password { get; set; } = string.Empty;
     }
 
+    public class RegisterRequest
+    {
+        [Required(ErrorMessage = "Username is required")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare("Password", ErrorMessage = "Password and confirmation password do not match")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
     public class LoginResponse
     {
         public string Token { get; set; } = string.Empty;
@@ -987,6 +1006,40 @@ namespace RestfulAPI.Controllers
         {
             _context = context;
             _jwtService = jwtService;
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
+        {
+            // Check if user already exists
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
+            if (existingUser != null)
+            {
+                return BadRequest(new { message = "User already exists" });
+            }
+
+            // Create new user
+            var user = new User
+            {
+                Username = request.Username,
+                Email = request.Email,
+                Password = request.Password, // In production, use proper password hashing
+                Role = "User",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Generate token for the new user
+            var token = _jwtService.GenerateToken(user);
+
+            return Ok(new LoginResponse
+            {
+                Token = token,
+                Expiration = DateTime.UtcNow.AddHours(24),
+                Username = user.Username
+            });
         }
 
         [HttpPost("login")]
