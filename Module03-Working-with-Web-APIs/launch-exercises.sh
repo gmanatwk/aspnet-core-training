@@ -2031,14 +2031,28 @@ namespace RestfulAPI.HealthChecks
 }' \
 "Custom health check for monitoring API status"
     
-    create_file_interactive "VERSIONING_GUIDE.md" \
-'# API Versioning and Documentation
+    # Update Program.cs to support multiple API versions
+    create_file_interactive "Program.cs" \
+'using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using RestfulAPI.Data;
+using RestfulAPI.Services;
+using RestfulAPI.Configuration;
+using RestfulAPI.HealthChecks;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 
-## Update Program.cs
-Add these services after existing configuration:
+var builder = WebApplication.CreateBuilder(args);
 
-```csharp
-// API Versioning
+// Add services to the container
+builder.Services.AddControllers();
+
+// Add API Versioning
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1, 0);
@@ -2055,7 +2069,34 @@ builder.Services.AddApiVersioning(options =>
     options.SubstituteApiVersionInUrl = true;
 });
 
-// Configure Swagger for versioning
+// Add Entity Framework with In-Memory Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("RestfulAPIDb"));
+
+// Add JWT Service
+builder.Services.AddScoped<JwtService>();
+
+// Add JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestfulAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestfulAPIUsers";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+// Configure Swagger for multiple API versions
 builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
 builder.Services.AddSwaggerGen();
 
@@ -2063,34 +2104,61 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api_health_check");
 
-// Update Swagger UI to show all versions
-var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
-
-app.UseSwaggerUI(options =>
+// Add CORS for development
+builder.Services.AddCors(options =>
 {
-    foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+    options.AddPolicy("AllowAll", policy =>
     {
-        options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json",
-            description.GroupName.ToUpperInvariant());
-    }
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+
+    // Configure Swagger UI for multiple versions
+    var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+    app.UseSwaggerUI(options =>
+    {
+        foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+        {
+            options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json",
+                $"Products API {description.GroupName.ToUpperInvariant()}");
+        }
+        options.RoutePrefix = "swagger";
+    });
+}
+
+// Seed the database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+}
+
+app.UseCors("AllowAll");
+
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
 // Add health check endpoint
 app.MapHealthChecks("/health");
-```
 
-## Move V1 Controllers
-1. Create Controllers/V1 folder
-2. Move existing controllers there
-3. Add [ApiVersion("1.0")] attribute
-4. Update namespace to include .V1
-
-## Testing:
-- V1: https://localhost:5001/api/v1/books
-- V2: https://localhost:5001/api/v2/books
-- Health: https://localhost:5001/health
-- Swagger: https://localhost:5001/swagger' \
-"Complete guide for implementing API versioning"
+app.Run();' \
+"Program.cs configured for multiple API versions with v1 and v2 support"
 fi
 
 echo ""

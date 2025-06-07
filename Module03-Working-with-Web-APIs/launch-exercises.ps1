@@ -1190,12 +1190,469 @@ Production APIs need proper versioning and documentation:
             exit 1
         }
 
+        # Create V1 Controllers directory and controller
+        New-Item -ItemType Directory -Path "Controllers/V1" -Force | Out-Null
+        New-FileInteractive -FilePath "Controllers/V1/ProductsV1Controller.cs" -Description "Version 1 of the Products API (basic functionality)" -Content @'
+using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using RestfulAPI.Models;
+using RestfulAPI.DTOs;
+using RestfulAPI.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace RestfulAPI.Controllers.V1
+{
+    [ApiVersion("1.0")]
+    [ApiController]
+    [Route("api/v{version:apiVersion}/products")]
+    [Produces("application/json")]
+    public class ProductsV1Controller : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsV1Controller> _logger;
+
+        public ProductsV1Controller(ApplicationDbContext context, ILogger<ProductsV1Controller> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get all products (V1 - basic filtering)
+        /// </summary>
+        [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<ProductResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<ProductResponseDto>>> GetProducts(
+            [FromQuery] string? category = null,
+            [FromQuery] string? name = null)
+        {
+            _logger.LogInformation("V1 API: Getting products with basic filters");
+
+            var query = _context.Products.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                query = query.Where(p => p.Category.Contains(category));
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(p => p.Name.Contains(name));
+            }
+
+            var products = await query
+                .Select(p => new ProductResponseDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Sku = p.Sku,
+                    StockQuantity = p.StockQuantity,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(products);
+        }
+    }
+}
+'@
+
+        # Create V2 Controllers directory and controller
+        New-Item -ItemType Directory -Path "Controllers/V2" -Force | Out-Null
+        New-FileInteractive -FilePath "Controllers/V2/ProductsV2Controller.cs" -Description "Version 2 of the Products API with pagination and advanced features" -Content @'
+using Microsoft.AspNetCore.Mvc;
+using Asp.Versioning;
+using RestfulAPI.Models;
+using RestfulAPI.DTOs;
+using RestfulAPI.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace RestfulAPI.Controllers.V2
+{
+    [ApiVersion("2.0")]
+    [ApiController]
+    [Route("api/v{version:apiVersion}/products")]
+    [Produces("application/json")]
+    public class ProductsV2Controller : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductsV2Controller> _logger;
+
+        public ProductsV2Controller(ApplicationDbContext context, ILogger<ProductsV2Controller> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get all products with pagination (V2 enhancement)
+        /// </summary>
+        [HttpGet]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetProducts(
+            [FromQuery] string? category = null,
+            [FromQuery] string? name = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            _logger.LogInformation("V2 API: Getting products with pagination and advanced filters");
+
+            var query = _context.Products.AsQueryable();
+
+            // Apply filters
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                query = query.Where(p => p.Category.Contains(category));
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(p => p.Name.Contains(name));
+            }
+
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= maxPrice.Value);
+            }
+
+            // Get total count for pagination
+            var totalItems = await query.CountAsync();
+
+            // Apply pagination
+            var products = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new ProductResponseDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Sku = p.Sku,
+                    StockQuantity = p.StockQuantity,
+                    IsActive = p.IsActive,
+                    IsAvailable = p.IsAvailable,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+
+            // V2 returns paginated response with metadata
+            return Ok(new
+            {
+                page = page,
+                pageSize = pageSize,
+                totalItems = totalItems,
+                totalPages = (int)Math.Ceiling((double)totalItems / pageSize),
+                hasNextPage = page * pageSize < totalItems,
+                hasPreviousPage = page > 1,
+                items = products
+            });
+        }
+
+        /// <summary>
+        /// Get product statistics (V2 exclusive feature)
+        /// </summary>
+        [HttpGet("statistics")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetProductStatistics()
+        {
+            var stats = new
+            {
+                totalProducts = await _context.Products.CountAsync(),
+                averagePrice = await _context.Products.AverageAsync(p => p.Price),
+                totalValue = await _context.Products.SumAsync(p => p.Price * p.StockQuantity),
+                categoryCounts = await _context.Products
+                    .GroupBy(p => p.Category)
+                    .Select(g => new { category = g.Key, count = g.Count() })
+                    .ToListAsync()
+            };
+
+            return Ok(stats);
+        }
+    }
+}
+'@
+
+        # Create Configuration for Swagger versioning
+        New-Item -ItemType Directory -Path "Configuration" -Force | Out-Null
+        New-FileInteractive -FilePath "Configuration/ConfigureSwaggerOptions.cs" -Description "Configuration for multi-version Swagger documentation" -Content @'
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Asp.Versioning.ApiExplorer;
+
+namespace RestfulAPI.Configuration
+{
+    public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
+    {
+        private readonly IApiVersionDescriptionProvider _provider;
+
+        public ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider)
+        {
+            _provider = provider;
+        }
+
+        public void Configure(SwaggerGenOptions options)
+        {
+            // Add swagger document for each API version
+            foreach (var description in _provider.ApiVersionDescriptions)
+            {
+                options.SwaggerDoc(description.GroupName, CreateInfoForApiVersion(description));
+            }
+
+            // Add JWT Authentication
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
+            });
+
+            options.AddSecurityRequirement(new OpenApiSecurityRequirement()
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        },
+                        Scheme = "oauth2",
+                        Name = "Bearer",
+                        In = ParameterLocation.Header,
+                    },
+                    new List<string>()
+                }
+            });
+
+            // Include XML comments for better documentation
+            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (File.Exists(xmlPath))
+            {
+                options.IncludeXmlComments(xmlPath);
+            }
+        }
+
+        private static OpenApiInfo CreateInfoForApiVersion(ApiVersionDescription description)
+        {
+            var info = new OpenApiInfo()
+            {
+                Title = "Products API",
+                Version = description.ApiVersion.ToString(),
+                Description = "A comprehensive Products API with authentication and versioning.",
+                Contact = new OpenApiContact
+                {
+                    Name = "API Support",
+                    Email = "support@example.com"
+                }
+            };
+
+            if (description.IsDeprecated)
+            {
+                info.Description += " This API version has been deprecated.";
+            }
+
+            return info;
+        }
+    }
+}
+'@
+
+        # Create Health Checks
+        New-Item -ItemType Directory -Path "HealthChecks" -Force | Out-Null
+        New-FileInteractive -FilePath "HealthChecks/ApiHealthCheck.cs" -Description "Custom health check for monitoring API status" -Content @'
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
+using RestfulAPI.Data;
+
+namespace RestfulAPI.HealthChecks
+{
+    public class ApiHealthCheck : IHealthCheck
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ApiHealthCheck(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<HealthCheckResult> CheckHealthAsync(
+            HealthCheckContext context,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Check database connectivity
+                await _context.Database.CanConnectAsync(cancellationToken);
+
+                // You can add more checks here
+
+                return HealthCheckResult.Healthy("API is healthy");
+            }
+            catch (Exception ex)
+            {
+                return HealthCheckResult.Unhealthy(
+                    "API is unhealthy",
+                    exception: ex);
+            }
+        }
+    }
+}
+'@
+
+        # Update Program.cs to support multiple API versions
+        Write-ColorOutput "Updating Program.cs for API versioning..." -Color Cyan
+        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for multiple API versions with v1 and v2 support" -Content @'
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using RestfulAPI.Data;
+using RestfulAPI.Services;
+using RestfulAPI.Configuration;
+using RestfulAPI.HealthChecks;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+
+// Add API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("x-api-version"),
+        new MediaTypeApiVersionReader("x-api-version")
+    );
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+// Add Entity Framework with In-Memory Database
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("ProductsDB"));
+
+// Add JWT Service
+builder.Services.AddScoped<JwtService>();
+
+// Add JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestfulAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestfulAPIUsers";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+// Configure Swagger for multiple API versions
+builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
+builder.Services.AddSwaggerGen();
+
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<ApiHealthCheck>("api_health_check");
+
+// Add CORS for development
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+
+    // Configure Swagger UI for multiple versions
+    var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+    app.UseSwaggerUI(options =>
+    {
+        foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+        {
+            options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json",
+                $"Products API {description.GroupName.ToUpperInvariant()}");
+        }
+        options.RoutePrefix = "swagger";
+    });
+}
+
+// Seed the database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.EnsureCreated();
+}
+
+app.UseCors("AllowAll");
+
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+// Add health check endpoint
+app.MapHealthChecks("/health");
+
+app.Run();
+'@
+
         Write-ColorOutput "Exercise 3 setup complete!" -Color Green
         Write-ColorOutput "Advanced features added:" -Color Yellow
-        Write-Host "• API versioning"
+        Write-Host "• API versioning (V1 and V2)"
         Write-Host "• Enhanced Swagger documentation"
-        Write-Host "• Performance optimizations"
-        Write-Host "• Production-ready configuration"
+        Write-Host "• Pagination in V2"
+        Write-Host "• Statistics endpoint in V2"
+        Write-Host "• Multiple Swagger endpoints for each version"
     }
 }
 
