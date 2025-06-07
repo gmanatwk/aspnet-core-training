@@ -351,3 +351,6 @@ INSTRUCTOR_GUIDE
 # Test scripts and helper utilities
 test-scripts/
 *.bak
+
+# Live coding snippets for instructor use
+LiveCodingSnippets/

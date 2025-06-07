@@ -448,6 +448,7 @@ namespace EFCoreDemo.Models;
 
 /// <summary>
 /// Book entity for Exercise 01 - Basic EF Core Setup
+/// Updated to support relationships for Exercise 02
 /// </summary>
 public class Book
 {
@@ -475,13 +476,384 @@ public class Book
 
     public bool IsAvailable { get; set; } = true;
 
+    // Foreign Key for Publisher (optional for Exercise 01, used in Exercise 02)
+    public int? PublisherId { get; set; }
+
+    // Navigation properties (optional for Exercise 01, used in Exercise 02)
+    public virtual Publisher? Publisher { get; set; }
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
     // Computed property for display
     [NotMapped]
     public string DisplayTitle => $"{Title} by {Author}";
 }
 '@
 
-    New-FileInteractive -FilePath "Models\Book.cs" -Content $BookModelContent -Description "Book entity model with data annotations and validation"
+    New-FileInteractive -FilePath "Models\Book.cs" -Content $BookModelContent -Description "Book entity model with data annotations, validation, and navigation properties"
+
+    # Create Author entity
+    $AuthorModelContent = @'
+using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Author entity for many-to-many relationship with Books
+/// </summary>
+public class Author
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(50)]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string Email { get; set; } = string.Empty;
+
+    public DateTime? BirthDate { get; set; }
+
+    [StringLength(50)]
+    public string Country { get; set; } = string.Empty;
+
+    // Navigation properties
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
+    // Computed property
+    public string FullName => $"{FirstName} {LastName}";
+}
+'@
+
+    New-FileInteractive -FilePath "Models\Author.cs" -Content $AuthorModelContent -Description "Author entity with navigation properties for many-to-many relationship"
+
+    # Create Publisher entity
+    $PublisherModelContent = @'
+using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Publisher entity for one-to-many relationship with Books
+/// </summary>
+public class Publisher
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    public string Address { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string Website { get; set; } = string.Empty;
+
+    public int FoundedYear { get; set; }
+
+    // Navigation properties
+    public virtual ICollection<Book> Books { get; set; } = new List<Book>();
+}
+'@
+
+    New-FileInteractive -FilePath "Models\Publisher.cs" -Content $PublisherModelContent -Description "Publisher entity with one-to-many relationship to books"
+
+    # Create BookAuthor junction entity
+    $BookAuthorModelContent = @'
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// BookAuthor junction entity for many-to-many relationship between Books and Authors
+/// </summary>
+public class BookAuthor
+{
+    public int BookId { get; set; }
+    public int AuthorId { get; set; }
+    public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
+
+    // Navigation properties
+    public virtual Book Book { get; set; } = null!;
+    public virtual Author Author { get; set; } = null!;
+}
+'@
+
+    New-FileInteractive -FilePath "Models\BookAuthor.cs" -Content $BookAuthorModelContent -Description "Junction entity for many-to-many relationship between Books and Authors"
+
+    Show-Concept -ConceptName "DbContext Configuration" -Explanation @"
+DbContext is the bridge between your entities and database:
+- Represents a session with the database
+- DbSet<T> properties represent tables
+- OnModelCreating() configures entities using Fluent API
+- Handles change tracking and saves changes
+"@
+
+    # Create BookStoreContext
+    $DbContextContent = @'
+using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Data;
+
+public class BookStoreContext : DbContext
+{
+    public BookStoreContext(DbContextOptions<BookStoreContext> options) : base(options)
+    {
+    }
+
+    public DbSet<Book> Books { get; set; } = null!;
+    public DbSet<Author> Authors { get; set; } = null!;
+    public DbSet<Publisher> Publishers { get; set; } = null!;
+    public DbSet<BookAuthor> BookAuthors { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure Book entity using Fluent API
+        modelBuilder.Entity<Book>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Author)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ISBN)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.HasIndex(e => e.ISBN)
+                .IsUnique()
+                .HasDatabaseName("IX_Books_ISBN");
+
+            entity.Property(e => e.Price)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+
+            entity.Property(e => e.PublishedDate)
+                .IsRequired();
+
+            entity.Property(e => e.IsAvailable)
+                .HasDefaultValue(true);
+
+            // Configure Publisher relationship (optional for Exercise 01)
+            entity.HasOne(e => e.Publisher)
+                .WithMany(p => p.Books)
+                .HasForeignKey(e => e.PublisherId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure Author entity
+        modelBuilder.Entity<Author>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // Configure Publisher entity
+        modelBuilder.Entity<Publisher>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Configure BookAuthor many-to-many relationship
+        modelBuilder.Entity<BookAuthor>(entity =>
+        {
+            entity.HasKey(ba => new { ba.BookId, ba.AuthorId });
+
+            entity.HasOne(ba => ba.Book)
+                  .WithMany(b => b.BookAuthors)
+                  .HasForeignKey(ba => ba.BookId);
+
+            entity.HasOne(ba => ba.Author)
+                  .WithMany(a => a.BookAuthors)
+                  .HasForeignKey(ba => ba.AuthorId);
+        });
+
+        // Seed data for Exercise 01
+        SeedData(modelBuilder);
+    }
+
+    private void SeedData(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Book>().HasData(
+            new Book
+            {
+                Id = 1,
+                Title = "C# Programming Guide",
+                Author = "John Smith",
+                ISBN = "978-1234567890",
+                Price = 29.99m,
+                PublishedDate = new DateTime(2023, 1, 15),
+                IsAvailable = true
+            },
+            new Book
+            {
+                Id = 2,
+                Title = "ASP.NET Core in Action",
+                Author = "Jane Doe",
+                ISBN = "978-0987654321",
+                Price = 39.99m,
+                PublishedDate = new DateTime(2023, 3, 20),
+                IsAvailable = true
+            },
+            new Book
+            {
+                Id = 3,
+                Title = "Entity Framework Core Deep Dive",
+                Author = "Bob Johnson",
+                ISBN = "978-1122334455",
+                Price = 45.99m,
+                PublishedDate = new DateTime(2023, 6, 10),
+                IsAvailable = false
+            }
+        );
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Data\BookStoreContext.cs" -Content $DbContextContent -Description "BookStoreContext with Fluent API configuration and seed data"
+
+    # Create appsettings.json
+    $AppSettingsContent = @'
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=BookStoreDB;Trusted_Connection=true;MultipleActiveResultSets=true"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
+    }
+  },
+  "AllowedHosts": "*"
+}
+'@
+
+    New-FileInteractive -FilePath "appsettings.json" -Content $AppSettingsContent -Description "Configuration file with SQL Server connection string and EF Core logging"
+
+    Show-Concept -ConceptName "CRUD Operations with EF Core" -Explanation @"
+CRUD operations using Entity Framework Core:
+- Create: Add entities to DbSet, call SaveChangesAsync()
+- Read: Use LINQ queries on DbSet properties
+- Update: Modify tracked entities, call SaveChangesAsync()
+- Delete: Remove entities from DbSet, call SaveChangesAsync()
+- Always use async methods for database operations
+"@
+
+    # Create BooksController
+    $BooksControllerContent = @'
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class BooksController : ControllerBase
+{
+    private readonly BookStoreContext _context;
+    private readonly ILogger<BooksController> _logger;
+
+    public BooksController(BookStoreContext context, ILogger<BooksController> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    // GET: api/Books
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
+    {
+        // TODO: Implement this method
+        // Return all available books ordered by title
+        return Ok(new List<Book>());
+    }
+
+    // GET: api/Books/5
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Book>> GetBook(int id)
+    {
+        // TODO: Implement this method
+        // Find book by ID and return it
+        return NotFound();
+    }
+
+    // PUT: api/Books/5
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutBook(int id, Book book)
+    {
+        if (id != book.Id)
+        {
+            return BadRequest();
+        }
+
+        _context.Entry(book).State = EntityState.Modified;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!BookExists(id))
+            {
+                return NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        return NoContent();
+    }
+
+    // POST: api/Books
+    [HttpPost]
+    public async Task<ActionResult<Book>> PostBook(Book book)
+    {
+        // TODO: Implement this method
+        // Add new book to database
+        return CreatedAtAction("GetBook", new { id = book.Id }, book);
+    }
+
+    // DELETE: api/Books/5
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteBook(int id)
+    {
+        // TODO: Implement this method
+        // Find and delete book by ID
+        return NoContent();
+    }
+
+    private bool BookExists(int id)
+    {
+        return _context.Books.Any(e => e.Id == id);
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Controllers\BooksController.cs" -Content $BooksControllerContent -Description "BooksController with TODO implementations for students to complete"
 
     # Create exercise guide
     $ExerciseGuideContent = @'
@@ -539,7 +911,7 @@ After completing this exercise, you should understand:
 
     New-FileInteractive -FilePath "EXERCISE_GUIDE.md" -Content $ExerciseGuideContent -Description "Complete exercise guide with implementation steps"
 
-    Write-Host "[PARTY] Exercise 1 template created successfully!" -ForegroundColor Green
+    Write-Host "🎉 Exercise 1 template created successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
     Write-Host "1. Run: dotnet ef migrations add InitialCreate" -ForegroundColor Cyan
@@ -549,84 +921,82 @@ After completing this exercise, you should understand:
     Write-Host "5. Follow the EXERCISE_GUIDE.md for implementation steps" -ForegroundColor White
 
 } elseif ($ExerciseName -eq "exercise02") {
-    Write-Host "[INFO] Exercise 2 implementation would be added here..." -ForegroundColor Cyan
-    Write-Host "This exercise builds on Exercise 1 with advanced LINQ queries" -ForegroundColor Yellow
+    if (-not $SkipProjectCreation) {
+        Write-Host "[ERROR] Exercise 2 requires Exercise 1 to be completed first!" -ForegroundColor Red
+        Write-Host "Please run: .\launch-exercises.ps1 exercise01" -ForegroundColor Cyan
+        exit 1
+    }
 
-} elseif ($ExerciseName -eq "exercise03") {
-    Write-Host "[INFO] Exercise 3 implementation would be added here..." -ForegroundColor Cyan
-    Write-Host "This exercise implements the Repository pattern" -ForegroundColor Yellow
+    Show-Concept -ConceptName "Advanced LINQ Queries" -Explanation @"
+Advanced LINQ with Entity Framework Core:
+- Navigation Properties: Define relationships between entities
+- Include() and ThenInclude(): Eager loading of related data
+- Complex Joins: Multi-table queries with proper relationships
+- Aggregation: Count, Sum, Average, Min, Max operations
+- Grouping: Group data and calculate statistics
+- Projection: Select specific fields for performance
+"@
 
-}
+    # Note: Author, Publisher, and BookAuthor entities are already created in Exercise 1
 
-Write-Host ""
-Write-Host "[OK] Module 5 Exercise Setup Complete!" -ForegroundColor Green
-Write-Host "Happy coding! [LAUNCH]" -ForegroundColor Cyan
+    # Create BookQueryService
+    $BookQueryServiceContent = @'
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+using Microsoft.EntityFrameworkCore;
 
-### Step 1: Run Initial Migration
-```powershell
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
+namespace EFCoreDemo.Services;
 
-### Step 2: Complete the GetBooks method
-```csharp
-var books = await _context.Books
-    .Where(b => b.IsAvailable)
-    .OrderBy(b => b.Title)
-    .ToListAsync();
-
-return Ok(books);
-```
-
-### Step 3: Complete the GetBook method
-```csharp
-var book = await _context.Books.FindAsync(id);
-
-if (book == null)
+/// <summary>
+/// Book query service from Exercise 02 - Advanced LINQ Queries
+/// Implements all required query methods from the exercise
+/// </summary>
+public class BookQueryService
 {
-    return NotFound($"Book with ID {id} not found");
+    private readonly BookStoreContext _context;
+    private readonly ILogger<BookQueryService> _logger;
+
+    public BookQueryService(BookStoreContext context, ILogger<BookQueryService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    // TODO: Implement advanced LINQ query methods
+    public async Task<IEnumerable<Book>> GetBooksWithPublisherAsync()
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.IsAvailable)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
+    {
+        return await _context.Books
+            .Include(b => b.BookAuthors)
+            .ThenInclude(ba => ba.Author)
+            .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
+            .ToListAsync();
+    }
 }
-
-return Ok(book);
-```
-
-## [TEST] Testing Your Implementation
-1. Run: `dotnet run`
-2. Navigate to: http://localhost:5000/swagger
-3. Test each endpoint with sample data
-
-## [OK] Success Criteria
-- [ ] Entity Framework Core is properly configured
-- [ ] Book entity is created with validation
-- [ ] DbContext is configured with Fluent API
-- [ ] Database is created with seed data
-- [ ] All CRUD endpoints are working
-- [ ] Proper error handling is implemented
-
-## 🔄 Next Steps
-After completing this exercise, move on to Exercise 2 for advanced querying techniques.
 '@
 
-    New-FileInteractive -FilePath "EXERCISE_GUIDE.md" -Content $ExerciseGuideContent -Description "Complete exercise guide with implementation steps"
+    New-FileInteractive -FilePath "Services\BookQueryService.cs" -Content $BookQueryServiceContent -Description "BookQueryService with advanced LINQ query implementations"
 
-    Write-Host "🎉 Exercise 1 template created successfully!" -ForegroundColor Green
+    Write-Host "🎉 Exercise 2 template created successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
-    Write-Host "1. Run: dotnet ef migrations add InitialCreate" -ForegroundColor Cyan
-    Write-Host "2. Run: dotnet ef database update" -ForegroundColor Cyan
-    Write-Host "3. Run: dotnet run" -ForegroundColor Cyan
-    Write-Host "4. Visit: http://localhost:5000/swagger" -ForegroundColor Cyan
-    Write-Host "5. Follow the EXERCISE_GUIDE.md for implementation steps" -ForegroundColor Cyan
-
-} elseif ($ExerciseName -eq "exercise02") {
-    Write-Host "Exercise 2 implementation would be added here..." -ForegroundColor Cyan
-    Write-Host "This exercise builds on Exercise 1 with advanced LINQ queries" -ForegroundColor Yellow
+    Write-Host "1. Register BookQueryService in Program.cs" -ForegroundColor White
+    Write-Host "2. Run: dotnet ef migrations add AddAuthorPublisherRelationships" -ForegroundColor Cyan
+    Write-Host "3. Run: dotnet ef database update" -ForegroundColor Cyan
+    Write-Host "4. Run: dotnet run" -ForegroundColor Cyan
+    Write-Host "5. Test advanced LINQ queries through API endpoints" -ForegroundColor White
 
 } elseif ($ExerciseName -eq "exercise03") {
-    Write-Host "Exercise 3 implementation would be added here..." -ForegroundColor Cyan
-    Write-Host "This exercise implements the Repository pattern" -ForegroundColor Yellow
+    Write-Host "[TIP] Great choice! Use the SourceCode version for the best experience." -ForegroundColor Cyan
 }
 
 Write-Host ""
 Write-Host "[OK] Module 5 Exercise Setup Complete!" -ForegroundColor Green
-Write-Host "Happy coding! [LAUNCH]" -ForegroundColor Cyan
+Write-Host "Happy coding! 🚀" -ForegroundColor Cyan

@@ -466,6 +466,7 @@ namespace EFCoreDemo.Models;
 
 /// <summary>
 /// Book entity for Exercise 01 - Basic EF Core Setup
+/// Updated to support relationships for Exercise 02
 /// </summary>
 public class Book
 {
@@ -493,11 +494,107 @@ public class Book
 
     public bool IsAvailable { get; set; } = true;
 
+    // Foreign Key for Publisher (optional for Exercise 01, used in Exercise 02)
+    public int? PublisherId { get; set; }
+
+    // Navigation properties (optional for Exercise 01, used in Exercise 02)
+    public virtual Publisher? Publisher { get; set; }
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
     // Computed property for display
     [NotMapped]
     public string DisplayTitle => $"{Title} by {Author}";
 }' \
-"Book entity model with data annotations and validation"
+"Book entity model with data annotations, validation, and navigation properties"
+
+    # Create Author entity
+    create_file_interactive "Models/Author.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Author entity for many-to-many relationship with Books
+/// </summary>
+public class Author
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(50)]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string Email { get; set; } = string.Empty;
+
+    public DateTime? BirthDate { get; set; }
+
+    [StringLength(50)]
+    public string Country { get; set; } = string.Empty;
+
+    // Navigation properties
+    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+
+    // Computed property
+    public string FullName => $"{FirstName} {LastName}";
+}' \
+"Author entity with navigation properties for many-to-many relationship"
+
+    # Create Publisher entity
+    create_file_interactive "Models/Publisher.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models;
+
+/// <summary>
+/// Publisher entity for one-to-many relationship with Books
+/// </summary>
+public class Publisher
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(200)]
+    public string Address { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string Website { get; set; } = string.Empty;
+
+    public int FoundedYear { get; set; }
+
+    // Navigation properties
+    public virtual ICollection<Book> Books { get; set; } = new List<Book>();
+}' \
+"Publisher entity with one-to-many relationship to books"
+
+    # Create BookAuthor junction entity
+    create_file_interactive "Models/BookAuthor.cs" \
+'namespace EFCoreDemo.Models;
+
+/// <summary>
+/// BookAuthor junction entity for many-to-many relationship between Books and Authors
+/// </summary>
+public class BookAuthor
+{
+    public int BookId { get; set; }
+    public int AuthorId { get; set; }
+    public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
+
+    // Navigation properties
+    public virtual Book Book { get; set; } = null!;
+    public virtual Author Author { get; set; } = null!;
+}' \
+"Junction entity for many-to-many relationship between Books and Authors"
 
     explain_concept "DbContext Configuration" \
 "DbContext is the bridge between your entities and database:
@@ -520,6 +617,9 @@ public class BookStoreContext : DbContext
     }
 
     public DbSet<Book> Books { get; set; } = null!;
+    public DbSet<Author> Authors { get; set; } = null!;
+    public DbSet<Publisher> Publishers { get; set; } = null!;
+    public DbSet<BookAuthor> BookAuthors { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -555,6 +655,44 @@ public class BookStoreContext : DbContext
 
             entity.Property(e => e.IsAvailable)
                 .HasDefaultValue(true);
+
+            // Configure Publisher relationship (optional for Exercise 01)
+            entity.HasOne(e => e.Publisher)
+                .WithMany(p => p.Books)
+                .HasForeignKey(e => e.PublisherId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure Author entity
+        modelBuilder.Entity<Author>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // Configure Publisher entity
+        modelBuilder.Entity<Publisher>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Configure BookAuthor many-to-many relationship
+        modelBuilder.Entity<BookAuthor>(entity =>
+        {
+            entity.HasKey(ba => new { ba.BookId, ba.AuthorId });
+
+            entity.HasOne(ba => ba.Book)
+                  .WithMany(b => b.BookAuthors)
+                  .HasForeignKey(ba => ba.BookId);
+
+            entity.HasOne(ba => ba.Author)
+                  .WithMany(a => a.BookAuthors)
+                  .HasForeignKey(ba => ba.AuthorId);
         });
 
         // Seed data for Exercise 01
@@ -833,140 +971,7 @@ elif [[ $EXERCISE_NAME == "exercise02" ]]; then
         exit 1
     fi
 
-    # Add Author entity
-    create_file_interactive "Models/Author.cs" \
-'using System.ComponentModel.DataAnnotations;
-
-namespace EFCoreDemo.Models;
-
-/// <summary>
-/// Author entity from Exercise 02 - Advanced LINQ Queries
-/// </summary>
-public class Author
-{
-    [Key]
-    public int Id { get; set; }
-
-    [Required]
-    [StringLength(50)]
-    public string FirstName { get; set; } = string.Empty;
-
-    [Required]
-    [StringLength(50)]
-    public string LastName { get; set; } = string.Empty;
-
-    [Required]
-    [StringLength(100)]
-    public string Email { get; set; } = string.Empty;
-
-    public DateTime? BirthDate { get; set; }
-
-    [StringLength(50)]
-    public string Country { get; set; } = string.Empty;
-
-    // Navigation properties
-    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
-
-    // Computed property
-    public string FullName => $"{FirstName} {LastName}";
-}' \
-"Author entity with navigation properties for many-to-many relationship"
-
-    # Add Publisher entity
-    create_file_interactive "Models/Publisher.cs" \
-'using System.ComponentModel.DataAnnotations;
-
-namespace EFCoreDemo.Models;
-
-/// <summary>
-/// Publisher entity from Exercise 02 - Advanced LINQ Queries
-/// </summary>
-public class Publisher
-{
-    [Key]
-    public int Id { get; set; }
-
-    [Required]
-    [StringLength(100)]
-    public string Name { get; set; } = string.Empty;
-
-    [StringLength(200)]
-    public string Address { get; set; } = string.Empty;
-
-    [StringLength(100)]
-    public string Website { get; set; } = string.Empty;
-
-    public int FoundedYear { get; set; }
-
-    // Navigation properties
-    public virtual ICollection<Book> Books { get; set; } = new List<Book>();
-}' \
-"Publisher entity with one-to-many relationship to books"
-
-    # Add BookAuthor junction entity
-    create_file_interactive "Models/BookAuthor.cs" \
-'namespace EFCoreDemo.Models;
-
-/// <summary>
-/// BookAuthor junction entity from Exercise 02 - Advanced LINQ Queries
-/// Represents many-to-many relationship between Books and Authors
-/// </summary>
-public class BookAuthor
-{
-    public int BookId { get; set; }
-    public int AuthorId { get; set; }
-    public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
-
-    // Navigation properties
-    public virtual Book Book { get; set; } = null!;
-    public virtual Author Author { get; set; } = null!;
-}' \
-"Junction entity for many-to-many relationship between Books and Authors"
-
-    # Update Book entity to include relationships
-    create_file_interactive "Models/BookUpdated.cs" \
-'using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace EFCoreDemo.Models;
-
-/// <summary>
-/// Updated Book entity from Exercise 02 with relationships
-/// </summary>
-public class BookUpdated
-{
-    [Key]
-    public int Id { get; set; }
-
-    [Required(ErrorMessage = "Title is required")]
-    [StringLength(200, ErrorMessage = "Title cannot exceed 200 characters")]
-    public string Title { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "ISBN is required")]
-    [StringLength(20, ErrorMessage = "ISBN cannot exceed 20 characters")]
-    public string ISBN { get; set; } = string.Empty;
-
-    [Column(TypeName = "decimal(18,2)")]
-    [Range(0.01, 9999.99, ErrorMessage = "Price must be between 0.01 and 9999.99")]
-    public decimal Price { get; set; }
-
-    [Required(ErrorMessage = "Published date is required")]
-    public DateTime PublishedDate { get; set; }
-
-    public bool IsAvailable { get; set; } = true;
-
-    // Foreign Key for Publisher (added in Exercise 02)
-    public int? PublisherId { get; set; }
-
-    // Navigation properties
-    public virtual Publisher? Publisher { get; set; }
-    public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
-
-    // Computed property for display
-    [NotMapped]
-    public string DisplayTitle => $"{Title} by {string.Join(", ", BookAuthors.Select(ba => ba.Author.FullName))}";
-}' \
-"Updated Book entity with Publisher relationship and Author many-to-many"
+    # Note: Author, Publisher, and BookAuthor entities are already created in Exercise 1
 
     # Create BookQueryService for advanced LINQ queries
     create_file_interactive "Services/BookQueryService.cs" \
@@ -1085,48 +1090,14 @@ Master advanced LINQ queries with Entity Framework Core, including joins, naviga
 
 ## 🚀 Getting Started
 
-### Step 1: Update DbContext Configuration
-Add the new entities to your BookStoreContext:
-
-```csharp
-public DbSet<Author> Authors { get; set; } = null!;
-public DbSet<Publisher> Publishers { get; set; } = null!;
-public DbSet<BookAuthor> BookAuthors { get; set; } = null!;
-
-protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    base.OnModelCreating(modelBuilder);
-
-    // Configure Book-Author many-to-many relationship
-    modelBuilder.Entity<BookAuthor>(entity =>
-    {
-        entity.HasKey(ba => new { ba.BookId, ba.AuthorId });
-
-        entity.HasOne(ba => ba.Book)
-              .WithMany(b => b.BookAuthors)
-              .HasForeignKey(ba => ba.BookId);
-
-        entity.HasOne(ba => ba.Author)
-              .WithMany(a => a.BookAuthors)
-              .HasForeignKey(ba => ba.AuthorId);
-    });
-
-    // Configure Book-Publisher relationship
-    modelBuilder.Entity<Book>()
-        .HasOne(b => b.Publisher)
-        .WithMany(p => p.Books)
-        .HasForeignKey(b => b.PublisherId);
-}
-```
-
-### Step 2: Register BookQueryService
+### Step 1: Register BookQueryService
 Add to Program.cs:
 
 ```csharp
 builder.Services.AddScoped<BookQueryService>();
 ```
 
-### Step 3: Create Migration
+### Step 2: Create Migration
 ```bash
 dotnet ef migrations add AddAuthorPublisherRelationships
 dotnet ef database update
@@ -1158,13 +1129,12 @@ After completing this exercise, you should understand:
     echo -e "${GREEN}🎉 Exercise 2 template created successfully!${NC}"
     echo ""
     echo -e "${YELLOW}📋 Next steps:${NC}"
-    echo "1. Update BookStoreContext with new entities and relationships"
-    echo "2. Register BookQueryService in Program.cs"
-    echo "3. Run: ${CYAN}dotnet ef migrations add AddAuthorPublisherRelationships${NC}"
-    echo "4. Run: ${CYAN}dotnet ef database update${NC}"
-    echo "5. Run: ${CYAN}dotnet run${NC}"
-    echo "6. Test advanced LINQ queries through API endpoints"
-    echo "7. Follow the EXERCISE_02_GUIDE.md for implementation steps"
+    echo "1. Register BookQueryService in Program.cs"
+    echo "2. Run: ${CYAN}dotnet ef migrations add AddAuthorPublisherRelationships${NC}"
+    echo "3. Run: ${CYAN}dotnet ef database update${NC}"
+    echo "4. Run: ${CYAN}dotnet run${NC}"
+    echo "5. Test advanced LINQ queries through API endpoints"
+    echo "6. Follow the EXERCISE_02_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     # Exercise 3: Repository Pattern and Unit of Work Implementation
