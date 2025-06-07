@@ -823,22 +823,24 @@ JSON Web Tokens (JWT) provide stateless authentication:
 
 
 
-        # Update ApplicationDbContext to include Users
-        Write-ColorOutput "Updating ApplicationDbContext to include Users..." -Color Cyan
-        New-FileInteractive -FilePath "Data/ApplicationDbContext.cs" -Description "Updated Entity Framework DbContext with Users support" -Content @'
+        # Update ApplicationDbContext to include Identity
+        Write-ColorOutput "Updating ApplicationDbContext to include Identity..." -Color Cyan
+        New-FileInteractive -FilePath "Data/ApplicationDbContext.cs" -Description "Updated Entity Framework DbContext with Identity support" -Content @'
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Models;
+using RestfulAPI.Models.Auth;
 
 namespace RestfulAPI.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<User>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
 
         public DbSet<Product> Products { get; set; }
-        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -856,15 +858,31 @@ namespace RestfulAPI.Data
                 entity.Property(e => e.Price).HasPrecision(18, 2);
             });
 
-            // Configure User entity
+            // Configure Identity User entity
             modelBuilder.Entity<User>(entity =>
             {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
-                entity.HasIndex(e => e.Username).IsUnique();
-                entity.HasIndex(e => e.Email).IsUnique();
+                entity.Property(e => e.FirstName).HasMaxLength(100);
+                entity.Property(e => e.LastName).HasMaxLength(100);
             });
+
+            // Seed roles
+            var adminRoleId = Guid.NewGuid().ToString();
+            var userRoleId = Guid.NewGuid().ToString();
+
+            modelBuilder.Entity<IdentityRole>().HasData(
+                new IdentityRole
+                {
+                    Id = adminRoleId,
+                    Name = "Admin",
+                    NormalizedName = "ADMIN"
+                },
+                new IdentityRole
+                {
+                    Id = userRoleId,
+                    Name = "User",
+                    NormalizedName = "USER"
+                }
+            );
 
             // Seed Product data
             modelBuilder.Entity<Product>().HasData(
@@ -872,66 +890,94 @@ namespace RestfulAPI.Data
                 new Product { Id = 2, Name = "Mouse", Description = "Wireless mouse", Price = 29.99m, Category = "Accessories", Sku = "MOU001", StockQuantity = 50 },
                 new Product { Id = 3, Name = "Keyboard", Description = "Mechanical keyboard", Price = 79.99m, Category = "Accessories", Sku = "KEY001", StockQuantity = 25 }
             );
-
-            // Seed User data
-            modelBuilder.Entity<User>().HasData(
-                new User { Id = 1, Username = "admin", Password = "admin123", Email = "admin@example.com", Role = "Admin" },
-                new User { Id = 2, Username = "user", Password = "user123", Email = "user@example.com", Role = "User" }
-            );
         }
     }
 }
 '@
 
+        # Create Identity User model
+        New-Item -ItemType Directory -Path "Models/Auth" -Force | Out-Null
+        New-FileInteractive -FilePath "Models/Auth/User.cs" -Description "Identity user model for authentication" -Content @'
+using Microsoft.AspNetCore.Identity;
+
+namespace RestfulAPI.Models.Auth
+{
+    public class User : IdentityUser
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string FullName => $"{FirstName} {LastName}".Trim();
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}
+'@
+
         # Create authentication models
-        New-FileInteractive -FilePath "Models/AuthModels.cs" -Description "Authentication request and response models" -Content @'
+        New-FileInteractive -FilePath "Models/Auth/AuthModels.cs" -Description "Authentication request and response models" -Content @'
 using System.ComponentModel.DataAnnotations;
 
-namespace RestfulAPI.Models
+namespace RestfulAPI.Models.Auth
 {
-    public class LoginRequest
+    public class RegisterModel
     {
         [Required]
-        public string Username { get; set; } = string.Empty;
-
-        [Required]
-        public string Password { get; set; } = string.Empty;
-    }
-
-    public class RegisterRequest
-    {
-        [Required(ErrorMessage = "Username is required")]
-        [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
-        public string Username { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Invalid email format")]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Password is required")]
-        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
+        [Required]
+        [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Password confirmation is required")]
-        [Compare("Password", ErrorMessage = "Password and confirmation password do not match")]
+        [Required]
+        [Compare("Password")]
         public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string LastName { get; set; } = string.Empty;
     }
 
-    public class LoginResponse
+    public class LoginModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+
+    public class TokenResponse
     {
         public string Token { get; set; } = string.Empty;
         public DateTime Expiration { get; set; }
-        public string Username { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
+        public UserInfo User { get; set; } = new();
     }
 
-    public class User
+    public class UserInfo
     {
-        public int Id { get; set; }
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty; // In production, use hashed passwords
+        public string Id { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public string Role { get; set; } = "User";
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public string FullName { get; set; } = string.Empty;
+        public List<string> Roles { get; set; } = new();
+    }
+
+    public class RefreshTokenModel
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required]
+        public string RefreshToken { get; set; } = string.Empty;
     }
 }
 '@
@@ -939,45 +985,117 @@ namespace RestfulAPI.Models
         # Create JWT Service
         New-Item -ItemType Directory -Path "Services" -Force | Out-Null
         New-FileInteractive -FilePath "Services/JwtService.cs" -Description "JWT token generation and validation service" -Content @'
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
-using RestfulAPI.Models;
+using RestfulAPI.Models.Auth;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
 
 namespace RestfulAPI.Services
 {
-    public class JwtService
+    public interface IJwtService
+    {
+        Task<TokenResponse> GenerateTokenAsync(User user);
+        ClaimsPrincipal? ValidateToken(string token);
+        string GenerateRefreshToken();
+    }
+
+    public class JwtService : IJwtService
     {
         private readonly IConfiguration _configuration;
+        private readonly UserManager<User> _userManager;
 
-        public JwtService(IConfiguration configuration)
+        public JwtService(IConfiguration configuration, UserManager<User> userManager)
         {
             _configuration = configuration;
+            _userManager = userManager;
         }
 
-        public string GenerateToken(User user)
+        public async Task<TokenResponse> GenerateTokenAsync(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long"));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
+            var roles = await _userManager.GetRolesAsync(user);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role)
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Email, user.Email!),
+                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"] ?? "RestfulAPI",
-                audience: _configuration["Jwt:Audience"] ?? "RestfulAPI",
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(24),
-                signingCredentials: credentials
-            );
+            // Add role claims
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            return new TokenResponse
+            {
+                Token = tokenString,
+                Expiration = tokenDescriptor.Expires.Value,
+                RefreshToken = GenerateRefreshToken(),
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Email = user.Email!,
+                    FullName = user.FullName,
+                    Roles = roles.ToList()
+                }
+            };
+        }
+
+        public ClaimsPrincipal? ValidateToken(string token)
+        {
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
+
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = _configuration["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = _configuration["Jwt:Audience"],
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
         }
     }
 }
@@ -986,10 +1104,11 @@ namespace RestfulAPI.Services
         # Create Auth Controller
         New-FileInteractive -FilePath "Controllers/AuthController.cs" -Description "Authentication controller for login and user management" -Content @'
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
-using RestfulAPI.Models;
+using RestfulAPI.Models.Auth;
 using RestfulAPI.Services;
 using System.Security.Claims;
 
@@ -997,84 +1116,141 @@ namespace RestfulAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AuthController : ControllerBase
     {
+        private readonly UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
+        private readonly IJwtService _jwtService;
         private readonly ApplicationDbContext _context;
-        private readonly JwtService _jwtService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(ApplicationDbContext context, JwtService jwtService)
+        public AuthController(
+            UserManager<User> userManager,
+            SignInManager<User> signInManager,
+            IJwtService jwtService,
+            ApplicationDbContext context,
+            ILogger<AuthController> logger)
         {
-            _context = context;
+            _userManager = userManager;
+            _signInManager = signInManager;
             _jwtService = jwtService;
+            _context = context;
+            _logger = logger;
         }
 
+        /// <summary>
+        /// Register a new user
+        /// </summary>
         [HttpPost("register")]
-        public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
+        [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<TokenResponse>> Register([FromBody] RegisterModel model)
         {
-            // Check if user already exists
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
-            if (existingUser != null)
-            {
-                return BadRequest(new { message = "User already exists" });
-            }
+            _logger.LogInformation("New user registration attempt for {Email}", model.Email);
 
-            // Create new user
             var user = new User
             {
-                Username = request.Username,
-                Email = request.Email,
-                Password = request.Password, // In production, use proper password hashing
-                Role = "User",
+                UserName = model.Email,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            var result = await _userManager.CreateAsync(user, model.Password);
 
-            // Generate token for the new user
-            var token = _jwtService.GenerateToken(user);
-
-            return Ok(new LoginResponse
+            if (!result.Succeeded)
             {
-                Token = token,
-                Expiration = DateTime.UtcNow.AddHours(24),
-                Username = user.Username
-            });
-        }
+                _logger.LogWarning("Registration failed for {Email}: {Errors}",
+                    model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
 
-        [HttpPost("login")]
-        public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
-
-            if (user == null || user.Password != request.Password) // In production, use proper password hashing
-            {
-                return Unauthorized(new { message = "Invalid username or password" });
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                }
+                return ValidationProblem(ModelState);
             }
 
-            var token = _jwtService.GenerateToken(user);
+            // Assign default role
+            await _userManager.AddToRoleAsync(user, "User");
 
-            return Ok(new LoginResponse
-            {
-                Token = token,
-                Expiration = DateTime.UtcNow.AddHours(24),
-                Username = user.Username
-            });
+            // Generate token
+            var tokenResponse = await _jwtService.GenerateTokenAsync(user);
+
+            _logger.LogInformation("User {Email} registered successfully", model.Email);
+
+            return Ok(tokenResponse);
         }
 
-        [HttpGet("profile")]
-        [Authorize]
-        public async Task<ActionResult<User>> GetProfile()
+        /// <summary>
+        /// Login with email and password
+        /// </summary>
+        [HttpPost("login")]
+        [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<TokenResponse>> Login([FromBody] LoginModel model)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var user = await _context.Users.FindAsync(userId);
+            _logger.LogInformation("Login attempt for {Email}", model.Email);
 
+            var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
-                return NotFound();
+                _logger.LogWarning("Login failed for {Email}: User not found", model.Email);
+                return Unauthorized(new { message = "Invalid email or password" });
             }
 
-            return Ok(new { user.Id, user.Username, user.Email, user.Role });
+            var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("Login failed for {Email}: Invalid password", model.Email);
+                return Unauthorized(new { message = "Invalid email or password" });
+            }
+
+            // Update last login
+            user.LastLoginAt = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            // Generate token
+            var tokenResponse = await _jwtService.GenerateTokenAsync(user);
+
+            _logger.LogInformation("User {Email} logged in successfully", model.Email);
+
+            return Ok(tokenResponse);
+        }
+
+        /// <summary>
+        /// Get current user profile
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserInfo), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<UserInfo>> GetProfile()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var userInfo = new UserInfo
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                Roles = roles.ToList()
+            };
+
+            return Ok(userInfo);
         }
     }
 }
@@ -1084,9 +1260,11 @@ namespace RestfulAPI.Controllers
         Write-ColorOutput "Updating Program.cs with JWT authentication..." -Color Cyan
         New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured with JWT authentication" -Content @'
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RestfulAPI.Data;
+using RestfulAPI.Models.Auth;
 using RestfulAPI.Services;
 using System.Text;
 
@@ -1097,10 +1275,34 @@ builder.Services.AddControllers();
 
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseInMemoryDatabase("ProductsDB"));
+    options.UseInMemoryDatabase("RestfulAPIDb"));
+
+// Add Identity
+builder.Services.AddIdentity<User, IdentityRole>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 1;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.AllowedUserNameCharacters =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // Add JWT Service
-builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 // Add JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
@@ -1189,11 +1391,24 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Seed the database
+// Seed the database and roles
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
     context.Database.EnsureCreated();
+
+    // Ensure roles exist
+    if (!await roleManager.RoleExistsAsync("Admin"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+    }
+
+    if (!await roleManager.RoleExistsAsync("User"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("User"));
+    }
 }
 
 app.UseCors("AllowAll");
