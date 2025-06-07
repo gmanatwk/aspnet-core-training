@@ -1789,10 +1789,12 @@ namespace RestfulAPI.HealthChecks
         Write-ColorOutput "Updating Program.cs for API versioning..." -Color Cyan
         New-FileInteractive -FilePath "Program.cs" -Description "Program.cs configured for multiple API versions with v1 and v2 support" -Content @'
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using RestfulAPI.Data;
+using RestfulAPI.Models.Auth;
 using RestfulAPI.Services;
 using RestfulAPI.Configuration;
 using RestfulAPI.HealthChecks;
@@ -1825,10 +1827,34 @@ builder.Services.AddApiVersioning(options =>
 
 // Add Entity Framework with In-Memory Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseInMemoryDatabase("ProductsDB"));
+    options.UseInMemoryDatabase("RestfulAPIDb"));
+
+// Add Identity
+builder.Services.AddIdentity<User, IdentityRole>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 1;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.AllowedUserNameCharacters =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // Add JWT Service
-builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 // Add JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
@@ -1889,11 +1915,24 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Seed the database
+// Seed the database and roles
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
     context.Database.EnsureCreated();
+
+    // Ensure roles exist
+    if (!await roleManager.RoleExistsAsync("Admin"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+    }
+
+    if (!await roleManager.RoleExistsAsync("User"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("User"));
+    }
 }
 
 app.UseCors("AllowAll");
