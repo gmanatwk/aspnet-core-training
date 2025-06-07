@@ -350,10 +350,32 @@ RESTful APIs follow REST principles:
         dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.11
         dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.11
 
-        # Enable XML documentation generation
+        # Enable XML documentation generation by recreating the .csproj file
         Write-ColorOutput "Configuring XML documentation..." -Color Cyan
-        $csprojContent = Get-Content "RestfulAPI.csproj" -Raw
-        $csprojContent = $csprojContent -replace '(<PropertyGroup>)', '$1`n    <GenerateDocumentationFile>true</GenerateDocumentationFile>`n    <NoWarn>$(NoWarn);1591</NoWarn>'
+        $csprojContent = @'
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.16" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+</Project>
+'@
         Set-Content "RestfulAPI.csproj" -Value $csprojContent
         Write-ColorOutput "XML documentation enabled" -Color Green
 
