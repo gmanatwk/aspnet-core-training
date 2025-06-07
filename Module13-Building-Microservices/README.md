@@ -22,6 +22,11 @@ By the end of this module, you will be able to:
 - Basic knowledge of containers and Docker
 - Familiarity with distributed systems concepts
 
+**Deployment Flexibility**: This module provides multiple deployment options:
+- ☁️ **Cloud-Specific**: Azure AKS with Terraform for Azure users
+- 🐳 **Cloud-Agnostic**: Docker Swarm for any infrastructure
+- ☸️ **Multi-Cloud**: Generic Kubernetes for any K8s cluster (EKS, GKE, AKS, on-premises)
+
 ## 🏗️ What Are Microservices?
 
 Microservices architecture is a design approach where applications are built as a collection of loosely coupled, independently deployable services. Each service:
@@ -96,12 +101,12 @@ Microservices architecture is a design approach where applications are built as 
 - Add monitoring with Application Insights
 - Implement circuit breaker patterns
 
-### **Exercise 5: Azure Cloud Deployment with Terraform**
-- Deploy complete infrastructure using Terraform
-- Set up Azure Kubernetes Service (AKS)
-- Configure Azure SQL, Service Bus, and Key Vault
-- Implement production-grade monitoring with Prometheus/Grafana
-- Configure auto-scaling and high availability
+### **Exercise 5: Cloud Deployment Options**
+- **Option A**: Azure AKS deployment with Terraform (Azure-specific)
+- **Option B**: Docker Swarm deployment (Cloud-agnostic)
+- **Option C**: Generic Kubernetes deployment (Multi-cloud)
+- Production-grade monitoring and scaling
+- Choose the best option for your infrastructure
 
 ## 🛠️ Technologies Used
 
@@ -154,24 +159,23 @@ Module13-Building-Microservices/
 │       ├── UserManagement.Service/
 │       ├── Notification.Service/
 │       └── SharedLibraries/
-├── terraform/ (Infrastructure as Code)
+├── terraform/ (Azure-specific IaC)
 │   ├── main.tf
 │   ├── kubernetes.tf
 │   ├── variables.tf
-│   ├── terraform.tfvars.example
 │   ├── deploy.sh
-│   ├── helm-values/
 │   └── README.md
-└── kubernetes/ (Kubernetes manifests)
-    └── base/
-        ├── kustomization.yaml
-        ├── product-catalog/
-        ├── order-management/
-        ├── user-management/
-        ├── notification-service/
-        ├── api-gateway/
-        ├── ingress.yaml
-        └── network-policies.yaml
+├── kubernetes/ (Azure-optimized K8s)
+│   └── base/
+│       └── kustomization.yaml
+├── kubernetes-generic/ (Multi-cloud K8s)
+│   ├── kustomization.yaml
+│   ├── infrastructure/
+│   ├── services/
+│   ├── monitoring/
+│   └── README.md
+├── docker-compose-production.yml
+└── deploy-docker-swarm.sh
 ```
 
 ## 🎯 Real-World Scenario

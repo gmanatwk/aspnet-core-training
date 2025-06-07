@@ -162,13 +162,14 @@ resource "azurerm_kubernetes_cluster" "main" {
   kubernetes_version  = "1.28.3"
   
   default_node_pool {
-    name                = "systempool"
-    node_count          = 2
-    vm_size             = "Standard_D2s_v3"
-    vnet_subnet_id      = azurerm_subnet.aks.id
-    enable_auto_scaling = true
-    min_count           = 2
-    max_count           = 5
+    name           = "systempool"
+    node_count     = 2
+    vm_size        = "Standard_D2s_v3"
+    vnet_subnet_id = azurerm_subnet.aks.id
+    
+    auto_scaling_enabled = true
+    min_count            = 2
+    max_count            = 5
     
     node_labels = {
       "nodepool-type" = "system"
@@ -196,9 +197,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
   
   azure_active_directory_role_based_access_control {
-    managed                = true
-    azure_rbac_enabled     = true
-    admin_group_object_ids = []
+    azure_rbac_enabled = true
   }
   
   tags = azurerm_resource_group.main.tags
@@ -211,9 +210,10 @@ resource "azurerm_kubernetes_cluster_node_pool" "apps" {
   vm_size               = "Standard_D4s_v3"
   node_count            = 3
   vnet_subnet_id        = azurerm_subnet.aks.id
-  enable_auto_scaling   = true
-  min_count             = 3
-  max_count             = 10
+  
+  auto_scaling_enabled = true
+  min_count            = 3
+  max_count            = 10
   
   node_labels = {
     "nodepool-type" = "user"

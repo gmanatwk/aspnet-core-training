@@ -1240,16 +1240,1688 @@ After mastering caching, move on to Exercise 2 for database optimization.
     echo "5. Follow the PERFORMANCE_GUIDE.md for optimization exercises"
 
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
-    echo -e "${CYAN}Exercise 2 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise adds database optimization techniques${NC}"
+    # Exercise 2: Database Optimization Techniques
+
+    explain_concept "Database Performance Optimization" \
+"Database Optimization Strategies:
+• Query Optimization: Efficient LINQ queries and SQL generation
+• Connection Pooling: Managing database connections effectively
+• Indexing Strategies: Database indexes for query performance
+• Batch Operations: Reducing database round trips
+• Query Splitting: Breaking complex queries for better performance
+• Compiled Queries: Pre-compiled queries for repetitive operations"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 2 requires Exercise 1 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run: ./launch-exercises.sh exercise01${NC}"
+        exit 1
+    fi
+
+    # Add Entity Framework optimization packages
+    dotnet add package Microsoft.EntityFrameworkCore.Analyzers
+    dotnet add package Microsoft.EntityFrameworkCore.Tools
+
+    # Create Optimized DbContext
+    create_file_interactive "Data/OptimizedPerformanceContext.cs" \
+'using Microsoft.EntityFrameworkCore;
+using PerformanceDemo.Models;
+
+namespace PerformanceDemo.Data;
+
+/// <summary>
+/// Optimized DbContext for performance demonstrations
+/// Includes performance-focused configurations
+/// </summary>
+public class OptimizedPerformanceContext : DbContext
+{
+    public OptimizedPerformanceContext(DbContextOptions<OptimizedPerformanceContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<Product> Products { get; set; } = null!;
+    public DbSet<Category> Categories { get; set; } = null!;
+    public DbSet<Order> Orders { get; set; } = null!;
+    public DbSet<OrderItem> OrderItems { get; set; } = null!;
+    public DbSet<Customer> Customers { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure Product entity with performance optimizations
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.SKU).HasMaxLength(50);
+
+            // Performance indexes
+            entity.HasIndex(e => e.Name).HasDatabaseName("IX_Product_Name");
+            entity.HasIndex(e => e.SKU).IsUnique().HasDatabaseName("IX_Product_SKU");
+            entity.HasIndex(e => e.CategoryId).HasDatabaseName("IX_Product_CategoryId");
+            entity.HasIndex(e => e.Price).HasDatabaseName("IX_Product_Price");
+            entity.HasIndex(e => new { e.CategoryId, e.Price }).HasDatabaseName("IX_Product_Category_Price");
+        });
+
+        // Configure Category entity
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(e => e.Name).IsUnique().HasDatabaseName("IX_Category_Name");
+        });
+
+        // Configure Customer entity
+        modelBuilder.Entity<Customer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.LastName).HasMaxLength(100);
+
+            entity.HasIndex(e => e.Email).IsUnique().HasDatabaseName("IX_Customer_Email");
+            entity.HasIndex(e => new { e.LastName, e.FirstName }).HasDatabaseName("IX_Customer_Name");
+        });
+
+        // Configure Order entity
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OrderNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(e => e.OrderNumber).IsUnique().HasDatabaseName("IX_Order_OrderNumber");
+            entity.HasIndex(e => e.CustomerId).HasDatabaseName("IX_Order_CustomerId");
+            entity.HasIndex(e => e.OrderDate).HasDatabaseName("IX_Order_OrderDate");
+
+            // Foreign key relationships
+            entity.HasOne(e => e.Customer)
+                  .WithMany(c => c.Orders)
+                  .HasForeignKey(e => e.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure OrderItem entity
+        modelBuilder.Entity<OrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(e => e.OrderId).HasDatabaseName("IX_OrderItem_OrderId");
+            entity.HasIndex(e => e.ProductId).HasDatabaseName("IX_OrderItem_ProductId");
+
+            // Foreign key relationships
+            entity.HasOne(e => e.Order)
+                  .WithMany(o => o.OrderItems)
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Product)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure Product-Category relationship
+        modelBuilder.Entity<Product>()
+            .HasOne(p => p.Category)
+            .WithMany(c => c.Products)
+            .HasForeignKey(p => p.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Performance optimizations
+            optionsBuilder.EnableSensitiveDataLogging(false); // Disable in production
+            optionsBuilder.EnableServiceProviderCaching();
+            optionsBuilder.EnableDetailedErrors(false); // Disable in production
+        }
+    }
+}' \
+"Optimized DbContext with performance-focused entity configurations and indexes"
+
+    # Create Enhanced Models for Database Optimization
+    create_file_interactive "Models/DatabaseModels.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace PerformanceDemo.Models;
+
+/// <summary>
+/// Enhanced models for database optimization demonstrations
+/// </summary>
+public class Category
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    // Navigation properties
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+}
+
+public class Customer
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(255)]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string LastName { get; set; } = string.Empty;
+
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+
+    // Computed property
+    public string FullName => $"{FirstName} {LastName}";
+}
+
+public class Order
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(50)]
+    public string OrderNumber { get; set; } = string.Empty;
+
+    public int CustomerId { get; set; }
+
+    public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+
+    [Range(0, double.MaxValue)]
+    public decimal TotalAmount { get; set; }
+
+    public OrderStatus Status { get; set; } = OrderStatus.Pending;
+
+    // Navigation properties
+    public virtual Customer Customer { get; set; } = null!;
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+}
+
+public class OrderItem
+{
+    public int Id { get; set; }
+
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int Quantity { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal UnitPrice { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal TotalPrice { get; set; }
+
+    // Navigation properties
+    public virtual Order Order { get; set; } = null!;
+    public virtual Product Product { get; set; } = null!;
+}
+
+public enum OrderStatus
+{
+    Pending = 0,
+    Processing = 1,
+    Shipped = 2,
+    Delivered = 3,
+    Cancelled = 4
+}
+
+// Enhanced Product model
+public class Product
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(1000)]
+    public string? Description { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal Price { get; set; }
+
+    [StringLength(50)]
+    public string? SKU { get; set; }
+
+    public int? CategoryId { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedDate { get; set; }
+
+    // Navigation properties
+    public virtual Category? Category { get; set; }
+}' \
+"Enhanced models for database optimization with proper relationships and indexes"
+
+    # Create Database Query Optimization Service
+    create_file_interactive "Services/DatabaseOptimizationService.cs" \
+'using Microsoft.EntityFrameworkCore;
+using PerformanceDemo.Data;
+using PerformanceDemo.Models;
+using System.Linq.Expressions;
+
+namespace PerformanceDemo.Services;
+
+/// <summary>
+/// Service demonstrating database optimization techniques
+/// </summary>
+public interface IDatabaseOptimizationService
+{
+    // Efficient query methods
+    Task<List<Product>> GetProductsEfficientAsync(int page, int pageSize);
+    Task<List<Product>> GetProductsWithCategoryAsync();
+    Task<Product?> GetProductWithDetailsAsync(int id);
+
+    // Batch operations
+    Task<int> BulkUpdateProductPricesAsync(decimal multiplier);
+    Task BulkInsertProductsAsync(List<Product> products);
+
+    // Compiled queries
+    Task<List<Product>> GetProductsByCategoryCompiledAsync(int categoryId);
+    Task<decimal> GetAveragePriceCompiledAsync();
+
+    // Query splitting
+    Task<List<Order>> GetOrdersWithDetailsAsync(int customerId);
+
+    // No-tracking queries
+    Task<List<Product>> GetProductsReadOnlyAsync();
+
+    // Raw SQL for complex operations
+    Task<List<ProductSalesReport>> GetProductSalesReportAsync();
+}
+
+public class DatabaseOptimizationService : IDatabaseOptimizationService
+{
+    private readonly OptimizedPerformanceContext _context;
+    private readonly ILogger<DatabaseOptimizationService> _logger;
+
+    // Compiled queries for better performance
+    private static readonly Func<OptimizedPerformanceContext, int, IAsyncEnumerable<Product>>
+        GetProductsByCategoryCompiled = EF.CompileAsyncQuery(
+            (OptimizedPerformanceContext context, int categoryId) =>
+                context.Products.Where(p => p.CategoryId == categoryId && p.IsActive));
+
+    private static readonly Func<OptimizedPerformanceContext, Task<decimal>>
+        GetAveragePriceCompiled = EF.CompileAsyncQuery(
+            (OptimizedPerformanceContext context) =>
+                context.Products.Where(p => p.IsActive).Average(p => p.Price));
+
+    public DatabaseOptimizationService(OptimizedPerformanceContext context, ILogger<DatabaseOptimizationService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    public async Task<List<Product>> GetProductsEfficientAsync(int page, int pageSize)
+    {
+        _logger.LogInformation("Getting products efficiently - Page: {Page}, Size: {PageSize}", page, pageSize);
+
+        return await _context.Products
+            .AsNoTracking() // No change tracking for read-only operations
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new Product // Projection to reduce data transfer
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                SKU = p.SKU,
+                CategoryId = p.CategoryId
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<Product>> GetProductsWithCategoryAsync()
+    {
+        _logger.LogInformation("Getting products with category using Include");
+
+        return await _context.Products
+            .AsNoTracking()
+            .Include(p => p.Category) // Eager loading
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Category!.Name)
+            .ThenBy(p => p.Name)
+            .ToListAsync();
+    }
+
+    public async Task<Product?> GetProductWithDetailsAsync(int id)
+    {
+        _logger.LogInformation("Getting product with details - ID: {ProductId}", id);
+
+        return await _context.Products
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
+    }
+
+    public async Task<int> BulkUpdateProductPricesAsync(decimal multiplier)
+    {
+        _logger.LogInformation("Bulk updating product prices with multiplier: {Multiplier}", multiplier);
+
+        // Use ExecuteUpdateAsync for efficient bulk updates (EF Core 7+)
+        return await _context.Products
+            .Where(p => p.IsActive)
+            .ExecuteUpdateAsync(p => p
+                .SetProperty(x => x.Price, x => x.Price * multiplier)
+                .SetProperty(x => x.UpdatedDate, DateTime.UtcNow));
+    }
+
+    public async Task BulkInsertProductsAsync(List<Product> products)
+    {
+        _logger.LogInformation("Bulk inserting {Count} products", products.Count);
+
+        // Efficient bulk insert
+        _context.Products.AddRange(products);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Product>> GetProductsByCategoryCompiledAsync(int categoryId)
+    {
+        _logger.LogInformation("Getting products by category using compiled query - CategoryId: {CategoryId}", categoryId);
+
+        var products = new List<Product>();
+        await foreach (var product in GetProductsByCategoryCompiled(_context, categoryId))
+        {
+            products.Add(product);
+        }
+        return products;
+    }
+
+    public async Task<decimal> GetAveragePriceCompiledAsync()
+    {
+        _logger.LogInformation("Getting average price using compiled query");
+
+        return await GetAveragePriceCompiled(_context);
+    }
+
+    public async Task<List<Order>> GetOrdersWithDetailsAsync(int customerId)
+    {
+        _logger.LogInformation("Getting orders with details using query splitting - CustomerId: {CustomerId}", customerId);
+
+        return await _context.Orders
+            .AsSplitQuery() // Split complex queries for better performance
+            .Include(o => o.Customer)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                    .ThenInclude(p => p!.Category)
+            .Where(o => o.CustomerId == customerId)
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync();
+    }
+
+    public async Task<List<Product>> GetProductsReadOnlyAsync()
+    {
+        _logger.LogInformation("Getting products with no tracking for read-only operations");
+
+        return await _context.Products
+            .AsNoTracking() // Disable change tracking for better performance
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
+    }
+
+    public async Task<List<ProductSalesReport>> GetProductSalesReportAsync()
+    {
+        _logger.LogInformation("Getting product sales report using raw SQL");
+
+        // Raw SQL for complex aggregations
+        var sql = @"
+            SELECT
+                p.Id,
+                p.Name,
+                p.Price,
+                COALESCE(SUM(oi.Quantity), 0) as TotalQuantitySold,
+                COALESCE(SUM(oi.TotalPrice), 0) as TotalRevenue,
+                COUNT(DISTINCT o.Id) as OrderCount
+            FROM Products p
+            LEFT JOIN OrderItems oi ON p.Id = oi.ProductId
+            LEFT JOIN Orders o ON oi.OrderId = o.Id
+            WHERE p.IsActive = 1
+            GROUP BY p.Id, p.Name, p.Price
+            ORDER BY TotalRevenue DESC";
+
+        return await _context.Database
+            .SqlQueryRaw<ProductSalesReport>(sql)
+            .ToListAsync();
+    }
+}
+
+/// <summary>
+/// DTO for product sales report
+/// </summary>
+public class ProductSalesReport
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int TotalQuantitySold { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int OrderCount { get; set; }
+}' \
+"Database optimization service with various performance techniques"
+
+    # Create Exercise Guide for Exercise 2
+    create_file_interactive "EXERCISE_02_GUIDE.md" \
+'# Exercise 2: Database Optimization Techniques
+
+## 🎯 Objective
+Master Entity Framework Core optimization techniques to improve database query performance and reduce resource usage.
+
+## ⏱️ Time Allocation
+**Total Time**: 45 minutes
+- Entity Configuration and Indexing: 15 minutes
+- Query Optimization Techniques: 20 minutes
+- Batch Operations and Compiled Queries: 10 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Update Program.cs
+Add the optimized database service:
+
+```csharp
+builder.Services.AddDbContext<OptimizedPerformanceContext>(options =>
+    options.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure();
+        sqlOptions.CommandTimeout(30);
+    }));
+
+builder.Services.AddScoped<IDatabaseOptimizationService, DatabaseOptimizationService>();
+```
+
+### Step 2: Key Optimization Techniques
+- **AsNoTracking()**: For read-only queries
+- **Include() vs Select()**: Eager loading vs projection
+- **AsSplitQuery()**: For complex includes
+- **ExecuteUpdateAsync()**: Bulk operations
+- **Compiled Queries**: Pre-compiled for repetitive queries
+
+### Step 3: Database Indexing Strategy
+```sql
+-- Automatically created by EF Core configuration
+CREATE INDEX IX_Product_Name ON Products (Name);
+CREATE INDEX IX_Product_Category_Price ON Products (CategoryId, Price);
+CREATE UNIQUE INDEX IX_Product_SKU ON Products (SKU);
+```
+
+## ✅ Success Criteria
+- [ ] Optimized DbContext is configured with proper indexes
+- [ ] Query optimization techniques are implemented
+- [ ] Batch operations work efficiently
+- [ ] Compiled queries provide performance benefits
+- [ ] Raw SQL is used for complex aggregations
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test database optimization endpoints
+4. Monitor query execution times
+5. Compare optimized vs unoptimized queries
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- Entity Framework Core performance best practices
+- Database indexing strategies
+- Query optimization techniques
+- Batch operations for better throughput
+- When to use raw SQL vs LINQ
+' \
+"Complete exercise guide for Database Optimization"
+
+    echo -e "${GREEN}🎉 Exercise 2 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Update Program.cs with optimized database configuration"
+    echo "2. Run: ${CYAN}dotnet ef migrations add DatabaseOptimizations${NC}"
+    echo "3. Run: ${CYAN}dotnet ef database update${NC}"
+    echo "4. Run: ${CYAN}dotnet run${NC}"
+    echo "5. Test database optimization endpoints"
+    echo "6. Follow the EXERCISE_02_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
-    echo -e "${CYAN}Exercise 3 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise implements async and memory optimization${NC}"
+    # Exercise 3: Async and Memory Optimization
+
+    explain_concept "Async and Memory Optimization" \
+"Advanced Performance Optimization:
+• Asynchronous Programming: Proper async/await patterns for I/O operations
+• Memory Management: Reducing allocations and GC pressure
+• Object Pooling: Reusing expensive objects with ArrayPool and ObjectPool
+• Span<T> and Memory<T>: Zero-allocation programming patterns
+• ValueTask: Optimized async returns for frequently synchronous operations"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 3 requires Exercises 1 and 2 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03${NC}"
+        exit 1
+    fi
+
+    # Add memory optimization packages
+    dotnet add package System.Buffers
+    dotnet add package Microsoft.Extensions.ObjectPool
+
+    # Create Memory Optimization Service
+    create_file_interactive "Services/MemoryOptimizationService.cs" \
+'using Microsoft.Extensions.ObjectPool;
+using System.Buffers;
+using System.Text;
+using System.Text.Json;
+
+namespace PerformanceDemo.Services;
+
+/// <summary>
+/// Service demonstrating memory optimization techniques
+/// </summary>
+public interface IMemoryOptimizationService
+{
+    // ArrayPool demonstrations
+    Task<string> ProcessLargeDataWithPoolingAsync(int dataSize);
+    Task<byte[]> ProcessBinaryDataEfficientlyAsync(ReadOnlyMemory<byte> input);
+
+    // StringBuilder pooling
+    string BuildLargeStringEfficiently(IEnumerable<string> parts);
+
+    // Object pooling
+    Task<string> ProcessWithObjectPoolAsync(string input);
+
+    // Span<T> and Memory<T> usage
+    ReadOnlySpan<char> ProcessStringSpan(ReadOnlySpan<char> input);
+    void ProcessMemorySegment(Memory<byte> memory);
+
+    // ValueTask optimization
+    ValueTask<int> GetCachedValueAsync(string key);
+
+    // Zero-allocation JSON processing
+    Task<T?> DeserializeJsonEfficientlyAsync<T>(ReadOnlyMemory<byte> jsonBytes);
+}
+
+public class MemoryOptimizationService : IMemoryOptimizationService
+{
+    private readonly ObjectPool<StringBuilder> _stringBuilderPool;
+    private readonly ObjectPool<JsonProcessor> _jsonProcessorPool;
+    private readonly ILogger<MemoryOptimizationService> _logger;
+    private readonly Dictionary<string, int> _cache = new();
+
+    public MemoryOptimizationService(
+        ObjectPool<StringBuilder> stringBuilderPool,
+        ObjectPool<JsonProcessor> jsonProcessorPool,
+        ILogger<MemoryOptimizationService> logger)
+    {
+        _stringBuilderPool = stringBuilderPool;
+        _jsonProcessorPool = jsonProcessorPool;
+        _logger = logger;
+    }
+
+    public async Task<string> ProcessLargeDataWithPoolingAsync(int dataSize)
+    {
+        _logger.LogInformation("Processing large data with ArrayPool - Size: {DataSize}", dataSize);
+
+        // Rent buffer from ArrayPool instead of allocating
+        var buffer = ArrayPool<char>.Shared.Rent(dataSize);
+        try
+        {
+            // Simulate data processing
+            for (int i = 0; i < Math.Min(dataSize, buffer.Length); i++)
+            {
+                buffer[i] = (char)('A' + (i % 26));
+            }
+
+            // Simulate async processing
+            await Task.Delay(10);
+
+            // Create string from processed data
+            return new string(buffer, 0, Math.Min(dataSize, buffer.Length));
+        }
+        finally
+        {
+            // Always return buffer to pool
+            ArrayPool<char>.Shared.Return(buffer);
+        }
+    }
+
+    public async Task<byte[]> ProcessBinaryDataEfficientlyAsync(ReadOnlyMemory<byte> input)
+    {
+        _logger.LogInformation("Processing binary data efficiently - Size: {Size}", input.Length);
+
+        // Rent buffer for output
+        var outputBuffer = ArrayPool<byte>.Shared.Rent(input.Length * 2);
+        try
+        {
+            var inputSpan = input.Span;
+            var outputSpan = outputBuffer.AsSpan();
+
+            // Process data using Span<T> for zero-allocation operations
+            for (int i = 0; i < inputSpan.Length; i++)
+            {
+                outputSpan[i * 2] = inputSpan[i];
+                outputSpan[i * 2 + 1] = (byte)(inputSpan[i] ^ 0xFF); // Simple transformation
+            }
+
+            await Task.Delay(5); // Simulate async work
+
+            // Return only the used portion
+            var result = new byte[input.Length * 2];
+            outputSpan[..(input.Length * 2)].CopyTo(result);
+            return result;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(outputBuffer);
+        }
+    }
+
+    public string BuildLargeStringEfficiently(IEnumerable<string> parts)
+    {
+        _logger.LogInformation("Building large string with StringBuilder pooling");
+
+        // Get StringBuilder from pool
+        var sb = _stringBuilderPool.Get();
+        try
+        {
+            foreach (var part in parts)
+            {
+                sb.Append(part);
+                sb.Append(" | ");
+            }
+
+            return sb.ToString();
+        }
+        finally
+        {
+            // Return StringBuilder to pool (it will be cleared automatically)
+            _stringBuilderPool.Return(sb);
+        }
+    }
+
+    public async Task<string> ProcessWithObjectPoolAsync(string input)
+    {
+        _logger.LogInformation("Processing with object pool");
+
+        // Get processor from pool
+        var processor = _jsonProcessorPool.Get();
+        try
+        {
+            return await processor.ProcessAsync(input);
+        }
+        finally
+        {
+            // Return processor to pool
+            _jsonProcessorPool.Return(processor);
+        }
+    }
+
+    public ReadOnlySpan<char> ProcessStringSpan(ReadOnlySpan<char> input)
+    {
+        // Zero-allocation string processing using Span<T>
+        // This method demonstrates span usage but returns a span that references input
+
+        // Find first non-whitespace character
+        var trimmed = input.TrimStart();
+
+        // Find last non-whitespace character
+        trimmed = trimmed.TrimEnd();
+
+        return trimmed;
+    }
+
+    public void ProcessMemorySegment(Memory<byte> memory)
+    {
+        _logger.LogInformation("Processing memory segment - Length: {Length}", memory.Length);
+
+        // Process memory in chunks using Span<T>
+        const int chunkSize = 1024;
+        var remaining = memory;
+
+        while (!remaining.IsEmpty)
+        {
+            var chunk = remaining[..Math.Min(chunkSize, remaining.Length)];
+            var span = chunk.Span;
+
+            // Process chunk (example: XOR with pattern)
+            for (int i = 0; i < span.Length; i++)
+            {
+                span[i] ^= (byte)(i % 256);
+            }
+
+            remaining = remaining[chunk.Length..];
+        }
+    }
+
+    public ValueTask<int> GetCachedValueAsync(string key)
+    {
+        // ValueTask optimization: return synchronously if cached, async if not
+        if (_cache.TryGetValue(key, out var cachedValue))
+        {
+            _logger.LogDebug("Cache hit for key: {Key}", key);
+            return ValueTask.FromResult(cachedValue);
+        }
+
+        // Cache miss - perform async operation
+        return GetValueFromSourceAsync(key);
+    }
+
+    private async ValueTask<int> GetValueFromSourceAsync(string key)
+    {
+        _logger.LogInformation("Cache miss - fetching value for key: {Key}", key);
+
+        // Simulate async data retrieval
+        await Task.Delay(100);
+
+        var value = key.GetHashCode() & 0x7FFFFFFF; // Simple hash-based value
+        _cache[key] = value;
+
+        return value;
+    }
+
+    public async Task<T?> DeserializeJsonEfficientlyAsync<T>(ReadOnlyMemory<byte> jsonBytes)
+    {
+        _logger.LogInformation("Deserializing JSON efficiently - Size: {Size}", jsonBytes.Length);
+
+        // Use ReadOnlyMemory<byte> to avoid string allocation
+        var reader = new Utf8JsonReader(jsonBytes.Span);
+
+        // Simulate async processing
+        await Task.Yield();
+
+        return JsonSerializer.Deserialize<T>(ref reader);
+    }
+}
+
+/// <summary>
+/// Example class for object pooling
+/// </summary>
+public class JsonProcessor
+{
+    private readonly StringBuilder _buffer = new();
+
+    public async Task<string> ProcessAsync(string input)
+    {
+        _buffer.Clear();
+        _buffer.Append("Processed: ");
+        _buffer.Append(input);
+
+        // Simulate async work
+        await Task.Delay(1);
+
+        return _buffer.ToString();
+    }
+
+    public void Reset()
+    {
+        _buffer.Clear();
+    }
+}
+
+/// <summary>
+/// Object pool policy for JsonProcessor
+/// </summary>
+public class JsonProcessorPoolPolicy : IPooledObjectPolicy<JsonProcessor>
+{
+    public JsonProcessor Create()
+    {
+        return new JsonProcessor();
+    }
+
+    public bool Return(JsonProcessor obj)
+    {
+        obj.Reset();
+        return true;
+    }
+}' \
+"Memory optimization service with ArrayPool, ObjectPool, and Span<T> demonstrations"
+
+    # Create Async Optimization Service
+    create_file_interactive "Services/AsyncOptimizationService.cs" \
+'using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+
+namespace PerformanceDemo.Services;
+
+/// <summary>
+/// Service demonstrating async optimization patterns
+/// </summary>
+public interface IAsyncOptimizationService
+{
+    // Proper async patterns
+    Task<List<string>> ProcessItemsAsync(IEnumerable<string> items);
+    Task<Dictionary<string, int>> ProcessItemsInParallelAsync(IEnumerable<string> items);
+
+    // ConfigureAwait usage
+    Task<string> ProcessWithConfigureAwaitAsync(string input);
+
+    // Async enumerable
+    IAsyncEnumerable<string> ProcessItemsStreamAsync(IEnumerable<string> items);
+
+    // Cancellation token support
+    Task<List<string>> ProcessWithCancellationAsync(IEnumerable<string> items, CancellationToken cancellationToken);
+
+    // ValueTask optimization
+    ValueTask<string> GetOrComputeAsync(string key);
+
+    // Task.WhenAll optimization
+    Task<string[]> ProcessMultipleSourcesAsync(string[] sources);
+}
+
+public class AsyncOptimizationService : IAsyncOptimizationService
+{
+    private readonly ILogger<AsyncOptimizationService> _logger;
+    private readonly ConcurrentDictionary<string, string> _cache = new();
+    private readonly SemaphoreSlim _semaphore = new(Environment.ProcessorCount);
+
+    public AsyncOptimizationService(ILogger<AsyncOptimizationService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<List<string>> ProcessItemsAsync(IEnumerable<string> items)
+    {
+        _logger.LogInformation("Processing items sequentially with proper async pattern");
+
+        var results = new List<string>();
+
+        foreach (var item in items)
+        {
+            // Proper async processing - each item processed sequentially
+            var processed = await ProcessSingleItemAsync(item).ConfigureAwait(false);
+            results.Add(processed);
+        }
+
+        return results;
+    }
+
+    public async Task<Dictionary<string, int>> ProcessItemsInParallelAsync(IEnumerable<string> items)
+    {
+        _logger.LogInformation("Processing items in parallel with controlled concurrency");
+
+        var tasks = items.Select(async item =>
+        {
+            await _semaphore.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                var processed = await ProcessSingleItemAsync(item).ConfigureAwait(false);
+                return new KeyValuePair<string, int>(processed, processed.Length);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        });
+
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
+
+    public async Task<string> ProcessWithConfigureAwaitAsync(string input)
+    {
+        _logger.LogInformation("Processing with ConfigureAwait(false) for library code");
+
+        // ConfigureAwait(false) prevents deadlocks in library code
+        var step1 = await ProcessStep1Async(input).ConfigureAwait(false);
+        var step2 = await ProcessStep2Async(step1).ConfigureAwait(false);
+        var step3 = await ProcessStep3Async(step2).ConfigureAwait(false);
+
+        return step3;
+    }
+
+    public async IAsyncEnumerable<string> ProcessItemsStreamAsync(
+        IEnumerable<string> items,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Processing items as async stream");
+
+        foreach (var item in items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var processed = await ProcessSingleItemAsync(item).ConfigureAwait(false);
+            yield return processed;
+
+            // Simulate streaming delay
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task<List<string>> ProcessWithCancellationAsync(
+        IEnumerable<string> items,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Processing items with cancellation support");
+
+        var results = new List<string>();
+
+        foreach (var item in items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var processed = await ProcessSingleItemAsync(item, cancellationToken).ConfigureAwait(false);
+                results.Add(processed);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Processing cancelled at item: {Item}", item);
+                throw;
+            }
+        }
+
+        return results;
+    }
+
+    public ValueTask<string> GetOrComputeAsync(string key)
+    {
+        // ValueTask optimization: return cached value synchronously
+        if (_cache.TryGetValue(key, out var cachedValue))
+        {
+            _logger.LogDebug("Cache hit for key: {Key}", key);
+            return ValueTask.FromResult(cachedValue);
+        }
+
+        // Cache miss: compute asynchronously
+        return ComputeAndCacheAsync(key);
+    }
+
+    private async ValueTask<string> ComputeAndCacheAsync(string key)
+    {
+        _logger.LogInformation("Computing value for key: {Key}", key);
+
+        // Simulate expensive computation
+        await Task.Delay(50).ConfigureAwait(false);
+
+        var computed = $"Computed_{key}_{DateTime.UtcNow.Ticks}";
+        _cache.TryAdd(key, computed);
+
+        return computed;
+    }
+
+    public async Task<string[]> ProcessMultipleSourcesAsync(string[] sources)
+    {
+        _logger.LogInformation("Processing multiple sources concurrently with Task.WhenAll");
+
+        // Process all sources concurrently
+        var tasks = sources.Select(source => ProcessSourceAsync(source));
+
+        // Wait for all to complete
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        return results;
+    }
+
+    private async Task<string> ProcessSingleItemAsync(string item, CancellationToken cancellationToken = default)
+    {
+        // Simulate async processing
+        await Task.Delay(Random.Shared.Next(10, 50), cancellationToken).ConfigureAwait(false);
+        return $"Processed_{item}_{DateTime.UtcNow.Ticks}";
+    }
+
+    private async Task<string> ProcessStep1Async(string input)
+    {
+        await Task.Delay(10).ConfigureAwait(false);
+        return $"Step1_{input}";
+    }
+
+    private async Task<string> ProcessStep2Async(string input)
+    {
+        await Task.Delay(10).ConfigureAwait(false);
+        return $"Step2_{input}";
+    }
+
+    private async Task<string> ProcessStep3Async(string input)
+    {
+        await Task.Delay(10).ConfigureAwait(false);
+        return $"Step3_{input}";
+    }
+
+    private async Task<string> ProcessSourceAsync(string source)
+    {
+        // Simulate different processing times for different sources
+        var delay = source.GetHashCode() % 100 + 50;
+        await Task.Delay(delay).ConfigureAwait(false);
+        return $"Source_{source}_Processed";
+    }
+}' \
+"Async optimization service demonstrating proper async patterns and performance techniques"
+
+    # Create Exercise Guide for Exercise 3
+    create_file_interactive "EXERCISE_03_GUIDE.md" \
+'# Exercise 3: Async and Memory Optimization
+
+## 🎯 Objective
+Master advanced async programming patterns and memory optimization techniques to build high-performance, scalable applications.
+
+## ⏱️ Time Allocation
+**Total Time**: 45 minutes
+- Memory Optimization with ArrayPool: 15 minutes
+- Object Pooling and Span<T> Usage: 15 minutes
+- Async Optimization Patterns: 15 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Update Program.cs
+Add memory optimization services:
+
+```csharp
+// Object pooling
+builder.Services.AddSingleton<ObjectPool<StringBuilder>>(serviceProvider =>
+{
+    var provider = new DefaultObjectPoolProvider();
+    return provider.CreateStringBuilderPool();
+});
+
+builder.Services.AddSingleton<ObjectPool<JsonProcessor>>(serviceProvider =>
+{
+    var provider = new DefaultObjectPoolProvider();
+    return provider.Create(new JsonProcessorPoolPolicy());
+});
+
+// Register optimization services
+builder.Services.AddScoped<IMemoryOptimizationService, MemoryOptimizationService>();
+builder.Services.AddScoped<IAsyncOptimizationService, AsyncOptimizationService>();
+```
+
+### Step 2: Key Memory Optimization Techniques
+- **ArrayPool<T>**: Rent/return buffers to reduce allocations
+- **ObjectPool<T>**: Reuse expensive objects
+- **Span<T> and Memory<T>**: Zero-allocation data processing
+- **StringBuilder Pooling**: Efficient string building
+- **ValueTask**: Optimized async returns
+
+### Step 3: Async Best Practices
+- **ConfigureAwait(false)**: In library code
+- **Task.WhenAll()**: Concurrent processing
+- **CancellationToken**: Proper cancellation support
+- **IAsyncEnumerable**: Streaming data processing
+- **SemaphoreSlim**: Controlling concurrency
+
+## ✅ Success Criteria
+- [ ] Memory optimization techniques reduce allocations
+- [ ] Object pooling is properly implemented
+- [ ] Async patterns follow best practices
+- [ ] Span<T> and Memory<T> are used effectively
+- [ ] ValueTask optimization provides performance benefits
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test memory optimization endpoints
+4. Monitor memory usage and allocations
+5. Test async patterns with concurrent requests
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- Memory allocation patterns and optimization
+- Object pooling for expensive resources
+- Zero-allocation programming with Span<T>
+- Proper async/await patterns
+- Concurrency control and cancellation
+' \
+"Complete exercise guide for Async and Memory Optimization"
+
+    echo -e "${GREEN}🎉 Exercise 3 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Update Program.cs with object pooling configuration"
+    echo "2. Register optimization services"
+    echo "3. Run: ${CYAN}dotnet run${NC}"
+    echo "4. Test memory optimization endpoints"
+    echo "5. Monitor memory usage and performance"
+    echo "6. Follow the EXERCISE_03_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise04" ]]; then
-    echo -e "${CYAN}Exercise 4 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise adds monitoring and profiling tools${NC}"
+    # Exercise 4: Monitoring and Profiling Tools
+
+    explain_concept "Performance Monitoring and Profiling" \
+"Performance Monitoring Strategies:
+• Application Performance Monitoring (APM): Real-time performance tracking
+• Custom Metrics: Business-specific performance indicators
+• Memory Profiling: Detecting leaks and allocation patterns
+• CPU Profiling: Identifying performance bottlenecks
+• Distributed Tracing: End-to-end request tracking"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 4 requires Exercises 1, 2, and 3 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03, exercise04${NC}"
+        exit 1
+    fi
+
+    # Add monitoring and profiling packages
+    dotnet add package Microsoft.ApplicationInsights.AspNetCore
+    dotnet add package Serilog.AspNetCore
+    dotnet add package Serilog.Sinks.Console
+    dotnet add package Serilog.Sinks.File
+    dotnet add package System.Diagnostics.DiagnosticSource
+
+    # Create Performance Monitoring Service
+    create_file_interactive "Services/PerformanceMonitoringService.cs" \
+'using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace PerformanceDemo.Services;
+
+/// <summary>
+/// Service for performance monitoring and custom metrics
+/// </summary>
+public interface IPerformanceMonitoringService
+{
+    // Custom metrics
+    void RecordRequestDuration(string endpoint, double durationMs);
+    void RecordCacheHit(string cacheType);
+    void RecordCacheMiss(string cacheType);
+    void RecordDatabaseQuery(string queryType, double durationMs);
+
+    // Performance counters
+    Task<PerformanceMetrics> GetCurrentMetricsAsync();
+
+    // Health monitoring
+    Task<HealthStatus> CheckApplicationHealthAsync();
+
+    // Memory monitoring
+    Task<MemoryMetrics> GetMemoryMetricsAsync();
+}
+
+public class PerformanceMonitoringService : IPerformanceMonitoringService
+{
+    private readonly ILogger<PerformanceMonitoringService> _logger;
+    private readonly Meter _meter;
+
+    // Custom metrics
+    private readonly Counter<long> _requestCounter;
+    private readonly Histogram<double> _requestDuration;
+    private readonly Counter<long> _cacheHitCounter;
+    private readonly Counter<long> _cacheMissCounter;
+    private readonly Histogram<double> _databaseQueryDuration;
+
+    // Performance tracking
+    private readonly ActivitySource _activitySource;
+
+    public PerformanceMonitoringService(ILogger<PerformanceMonitoringService> logger)
+    {
+        _logger = logger;
+        _meter = new Meter("PerformanceDemo.Metrics", "1.0.0");
+        _activitySource = new ActivitySource("PerformanceDemo.Activities");
+
+        // Initialize custom metrics
+        _requestCounter = _meter.CreateCounter<long>("requests_total", "count", "Total number of requests");
+        _requestDuration = _meter.CreateHistogram<double>("request_duration_ms", "ms", "Request duration in milliseconds");
+        _cacheHitCounter = _meter.CreateCounter<long>("cache_hits_total", "count", "Total cache hits");
+        _cacheMissCounter = _meter.CreateCounter<long>("cache_misses_total", "count", "Total cache misses");
+        _databaseQueryDuration = _meter.CreateHistogram<double>("database_query_duration_ms", "ms", "Database query duration");
+    }
+
+    public void RecordRequestDuration(string endpoint, double durationMs)
+    {
+        _requestCounter.Add(1, new KeyValuePair<string, object?>("endpoint", endpoint));
+        _requestDuration.Record(durationMs, new KeyValuePair<string, object?>("endpoint", endpoint));
+
+        _logger.LogDebug("Request to {Endpoint} took {Duration}ms", endpoint, durationMs);
+    }
+
+    public void RecordCacheHit(string cacheType)
+    {
+        _cacheHitCounter.Add(1, new KeyValuePair<string, object?>("cache_type", cacheType));
+        _logger.LogDebug("Cache hit for {CacheType}", cacheType);
+    }
+
+    public void RecordCacheMiss(string cacheType)
+    {
+        _cacheMissCounter.Add(1, new KeyValuePair<string, object?>("cache_type", cacheType));
+        _logger.LogDebug("Cache miss for {CacheType}", cacheType);
+    }
+
+    public void RecordDatabaseQuery(string queryType, double durationMs)
+    {
+        _databaseQueryDuration.Record(durationMs, new KeyValuePair<string, object?>("query_type", queryType));
+        _logger.LogDebug("Database query {QueryType} took {Duration}ms", queryType, durationMs);
+    }
+
+    public async Task<PerformanceMetrics> GetCurrentMetricsAsync()
+    {
+        _logger.LogInformation("Collecting current performance metrics");
+
+        var process = Process.GetCurrentProcess();
+
+        // Collect various performance metrics
+        var metrics = new PerformanceMetrics
+        {
+            Timestamp = DateTime.UtcNow,
+
+            // CPU metrics
+            CpuUsagePercent = await GetCpuUsageAsync(),
+
+            // Memory metrics
+            WorkingSetMB = process.WorkingSet64 / 1024 / 1024,
+            PrivateMemoryMB = process.PrivateMemorySize64 / 1024 / 1024,
+            GcTotalMemoryMB = GC.GetTotalMemory(false) / 1024 / 1024,
+
+            // GC metrics
+            Gen0Collections = GC.CollectionCount(0),
+            Gen1Collections = GC.CollectionCount(1),
+            Gen2Collections = GC.CollectionCount(2),
+
+            // Thread metrics
+            ThreadCount = process.Threads.Count,
+
+            // Handle metrics
+            HandleCount = process.HandleCount
+        };
+
+        return metrics;
+    }
+
+    public async Task<HealthStatus> CheckApplicationHealthAsync()
+    {
+        _logger.LogInformation("Checking application health");
+
+        try
+        {
+            var metrics = await GetCurrentMetricsAsync();
+
+            // Define health thresholds
+            var isHealthy = metrics.CpuUsagePercent < 80 &&
+                           metrics.WorkingSetMB < 1000 &&
+                           metrics.ThreadCount < 100;
+
+            return isHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking application health");
+            return HealthStatus.Unhealthy;
+        }
+    }
+
+    public async Task<MemoryMetrics> GetMemoryMetricsAsync()
+    {
+        _logger.LogInformation("Collecting memory metrics");
+
+        await Task.Yield(); // Make it async
+
+        var gcInfo = GC.GetGCMemoryInfo();
+
+        return new MemoryMetrics
+        {
+            Timestamp = DateTime.UtcNow,
+            TotalAllocatedBytes = GC.GetTotalAllocatedBytes(),
+            TotalMemoryBytes = GC.GetTotalMemory(false),
+            Gen0HeapSizeBytes = gcInfo.GenerationInfo[0].SizeAfterBytes,
+            Gen1HeapSizeBytes = gcInfo.GenerationInfo[1].SizeAfterBytes,
+            Gen2HeapSizeBytes = gcInfo.GenerationInfo[2].SizeAfterBytes,
+            LohSizeBytes = gcInfo.GenerationInfo[3].SizeAfterBytes,
+            PohSizeBytes = gcInfo.GenerationInfo.Length > 4 ? gcInfo.GenerationInfo[4].SizeAfterBytes : 0,
+            FragmentedBytes = gcInfo.FragmentedBytes,
+            IsCompacting = gcInfo.Compacted
+        };
+    }
+
+    private async Task<double> GetCpuUsageAsync()
+    {
+        var startTime = DateTime.UtcNow;
+        var startCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+
+        await Task.Delay(500); // Sample for 500ms
+
+        var endTime = DateTime.UtcNow;
+        var endCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+
+        var cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
+        var totalMsPassed = (endTime - startTime).TotalMilliseconds;
+        var cpuUsageTotal = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed);
+
+        return cpuUsageTotal * 100;
+    }
+
+    public void Dispose()
+    {
+        _meter?.Dispose();
+        _activitySource?.Dispose();
+    }
+}
+
+/// <summary>
+/// Performance metrics data structure
+/// </summary>
+public class PerformanceMetrics
+{
+    public DateTime Timestamp { get; set; }
+    public double CpuUsagePercent { get; set; }
+    public long WorkingSetMB { get; set; }
+    public long PrivateMemoryMB { get; set; }
+    public long GcTotalMemoryMB { get; set; }
+    public int Gen0Collections { get; set; }
+    public int Gen1Collections { get; set; }
+    public int Gen2Collections { get; set; }
+    public int ThreadCount { get; set; }
+    public int HandleCount { get; set; }
+}
+
+/// <summary>
+/// Memory-specific metrics
+/// </summary>
+public class MemoryMetrics
+{
+    public DateTime Timestamp { get; set; }
+    public long TotalAllocatedBytes { get; set; }
+    public long TotalMemoryBytes { get; set; }
+    public long Gen0HeapSizeBytes { get; set; }
+    public long Gen1HeapSizeBytes { get; set; }
+    public long Gen2HeapSizeBytes { get; set; }
+    public long LohSizeBytes { get; set; }
+    public long PohSizeBytes { get; set; }
+    public long FragmentedBytes { get; set; }
+    public bool IsCompacting { get; set; }
+}' \
+"Performance monitoring service with custom metrics and health checks"
+
+    # Create Performance Middleware
+    create_file_interactive "Middleware/PerformanceMiddleware.cs" \
+'using System.Diagnostics;
+
+namespace PerformanceDemo.Middleware;
+
+/// <summary>
+/// Middleware for automatic performance monitoring
+/// </summary>
+public class PerformanceMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<PerformanceMiddleware> _logger;
+    private readonly IPerformanceMonitoringService _performanceService;
+
+    public PerformanceMiddleware(
+        RequestDelegate next,
+        ILogger<PerformanceMiddleware> logger,
+        IPerformanceMonitoringService performanceService)
+    {
+        _next = next;
+        _logger = logger;
+        _performanceService = performanceService;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var endpoint = $"{context.Request.Method} {context.Request.Path}";
+
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            var duration = stopwatch.Elapsed.TotalMilliseconds;
+
+            _performanceService.RecordRequestDuration(endpoint, duration);
+
+            if (duration > 1000) // Log slow requests
+            {
+                _logger.LogWarning("Slow request detected: {Endpoint} took {Duration}ms",
+                    endpoint, duration);
+            }
+        }
+    }
+}' \
+"Performance monitoring middleware for automatic request tracking"
+
+    # Create Monitoring Controller
+    create_file_interactive "Controllers/MonitoringController.cs" \
+'using Microsoft.AspNetCore.Mvc;
+using PerformanceDemo.Services;
+
+namespace PerformanceDemo.Controllers;
+
+/// <summary>
+/// Controller for performance monitoring and metrics
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class MonitoringController : ControllerBase
+{
+    private readonly IPerformanceMonitoringService _performanceService;
+    private readonly ILogger<MonitoringController> _logger;
+
+    public MonitoringController(
+        IPerformanceMonitoringService performanceService,
+        ILogger<MonitoringController> logger)
+    {
+        _performanceService = performanceService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get current performance metrics
+    /// </summary>
+    [HttpGet("metrics")]
+    public async Task<ActionResult<PerformanceMetrics>> GetMetrics()
+    {
+        try
+        {
+            var metrics = await _performanceService.GetCurrentMetricsAsync();
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving performance metrics");
+            return StatusCode(500, "Error retrieving metrics");
+        }
+    }
+
+    /// <summary>
+    /// Get memory-specific metrics
+    /// </summary>
+    [HttpGet("memory")]
+    public async Task<ActionResult<MemoryMetrics>> GetMemoryMetrics()
+    {
+        try
+        {
+            var metrics = await _performanceService.GetMemoryMetricsAsync();
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving memory metrics");
+            return StatusCode(500, "Error retrieving memory metrics");
+        }
+    }
+
+    /// <summary>
+    /// Check application health
+    /// </summary>
+    [HttpGet("health")]
+    public async Task<ActionResult<object>> GetHealth()
+    {
+        try
+        {
+            var health = await _performanceService.CheckApplicationHealthAsync();
+            var metrics = await _performanceService.GetCurrentMetricsAsync();
+
+            return Ok(new
+            {
+                Status = health.ToString(),
+                Timestamp = DateTime.UtcNow,
+                Metrics = metrics
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking application health");
+            return StatusCode(500, "Error checking health");
+        }
+    }
+
+    /// <summary>
+    /// Force garbage collection (for testing purposes)
+    /// </summary>
+    [HttpPost("gc")]
+    public ActionResult ForceGarbageCollection()
+    {
+        _logger.LogInformation("Forcing garbage collection");
+
+        var beforeMemory = GC.GetTotalMemory(false);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var afterMemory = GC.GetTotalMemory(false);
+        var freedMemory = beforeMemory - afterMemory;
+
+        return Ok(new
+        {
+            BeforeMemoryBytes = beforeMemory,
+            AfterMemoryBytes = afterMemory,
+            FreedMemoryBytes = freedMemory,
+            FreedMemoryMB = freedMemory / 1024 / 1024
+        });
+    }
+
+    /// <summary>
+    /// Simulate memory pressure for testing
+    /// </summary>
+    [HttpPost("memory-pressure/{sizeMB}")]
+    public ActionResult SimulateMemoryPressure(int sizeMB)
+    {
+        _logger.LogInformation("Simulating memory pressure: {SizeMB}MB", sizeMB);
+
+        try
+        {
+            var bytes = new byte[sizeMB * 1024 * 1024];
+
+            // Fill with random data to prevent optimization
+            Random.Shared.NextBytes(bytes);
+
+            // Keep reference for a short time
+            Task.Delay(5000).ContinueWith(_ =>
+            {
+                // Release reference
+                GC.KeepAlive(bytes);
+            });
+
+            return Ok(new { Message = $"Allocated {sizeMB}MB of memory" });
+        }
+        catch (OutOfMemoryException)
+        {
+            return BadRequest("Not enough memory available");
+        }
+    }
+}' \
+"Monitoring controller for performance metrics and health checks"
+
+    # Create Exercise Guide for Exercise 4
+    create_file_interactive "EXERCISE_04_GUIDE.md" \
+'# Exercise 4: Monitoring and Profiling Tools
+
+## 🎯 Objective
+Implement comprehensive performance monitoring, custom metrics, and profiling tools for production-ready applications.
+
+## ⏱️ Time Allocation
+**Total Time**: 30 minutes
+- Performance Monitoring Setup: 10 minutes
+- Custom Metrics Implementation: 10 minutes
+- Health Checks and Profiling: 10 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Update Program.cs
+Add monitoring services:
+
+```csharp
+// Performance monitoring
+builder.Services.AddScoped<IPerformanceMonitoringService, PerformanceMonitoringService>();
+
+// Health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<ApplicationHealthCheck>("application");
+
+// Application Insights (optional)
+builder.Services.AddApplicationInsightsTelemetry();
+
+// Add performance middleware
+app.UseMiddleware<PerformanceMiddleware>();
+
+// Health check endpoint
+app.MapHealthChecks("/health");
+```
+
+### Step 2: Key Monitoring Features
+- **Custom Metrics**: Request duration, cache hits/misses, database queries
+- **Performance Counters**: CPU, memory, GC statistics
+- **Health Checks**: Application health monitoring
+- **Memory Profiling**: Heap analysis and leak detection
+- **Request Tracking**: Automatic performance monitoring
+
+### Step 3: Monitoring Endpoints
+```bash
+# Get performance metrics
+GET /api/monitoring/metrics
+
+# Get memory metrics
+GET /api/monitoring/memory
+
+# Check application health
+GET /api/monitoring/health
+
+# Force garbage collection
+POST /api/monitoring/gc
+```
+
+## ✅ Success Criteria
+- [ ] Performance monitoring is automatically tracking requests
+- [ ] Custom metrics are being collected
+- [ ] Health checks are working properly
+- [ ] Memory metrics provide detailed insights
+- [ ] Monitoring endpoints return accurate data
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test monitoring endpoints
+4. Generate load and observe metrics
+5. Check health status under different conditions
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- How to implement custom performance metrics
+- Application health monitoring strategies
+- Memory profiling and leak detection
+- Performance monitoring middleware
+- Production monitoring best practices
+' \
+"Complete exercise guide for Monitoring and Profiling"
+
+    echo -e "${GREEN}🎉 Exercise 4 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Update Program.cs with monitoring services"
+    echo "2. Add performance middleware to pipeline"
+    echo "3. Run: ${CYAN}dotnet run${NC}"
+    echo "4. Test monitoring endpoints: ${CYAN}http://localhost:5000/api/monitoring/metrics${NC}"
+    echo "5. Monitor application performance and health"
+    echo "6. Follow the EXERCISE_04_GUIDE.md for implementation steps"
 
 fi
 

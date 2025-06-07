@@ -931,16 +931,1615 @@ After mastering unit testing, move on to Exercise 2 for integration testing.
     echo "4. Follow the TESTING_GUIDE.md for implementation exercises"
 
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
-    echo -e "${CYAN}Exercise 2 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise adds integration testing with WebApplicationFactory${NC}"
+    # Exercise 2: Integration Testing with WebApplicationFactory
+
+    explain_concept "Integration Testing" \
+"Integration Testing with ASP.NET Core:
+• WebApplicationFactory: Creates test server for full HTTP testing
+• TestServer: In-memory server for testing complete request pipeline
+• Database Testing: Using InMemory or SQLite for isolated tests
+• Authentication Testing: Testing secured endpoints
+• End-to-End Scenarios: Testing complete user workflows"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 2 requires Exercise 1 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run: ./launch-exercises.sh exercise01${NC}"
+        exit 1
+    fi
+
+    # Create Integration Test Project
+    echo -e "${CYAN}Creating integration test project...${NC}"
+    dotnet new xunit -n "$PROJECT_NAME.IntegrationTests" --framework net8.0
+    cd "$PROJECT_NAME.IntegrationTests"
+
+    # Add required packages for integration testing
+    dotnet add package Microsoft.AspNetCore.Mvc.Testing
+    dotnet add package Microsoft.EntityFrameworkCore.InMemory
+    dotnet add package Microsoft.Extensions.DependencyInjection
+    dotnet add package Bogus
+    dotnet add package FluentAssertions
+
+    # Add reference to main project
+    dotnet add reference "../$PROJECT_NAME/$PROJECT_NAME.csproj"
+
+    # Create Custom WebApplicationFactory
+    create_file_interactive "TestWebApplicationFactory.cs" \
+'using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ProductCatalog.Data;
+
+namespace ProductCatalog.IntegrationTests;
+
+/// <summary>
+/// Custom WebApplicationFactory for integration testing
+/// Configures test-specific services and in-memory database
+/// </summary>
+public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Remove the real database context
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<ProductContext>));
+            if (descriptor != null)
+            {
+                services.Remove(descriptor);
+            }
+
+            // Add in-memory database for testing
+            services.AddDbContext<ProductContext>(options =>
+            {
+                options.UseInMemoryDatabase("TestDatabase");
+                options.EnableSensitiveDataLogging();
+            });
+
+            // Build service provider and seed test data
+            var serviceProvider = services.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+
+            try
+            {
+                SeedTestData(context);
+            }
+            catch (Exception ex)
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<TestWebApplicationFactory<TStartup>>>();
+                logger.LogError(ex, "An error occurred seeding test data");
+            }
+        });
+
+        builder.UseEnvironment("Testing");
+    }
+
+    private static void SeedTestData(ProductContext context)
+    {
+        context.Database.EnsureCreated();
+
+        if (!context.Products.Any())
+        {
+            context.Products.AddRange(
+                new Product { Id = 1, Name = "Test Product 1", Price = 10.99m, Description = "Test Description 1" },
+                new Product { Id = 2, Name = "Test Product 2", Price = 20.99m, Description = "Test Description 2" },
+                new Product { Id = 3, Name = "Test Product 3", Price = 30.99m, Description = "Test Description 3" }
+            );
+            context.SaveChanges();
+        }
+    }
+}' \
+"Custom WebApplicationFactory for integration testing with in-memory database"
+
+    # Create Integration Tests for Products API
+    create_file_interactive "ProductsControllerIntegrationTests.cs" \
+'using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using ProductCatalog.Data;
+using ProductCatalog.Models;
+using Xunit;
+
+namespace ProductCatalog.IntegrationTests;
+
+/// <summary>
+/// Integration tests for ProductsController
+/// Tests complete HTTP request/response cycle
+/// </summary>
+public class ProductsControllerIntegrationTests : IClassFixture<TestWebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+    private readonly TestWebApplicationFactory<Program> _factory;
+
+    public ProductsControllerIntegrationTests(TestWebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetProducts_ReturnsSuccessAndCorrectContentType()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/products");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        response.Content.Headers.ContentType?.ToString()
+            .Should().Contain("application/json");
+    }
+
+    [Fact]
+    public async Task GetProducts_ReturnsExpectedProducts()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/products");
+        var products = await response.Content.ReadFromJsonAsync<List<Product>>();
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        products.Should().NotBeNull();
+        products.Should().HaveCount(3);
+        products.Should().Contain(p => p.Name == "Test Product 1");
+    }
+
+    [Fact]
+    public async Task GetProduct_WithValidId_ReturnsProduct()
+    {
+        // Arrange
+        const int productId = 1;
+
+        // Act
+        var response = await _client.GetAsync($"/api/products/{productId}");
+        var product = await response.Content.ReadFromJsonAsync<Product>();
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        product.Should().NotBeNull();
+        product!.Id.Should().Be(productId);
+        product.Name.Should().Be("Test Product 1");
+    }
+
+    [Fact]
+    public async Task GetProduct_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        const int invalidId = 999;
+
+        // Act
+        var response = await _client.GetAsync($"/api/products/{invalidId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task PostProduct_WithValidProduct_ReturnsCreated()
+    {
+        // Arrange
+        var newProduct = new Product
+        {
+            Name = "New Test Product",
+            Price = 15.99m,
+            Description = "New test description"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/products", newProduct);
+        var createdProduct = await response.Content.ReadFromJsonAsync<Product>();
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        createdProduct.Should().NotBeNull();
+        createdProduct!.Name.Should().Be(newProduct.Name);
+        createdProduct.Price.Should().Be(newProduct.Price);
+
+        // Verify location header
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain($"/api/products/{createdProduct.Id}");
+    }
+
+    [Fact]
+    public async Task PostProduct_WithInvalidProduct_ReturnsBadRequest()
+    {
+        // Arrange - Product with missing required fields
+        var invalidProduct = new Product
+        {
+            Name = "", // Invalid: empty name
+            Price = -1  // Invalid: negative price
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/products", invalidProduct);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PutProduct_WithValidProduct_ReturnsNoContent()
+    {
+        // Arrange
+        const int productId = 1;
+        var updatedProduct = new Product
+        {
+            Id = productId,
+            Name = "Updated Product Name",
+            Price = 25.99m,
+            Description = "Updated description"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/products/{productId}", updatedProduct);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify the update
+        var getResponse = await _client.GetAsync($"/api/products/{productId}");
+        var product = await getResponse.Content.ReadFromJsonAsync<Product>();
+        product!.Name.Should().Be("Updated Product Name");
+        product.Price.Should().Be(25.99m);
+    }
+
+    [Fact]
+    public async Task DeleteProduct_WithValidId_ReturnsNoContent()
+    {
+        // Arrange
+        const int productId = 2;
+
+        // Act
+        var response = await _client.DeleteAsync($"/api/products/{productId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify deletion
+        var getResponse = await _client.GetAsync($"/api/products/{productId}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetProducts_AfterMultipleOperations_MaintainsDataConsistency()
+    {
+        // Arrange - Create a new product
+        var newProduct = new Product
+        {
+            Name = "Consistency Test Product",
+            Price = 99.99m,
+            Description = "Testing data consistency"
+        };
+
+        // Act & Assert - Create
+        var createResponse = await _client.PostAsJsonAsync("/api/products", newProduct);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdProduct = await createResponse.Content.ReadFromJsonAsync<Product>();
+
+        // Act & Assert - Read
+        var getResponse = await _client.GetAsync($"/api/products/{createdProduct!.Id}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Act & Assert - Update
+        createdProduct.Name = "Updated Consistency Test";
+        var updateResponse = await _client.PutAsJsonAsync($"/api/products/{createdProduct.Id}", createdProduct);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Act & Assert - Verify update
+        var verifyResponse = await _client.GetAsync($"/api/products/{createdProduct.Id}");
+        var verifiedProduct = await verifyResponse.Content.ReadFromJsonAsync<Product>();
+        verifiedProduct!.Name.Should().Be("Updated Consistency Test");
+
+        // Act & Assert - Delete
+        var deleteResponse = await _client.DeleteAsync($"/api/products/{createdProduct.Id}");
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Act & Assert - Verify deletion
+        var finalGetResponse = await _client.GetAsync($"/api/products/{createdProduct.Id}");
+        finalGetResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+}' \
+"Complete integration tests for Products API with CRUD operations"
+
+    # Create Database Integration Tests
+    create_file_interactive "DatabaseIntegrationTests.cs" \
+'using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using ProductCatalog.Data;
+using ProductCatalog.Models;
+using Xunit;
+
+namespace ProductCatalog.IntegrationTests;
+
+/// <summary>
+/// Integration tests for database operations
+/// Tests Entity Framework context and repository patterns
+/// </summary>
+public class DatabaseIntegrationTests : IClassFixture<TestWebApplicationFactory<Program>>
+{
+    private readonly TestWebApplicationFactory<Program> _factory;
+
+    public DatabaseIntegrationTests(TestWebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task ProductContext_CanAddAndRetrieveProducts()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+
+        var product = new Product
+        {
+            Name = "Database Test Product",
+            Price = 19.99m,
+            Description = "Testing database operations"
+        };
+
+        // Act
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+
+        // Assert
+        var retrievedProduct = await context.Products
+            .FirstOrDefaultAsync(p => p.Name == "Database Test Product");
+
+        retrievedProduct.Should().NotBeNull();
+        retrievedProduct!.Price.Should().Be(19.99m);
+        retrievedProduct.Description.Should().Be("Testing database operations");
+    }
+
+    [Fact]
+    public async Task ProductContext_CanUpdateProducts()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+
+        var product = await context.Products.FirstAsync();
+        var originalName = product.Name;
+
+        // Act
+        product.Name = "Updated Name";
+        await context.SaveChangesAsync();
+
+        // Assert
+        var updatedProduct = await context.Products.FindAsync(product.Id);
+        updatedProduct!.Name.Should().Be("Updated Name");
+        updatedProduct.Name.Should().NotBe(originalName);
+    }
+
+    [Fact]
+    public async Task ProductContext_CanDeleteProducts()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+
+        var product = new Product
+        {
+            Name = "Product To Delete",
+            Price = 5.99m,
+            Description = "This will be deleted"
+        };
+
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+        var productId = product.Id;
+
+        // Act
+        context.Products.Remove(product);
+        await context.SaveChangesAsync();
+
+        // Assert
+        var deletedProduct = await context.Products.FindAsync(productId);
+        deletedProduct.Should().BeNull();
+    }
+}' \
+"Database integration tests for Entity Framework operations"
+
+    # Create Exercise Guide for Exercise 2
+    create_file_interactive "EXERCISE_02_GUIDE.md" \
+'# Exercise 2: Integration Testing with WebApplicationFactory
+
+## 🎯 Objective
+Master integration testing techniques using WebApplicationFactory to test complete HTTP request/response cycles and database operations.
+
+## ⏱️ Time Allocation
+**Total Time**: 45 minutes
+- WebApplicationFactory Setup: 15 minutes
+- API Integration Tests: 20 minutes
+- Database Integration Tests: 10 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Run Integration Tests
+```bash
+cd ProductCatalog.IntegrationTests
+dotnet test --verbosity normal
+```
+
+### Step 2: Understanding WebApplicationFactory
+The TestWebApplicationFactory configures:
+- In-memory database for isolation
+- Test-specific service configurations
+- Seeded test data for consistent testing
+
+### Step 3: Key Testing Patterns
+```csharp
+// Testing HTTP endpoints
+var response = await _client.GetAsync("/api/products");
+response.EnsureSuccessStatusCode();
+
+// Testing JSON responses
+var products = await response.Content.ReadFromJsonAsync<List<Product>>();
+products.Should().HaveCount(3);
+
+// Testing database operations
+using var scope = _factory.Services.CreateScope();
+var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+```
+
+## ✅ Success Criteria
+- [ ] All integration tests pass successfully
+- [ ] HTTP endpoints are tested for all CRUD operations
+- [ ] Database operations are tested in isolation
+- [ ] Test data is properly seeded and isolated
+- [ ] Error scenarios are covered (404, 400, etc.)
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet test`
+2. Verify all tests pass
+3. Check test coverage includes happy path and error scenarios
+4. Ensure tests are isolated and repeatable
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- WebApplicationFactory configuration and usage
+- Integration testing vs unit testing trade-offs
+- In-memory database testing strategies
+- HTTP client testing patterns
+- Test isolation and data management
+' \
+"Complete exercise guide for Integration Testing"
+
+    echo -e "${GREEN}🎉 Exercise 2 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Run integration tests: ${CYAN}cd $PROJECT_NAME.IntegrationTests && dotnet test${NC}"
+    echo "2. Examine test output and coverage"
+    echo "3. Follow the EXERCISE_02_GUIDE.md for implementation steps"
+    echo "4. Experiment with different test scenarios"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
-    echo -e "${CYAN}Exercise 3 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise implements mocking external services${NC}"
+    # Exercise 3: Mocking External Services
+
+    explain_concept "Mocking and Test Doubles" \
+"Mocking External Dependencies:
+• Test Doubles: Mock, Stub, Fake, Spy patterns
+• Moq Framework: Creating and configuring mocks
+• Dependency Isolation: Testing units in isolation
+• Behavior Verification: Verifying method calls and interactions
+• External Service Mocking: HTTP clients, databases, file systems"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 3 requires Exercises 1 and 2 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03${NC}"
+        exit 1
+    fi
+
+    # Navigate to unit tests project to add mocking examples
+    cd "$PROJECT_NAME.UnitTests"
+
+    # Add Moq package if not already added
+    dotnet add package Moq
+    dotnet add package NSubstitute
+    dotnet add package Microsoft.Extensions.Logging.Abstractions
+
+    # Create External Service Interface for mocking
+    create_file_interactive "Services/IExternalApiService.cs" \
+'namespace ProductCatalog.Services;
+
+/// <summary>
+/// Interface for external API service - designed for mocking
+/// </summary>
+public interface IExternalApiService
+{
+    Task<decimal> GetCurrentExchangeRateAsync(string fromCurrency, string toCurrency);
+    Task<bool> ValidateProductCodeAsync(string productCode);
+    Task<string> GetProductCategoryAsync(string productName);
+    Task SendNotificationAsync(string message, string recipient);
+}
+
+/// <summary>
+/// External API service implementation
+/// </summary>
+public class ExternalApiService : IExternalApiService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<ExternalApiService> _logger;
+
+    public ExternalApiService(HttpClient httpClient, ILogger<ExternalApiService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+
+    public async Task<decimal> GetCurrentExchangeRateAsync(string fromCurrency, string toCurrency)
+    {
+        // Simulate external API call
+        _logger.LogInformation("Getting exchange rate from {From} to {To}", fromCurrency, toCurrency);
+        await Task.Delay(100); // Simulate network delay
+        return 1.25m; // Mock exchange rate
+    }
+
+    public async Task<bool> ValidateProductCodeAsync(string productCode)
+    {
+        // Simulate external validation service
+        _logger.LogInformation("Validating product code: {ProductCode}", productCode);
+        await Task.Delay(50);
+        return !string.IsNullOrEmpty(productCode) && productCode.Length >= 3;
+    }
+
+    public async Task<string> GetProductCategoryAsync(string productName)
+    {
+        // Simulate external categorization service
+        _logger.LogInformation("Getting category for product: {ProductName}", productName);
+        await Task.Delay(75);
+        return productName.ToLower().Contains("test") ? "Test Category" : "General";
+    }
+
+    public async Task SendNotificationAsync(string message, string recipient)
+    {
+        // Simulate notification service
+        _logger.LogInformation("Sending notification to {Recipient}: {Message}", recipient, message);
+        await Task.Delay(25);
+    }
+}' \
+"External service interface and implementation for mocking demonstrations"
+
+    # Create Enhanced Product Service with External Dependencies
+    create_file_interactive "Services/EnhancedProductService.cs" \
+'using Microsoft.Extensions.Logging;
+using ProductCatalog.Data;
+using ProductCatalog.Models;
+
+namespace ProductCatalog.Services;
+
+/// <summary>
+/// Enhanced product service with external dependencies for mocking examples
+/// </summary>
+public interface IEnhancedProductService
+{
+    Task<Product> CreateProductWithValidationAsync(Product product);
+    Task<decimal> GetProductPriceInCurrencyAsync(int productId, string currency);
+    Task<Product> UpdateProductCategoryAsync(int productId);
+    Task NotifyProductCreatedAsync(Product product, string adminEmail);
+}
+
+public class EnhancedProductService : IEnhancedProductService
+{
+    private readonly IProductRepository _productRepository;
+    private readonly IExternalApiService _externalApiService;
+    private readonly ILogger<EnhancedProductService> _logger;
+
+    public EnhancedProductService(
+        IProductRepository productRepository,
+        IExternalApiService externalApiService,
+        ILogger<EnhancedProductService> logger)
+    {
+        _productRepository = productRepository;
+        _externalApiService = externalApiService;
+        _logger = logger;
+    }
+
+    public async Task<Product> CreateProductWithValidationAsync(Product product)
+    {
+        _logger.LogInformation("Creating product with validation: {ProductName}", product.Name);
+
+        // Validate product code with external service
+        var isValidCode = await _externalApiService.ValidateProductCodeAsync(product.Name);
+        if (!isValidCode)
+        {
+            throw new ArgumentException("Invalid product code", nameof(product));
+        }
+
+        // Get category from external service
+        var category = await _externalApiService.GetProductCategoryAsync(product.Name);
+        product.Description = $"{product.Description} [Category: {category}]";
+
+        // Save product
+        var createdProduct = await _productRepository.AddAsync(product);
+
+        _logger.LogInformation("Product created successfully: {ProductId}", createdProduct.Id);
+        return createdProduct;
+    }
+
+    public async Task<decimal> GetProductPriceInCurrencyAsync(int productId, string currency)
+    {
+        _logger.LogInformation("Getting product price in currency: {Currency}", currency);
+
+        var product = await _productRepository.GetByIdAsync(productId);
+        if (product == null)
+        {
+            throw new ArgumentException("Product not found", nameof(productId));
+        }
+
+        if (currency.Equals("USD", StringComparison.OrdinalIgnoreCase))
+        {
+            return product.Price;
+        }
+
+        // Get exchange rate from external service
+        var exchangeRate = await _externalApiService.GetCurrentExchangeRateAsync("USD", currency);
+        return product.Price * exchangeRate;
+    }
+
+    public async Task<Product> UpdateProductCategoryAsync(int productId)
+    {
+        _logger.LogInformation("Updating product category: {ProductId}", productId);
+
+        var product = await _productRepository.GetByIdAsync(productId);
+        if (product == null)
+        {
+            throw new ArgumentException("Product not found", nameof(productId));
+        }
+
+        // Get updated category from external service
+        var newCategory = await _externalApiService.GetProductCategoryAsync(product.Name);
+        product.Description = $"{product.Description.Split('[')[0].Trim()} [Category: {newCategory}]";
+
+        await _productRepository.UpdateAsync(product);
+        return product;
+    }
+
+    public async Task NotifyProductCreatedAsync(Product product, string adminEmail)
+    {
+        _logger.LogInformation("Sending product creation notification");
+
+        var message = $"New product created: {product.Name} (${product.Price})";
+        await _externalApiService.SendNotificationAsync(message, adminEmail);
+    }
+}' \
+"Enhanced product service with external dependencies for mocking examples"
+
+    # Create Comprehensive Mocking Tests with Moq
+    create_file_interactive "MockingTests/EnhancedProductServiceMoqTests.cs" \
+'using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using ProductCatalog.Models;
+using ProductCatalog.Services;
+using Xunit;
+
+namespace ProductCatalog.UnitTests.MockingTests;
+
+/// <summary>
+/// Comprehensive mocking tests using Moq framework
+/// Demonstrates various mocking patterns and verification techniques
+/// </summary>
+public class EnhancedProductServiceMoqTests
+{
+    private readonly Mock<IProductRepository> _mockRepository;
+    private readonly Mock<IExternalApiService> _mockExternalService;
+    private readonly Mock<ILogger<EnhancedProductService>> _mockLogger;
+    private readonly EnhancedProductService _service;
+
+    public EnhancedProductServiceMoqTests()
+    {
+        _mockRepository = new Mock<IProductRepository>();
+        _mockExternalService = new Mock<IExternalApiService>();
+        _mockLogger = new Mock<ILogger<EnhancedProductService>>();
+
+        _service = new EnhancedProductService(
+            _mockRepository.Object,
+            _mockExternalService.Object,
+            _mockLogger.Object);
+    }
+
+    [Fact]
+    public async Task CreateProductWithValidationAsync_WithValidProduct_ReturnsCreatedProduct()
+    {
+        // Arrange
+        var product = new Product
+        {
+            Name = "TEST123",
+            Price = 19.99m,
+            Description = "Test product"
+        };
+
+        var expectedProduct = new Product
+        {
+            Id = 1,
+            Name = "TEST123",
+            Price = 19.99m,
+            Description = "Test product [Category: Test Category]"
+        };
+
+        // Setup mocks
+        _mockExternalService
+            .Setup(x => x.ValidateProductCodeAsync("TEST123"))
+            .ReturnsAsync(true);
+
+        _mockExternalService
+            .Setup(x => x.GetProductCategoryAsync("TEST123"))
+            .ReturnsAsync("Test Category");
+
+        _mockRepository
+            .Setup(x => x.AddAsync(It.IsAny<Product>()))
+            .ReturnsAsync(expectedProduct);
+
+        // Act
+        var result = await _service.CreateProductWithValidationAsync(product);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(1);
+        result.Description.Should().Contain("[Category: Test Category]");
+
+        // Verify all external calls were made
+        _mockExternalService.Verify(x => x.ValidateProductCodeAsync("TEST123"), Times.Once);
+        _mockExternalService.Verify(x => x.GetProductCategoryAsync("TEST123"), Times.Once);
+        _mockRepository.Verify(x => x.AddAsync(It.IsAny<Product>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateProductWithValidationAsync_WithInvalidProduct_ThrowsException()
+    {
+        // Arrange
+        var product = new Product
+        {
+            Name = "XX", // Invalid short name
+            Price = 19.99m,
+            Description = "Test product"
+        };
+
+        _mockExternalService
+            .Setup(x => x.ValidateProductCodeAsync("XX"))
+            .ReturnsAsync(false);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductWithValidationAsync(product));
+
+        exception.Message.Should().Contain("Invalid product code");
+
+        // Verify validation was called but repository was not
+        _mockExternalService.Verify(x => x.ValidateProductCodeAsync("XX"), Times.Once);
+        _mockRepository.Verify(x => x.AddAsync(It.IsAny<Product>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetProductPriceInCurrencyAsync_WithUSD_ReturnsOriginalPrice()
+    {
+        // Arrange
+        const int productId = 1;
+        const string currency = "USD";
+        var product = new Product { Id = 1, Price = 25.99m };
+
+        _mockRepository
+            .Setup(x => x.GetByIdAsync(productId))
+            .ReturnsAsync(product);
+
+        // Act
+        var result = await _service.GetProductPriceInCurrencyAsync(productId, currency);
+
+        // Assert
+        result.Should().Be(25.99m);
+
+        // Verify repository was called but external service was not (USD is base currency)
+        _mockRepository.Verify(x => x.GetByIdAsync(productId), Times.Once);
+        _mockExternalService.Verify(x => x.GetCurrentExchangeRateAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetProductPriceInCurrencyAsync_WithEUR_ReturnsConvertedPrice()
+    {
+        // Arrange
+        const int productId = 1;
+        const string currency = "EUR";
+        var product = new Product { Id = 1, Price = 25.99m };
+        const decimal exchangeRate = 0.85m;
+
+        _mockRepository
+            .Setup(x => x.GetByIdAsync(productId))
+            .ReturnsAsync(product);
+
+        _mockExternalService
+            .Setup(x => x.GetCurrentExchangeRateAsync("USD", "EUR"))
+            .ReturnsAsync(exchangeRate);
+
+        // Act
+        var result = await _service.GetProductPriceInCurrencyAsync(productId, currency);
+
+        // Assert
+        result.Should().Be(25.99m * 0.85m);
+
+        // Verify both calls were made
+        _mockRepository.Verify(x => x.GetByIdAsync(productId), Times.Once);
+        _mockExternalService.Verify(x => x.GetCurrentExchangeRateAsync("USD", "EUR"), Times.Once);
+    }
+
+    [Fact]
+    public async Task NotifyProductCreatedAsync_CallsExternalService()
+    {
+        // Arrange
+        var product = new Product { Name = "Test Product", Price = 15.99m };
+        const string adminEmail = "admin@test.com";
+
+        _mockExternalService
+            .Setup(x => x.SendNotificationAsync(It.IsAny<string>(), adminEmail))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _service.NotifyProductCreatedAsync(product, adminEmail);
+
+        // Assert
+        _mockExternalService.Verify(
+            x => x.SendNotificationAsync(
+                It.Is<string>(msg => msg.Contains("Test Product") && msg.Contains("$15.99")),
+                adminEmail),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("A")]
+    [InlineData("AB")]
+    public async Task CreateProductWithValidationAsync_WithInvalidCodes_ThrowsException(string invalidCode)
+    {
+        // Arrange
+        var product = new Product
+        {
+            Name = invalidCode,
+            Price = 19.99m,
+            Description = "Test product"
+        };
+
+        _mockExternalService
+            .Setup(x => x.ValidateProductCodeAsync(invalidCode))
+            .ReturnsAsync(false);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductWithValidationAsync(product));
+
+        _mockExternalService.Verify(x => x.ValidateProductCodeAsync(invalidCode), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetProductPriceInCurrencyAsync_WithNonExistentProduct_ThrowsException()
+    {
+        // Arrange
+        const int nonExistentId = 999;
+
+        _mockRepository
+            .Setup(x => x.GetByIdAsync(nonExistentId))
+            .ReturnsAsync((Product?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.GetProductPriceInCurrencyAsync(nonExistentId, "EUR"));
+
+        exception.Message.Should().Contain("Product not found");
+        _mockRepository.Verify(x => x.GetByIdAsync(nonExistentId), Times.Once);
+    }
+}' \
+"Comprehensive Moq-based mocking tests with various patterns and verification"
+
+    # Create NSubstitute Alternative Tests
+    create_file_interactive "MockingTests/EnhancedProductServiceNSubstituteTests.cs" \
+'using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using ProductCatalog.Models;
+using ProductCatalog.Services;
+using Xunit;
+
+namespace ProductCatalog.UnitTests.MockingTests;
+
+/// <summary>
+/// Alternative mocking tests using NSubstitute framework
+/// Demonstrates different syntax and approach to mocking
+/// </summary>
+public class EnhancedProductServiceNSubstituteTests
+{
+    private readonly IProductRepository _mockRepository;
+    private readonly IExternalApiService _mockExternalService;
+    private readonly ILogger<EnhancedProductService> _mockLogger;
+    private readonly EnhancedProductService _service;
+
+    public EnhancedProductServiceNSubstituteTests()
+    {
+        _mockRepository = Substitute.For<IProductRepository>();
+        _mockExternalService = Substitute.For<IExternalApiService>();
+        _mockLogger = Substitute.For<ILogger<EnhancedProductService>>();
+
+        _service = new EnhancedProductService(_mockRepository, _mockExternalService, _mockLogger);
+    }
+
+    [Fact]
+    public async Task CreateProductWithValidationAsync_WithValidProduct_CallsAllDependencies()
+    {
+        // Arrange
+        var product = new Product { Name = "VALID123", Price = 29.99m, Description = "Valid product" };
+        var createdProduct = new Product { Id = 1, Name = "VALID123", Price = 29.99m };
+
+        _mockExternalService.ValidateProductCodeAsync("VALID123").Returns(true);
+        _mockExternalService.GetProductCategoryAsync("VALID123").Returns("Electronics");
+        _mockRepository.AddAsync(Arg.Any<Product>()).Returns(createdProduct);
+
+        // Act
+        var result = await _service.CreateProductWithValidationAsync(product);
+
+        // Assert
+        result.Should().NotBeNull();
+
+        // Verify calls with NSubstitute syntax
+        await _mockExternalService.Received(1).ValidateProductCodeAsync("VALID123");
+        await _mockExternalService.Received(1).GetProductCategoryAsync("VALID123");
+        await _mockRepository.Received(1).AddAsync(Arg.Any<Product>());
+    }
+
+    [Fact]
+    public async Task GetProductPriceInCurrencyAsync_ExternalServiceThrows_PropagatesException()
+    {
+        // Arrange
+        const int productId = 1;
+        var product = new Product { Id = 1, Price = 50.00m };
+
+        _mockRepository.GetByIdAsync(productId).Returns(product);
+        _mockExternalService.GetCurrentExchangeRateAsync("USD", "GBP")
+            .ThrowsAsync(new HttpRequestException("External service unavailable"));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => _service.GetProductPriceInCurrencyAsync(productId, "GBP"));
+
+        exception.Message.Should().Contain("External service unavailable");
+
+        await _mockRepository.Received(1).GetByIdAsync(productId);
+        await _mockExternalService.Received(1).GetCurrentExchangeRateAsync("USD", "GBP");
+    }
+
+    [Fact]
+    public async Task UpdateProductCategoryAsync_UpdatesProductDescription()
+    {
+        // Arrange
+        const int productId = 1;
+        var product = new Product
+        {
+            Id = 1,
+            Name = "Test Product",
+            Description = "Original description [Category: Old]"
+        };
+
+        _mockRepository.GetByIdAsync(productId).Returns(product);
+        _mockExternalService.GetProductCategoryAsync("Test Product").Returns("New Category");
+
+        // Act
+        var result = await _service.UpdateProductCategoryAsync(productId);
+
+        // Assert
+        result.Description.Should().Contain("[Category: New Category]");
+
+        await _mockRepository.Received(1).GetByIdAsync(productId);
+        await _mockRepository.Received(1).UpdateAsync(product);
+        await _mockExternalService.Received(1).GetProductCategoryAsync("Test Product");
+    }
+}' \
+"NSubstitute-based mocking tests showing alternative syntax"
+
+    # Create Exercise Guide for Exercise 3
+    create_file_interactive "EXERCISE_03_GUIDE.md" \
+'# Exercise 3: Mocking External Services
+
+## 🎯 Objective
+Master mocking frameworks (Moq and NSubstitute) to isolate units under test and verify interactions with external dependencies.
+
+## ⏱️ Time Allocation
+**Total Time**: 40 minutes
+- Mocking Concepts: 10 minutes
+- Moq Framework Usage: 15 minutes
+- NSubstitute Alternative: 10 minutes
+- Advanced Mocking Patterns: 5 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Understanding Test Doubles
+- **Mock**: Verifies behavior (method calls, parameters)
+- **Stub**: Provides predetermined responses
+- **Fake**: Working implementation with shortcuts
+- **Spy**: Records information about method calls
+
+### Step 2: Moq Framework Patterns
+```csharp
+// Setup return values
+_mockService.Setup(x => x.GetDataAsync(It.IsAny<int>())).ReturnsAsync("test");
+
+// Setup exceptions
+_mockService.Setup(x => x.ProcessAsync()).ThrowsAsync(new Exception("test"));
+
+// Verify method calls
+_mockService.Verify(x => x.GetDataAsync(123), Times.Once);
+
+// Verify with argument matching
+_mockService.Verify(x => x.SaveAsync(It.Is<Product>(p => p.Price > 0)), Times.Once);
+```
+
+### Step 3: NSubstitute Syntax
+```csharp
+// Setup return values
+_mockService.GetDataAsync(Arg.Any<int>()).Returns("test");
+
+// Setup exceptions
+_mockService.ProcessAsync().ThrowsAsync(new Exception("test"));
+
+// Verify calls
+await _mockService.Received(1).GetDataAsync(123);
+```
+
+## ✅ Success Criteria
+- [ ] All mocking tests pass successfully
+- [ ] External dependencies are properly isolated
+- [ ] Both Moq and NSubstitute patterns are demonstrated
+- [ ] Method call verification is implemented
+- [ ] Exception scenarios are tested with mocks
+
+## 🧪 Testing Your Implementation
+1. Run: `dotnet test --filter "MockingTests"`
+2. Verify all mocking tests pass
+3. Examine test output for verification details
+4. Experiment with different mock setups
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- When and how to use mocking frameworks
+- Difference between Moq and NSubstitute syntax
+- Behavior verification vs state verification
+- Testing exception scenarios with mocks
+- Isolating external dependencies in unit tests
+' \
+"Complete exercise guide for Mocking External Services"
+
+    echo -e "${GREEN}🎉 Exercise 3 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Run mocking tests: ${CYAN}dotnet test --filter MockingTests${NC}"
+    echo "2. Compare Moq vs NSubstitute syntax"
+    echo "3. Follow the EXERCISE_03_GUIDE.md for implementation steps"
+    echo "4. Practice with different mocking scenarios"
 
 elif [[ $EXERCISE_NAME == "exercise04" ]]; then
-    echo -e "${CYAN}Exercise 4 implementation would be added here...${NC}"
-    echo -e "${YELLOW}This exercise adds performance testing with BenchmarkDotNet${NC}"
+    # Exercise 4: Performance Testing with BenchmarkDotNet
+
+    explain_concept "Performance Testing" \
+"Performance Testing Strategies:
+• BenchmarkDotNet: Accurate micro-benchmarking for .NET
+• Load Testing: Testing application under expected load
+• Stress Testing: Testing beyond normal capacity
+• Memory Profiling: Detecting memory leaks and allocation patterns
+• Performance Regression Testing: Ensuring optimizations don't regress"
+
+    if [ "$SKIP_PROJECT_CREATION" = false ]; then
+        echo -e "${RED}❌ Exercise 4 requires Exercises 1, 2, and 3 to be completed first!${NC}"
+        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03, exercise04${NC}"
+        exit 1
+    fi
+
+    # Create Performance Test Project
+    echo -e "${CYAN}Creating performance test project...${NC}"
+    dotnet new console -n "$PROJECT_NAME.PerformanceTests" --framework net8.0
+    cd "$PROJECT_NAME.PerformanceTests"
+
+    # Add BenchmarkDotNet and other performance testing packages
+    dotnet add package BenchmarkDotNet
+    dotnet add package Microsoft.AspNetCore.Mvc.Testing
+    dotnet add package Microsoft.EntityFrameworkCore.InMemory
+    dotnet add package NBomber
+
+    # Add reference to main project
+    dotnet add reference "../$PROJECT_NAME/$PROJECT_NAME.csproj"
+
+    # Create BenchmarkDotNet Performance Tests
+    create_file_interactive "ProductServiceBenchmarks.cs" \
+'using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ProductCatalog.Data;
+using ProductCatalog.Models;
+using ProductCatalog.Services;
+
+namespace ProductCatalog.PerformanceTests;
+
+/// <summary>
+/// BenchmarkDotNet performance tests for ProductService
+/// Measures execution time, memory allocation, and throughput
+/// </summary>
+[MemoryDiagnoser]
+[SimpleJob]
+[RankColumn]
+public class ProductServiceBenchmarks
+{
+    private ProductContext _context = null!;
+    private IProductService _productService = null!;
+    private List<Product> _testProducts = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        // Setup in-memory database
+        var options = new DbContextOptionsBuilder<ProductContext>()
+            .UseInMemoryDatabase($"BenchmarkDb_{Guid.NewGuid()}")
+            .Options;
+
+        _context = new ProductContext(options);
+
+        // Setup service
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddLogging();
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<ProductService>>();
+
+        _productService = new ProductService(_context, logger);
+
+        // Seed test data
+        _testProducts = GenerateTestProducts(1000);
+        _context.Products.AddRange(_testProducts);
+        _context.SaveChanges();
+    }
+
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        _context.Dispose();
+    }
+
+    [Benchmark]
+    public async Task<List<Product>> GetAllProducts()
+    {
+        return await _productService.GetAllProductsAsync();
+    }
+
+    [Benchmark]
+    [Arguments(1)]
+    [Arguments(100)]
+    [Arguments(500)]
+    public async Task<Product?> GetProductById(int id)
+    {
+        return await _productService.GetProductByIdAsync(id);
+    }
+
+    [Benchmark]
+    public async Task<Product> CreateProduct()
+    {
+        var product = new Product
+        {
+            Name = $"Benchmark Product {Guid.NewGuid()}",
+            Price = 19.99m,
+            Description = "Performance test product"
+        };
+
+        return await _productService.CreateProductAsync(product);
+    }
+
+    [Benchmark]
+    [Arguments("Test")]
+    [Arguments("Product")]
+    [Arguments("Benchmark")]
+    public async Task<List<Product>> SearchProducts(string searchTerm)
+    {
+        return await _productService.SearchProductsAsync(searchTerm);
+    }
+
+    [Benchmark]
+    public async Task BulkCreateProducts()
+    {
+        var products = GenerateTestProducts(100);
+
+        foreach (var product in products)
+        {
+            await _productService.CreateProductAsync(product);
+        }
+    }
+
+    [Benchmark]
+    public async Task BulkCreateProductsOptimized()
+    {
+        var products = GenerateTestProducts(100);
+
+        _context.Products.AddRange(products);
+        await _context.SaveChangesAsync();
+    }
+
+    private static List<Product> GenerateTestProducts(int count)
+    {
+        var products = new List<Product>();
+        var random = new Random(42); // Fixed seed for consistent results
+
+        for (int i = 0; i < count; i++)
+        {
+            products.Add(new Product
+            {
+                Name = $"Product {i}",
+                Price = (decimal)(random.NextDouble() * 100),
+                Description = $"Description for product {i}"
+            });
+        }
+
+        return products;
+    }
+}' \
+"BenchmarkDotNet performance tests for ProductService operations"
+
+    # Create Load Testing with NBomber
+    create_file_interactive "ApiLoadTests.cs" \
+'using NBomber.CSharp;
+using NBomber.Http.CSharp;
+using System.Text.Json;
+using ProductCatalog.Models;
+
+namespace ProductCatalog.PerformanceTests;
+
+/// <summary>
+/// Load testing scenarios using NBomber
+/// Tests API endpoints under various load conditions
+/// </summary>
+public class ApiLoadTests
+{
+    public static void RunLoadTests()
+    {
+        var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri("http://localhost:5000");
+
+        // Scenario 1: Get all products
+        var getAllProductsScenario = Scenario.Create("get_all_products", async context =>
+        {
+            var response = await httpClient.GetAsync("/api/products");
+
+            return response.IsSuccessStatusCode ? Response.Ok() : Response.Fail();
+        })
+        .WithLoadSimulations(
+            Simulation.InjectPerSec(rate: 10, during: TimeSpan.FromMinutes(1))
+        );
+
+        // Scenario 2: Get specific product
+        var getProductScenario = Scenario.Create("get_product_by_id", async context =>
+        {
+            var productId = Random.Shared.Next(1, 100);
+            var response = await httpClient.GetAsync($"/api/products/{productId}");
+
+            return response.IsSuccessStatusCode ? Response.Ok() : Response.Fail();
+        })
+        .WithLoadSimulations(
+            Simulation.InjectPerSec(rate: 20, during: TimeSpan.FromMinutes(1))
+        );
+
+        // Scenario 3: Create products
+        var createProductScenario = Scenario.Create("create_product", async context =>
+        {
+            var product = new Product
+            {
+                Name = $"Load Test Product {context.ScenarioInfo.ThreadId}_{context.InvocationNumber}",
+                Price = (decimal)(Random.Shared.NextDouble() * 100),
+                Description = "Load test product"
+            };
+
+            var json = JsonSerializer.Serialize(product);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await httpClient.PostAsync("/api/products", content);
+
+            return response.IsSuccessStatusCode ? Response.Ok() : Response.Fail();
+        })
+        .WithLoadSimulations(
+            Simulation.InjectPerSec(rate: 5, during: TimeSpan.FromMinutes(1))
+        );
+
+        // Mixed workload scenario
+        var mixedWorkloadScenario = Scenario.Create("mixed_workload", async context =>
+        {
+            var operation = Random.Shared.Next(1, 4);
+
+            HttpResponseMessage response = operation switch
+            {
+                1 => await httpClient.GetAsync("/api/products"),
+                2 => await httpClient.GetAsync($"/api/products/{Random.Shared.Next(1, 100)}"),
+                3 => await CreateRandomProduct(httpClient, context),
+                _ => await httpClient.GetAsync("/api/products")
+            };
+
+            return response.IsSuccessStatusCode ? Response.Ok() : Response.Fail();
+        })
+        .WithLoadSimulations(
+            Simulation.InjectPerSec(rate: 15, during: TimeSpan.FromMinutes(2))
+        );
+
+        // Run the load test
+        NBomberRunner
+            .RegisterScenarios(getAllProductsScenario, getProductScenario, createProductScenario, mixedWorkloadScenario)
+            .Run();
+    }
+
+    private static async Task<HttpResponseMessage> CreateRandomProduct(HttpClient httpClient, IScenarioContext context)
+    {
+        var product = new Product
+        {
+            Name = $"Mixed Load Product {context.ScenarioInfo.ThreadId}_{context.InvocationNumber}",
+            Price = (decimal)(Random.Shared.NextDouble() * 50 + 10),
+            Description = "Mixed workload test product"
+        };
+
+        var json = JsonSerializer.Serialize(product);
+        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        return await httpClient.PostAsync("/api/products", content);
+    }
+}' \
+"NBomber load testing scenarios for API endpoints"
+
+    # Create Program.cs for running benchmarks
+    create_file_interactive "Program.cs" \
+'using BenchmarkDotNet.Running;
+using ProductCatalog.PerformanceTests;
+
+namespace ProductCatalog.PerformanceTests;
+
+/// <summary>
+/// Entry point for performance testing
+/// Runs BenchmarkDotNet tests and load tests
+/// </summary>
+class Program
+{
+    static void Main(string[] args)
+    {
+        Console.WriteLine("ProductCatalog Performance Testing Suite");
+        Console.WriteLine("========================================");
+        Console.WriteLine();
+
+        if (args.Length > 0 && args[0] == "benchmark")
+        {
+            Console.WriteLine("Running BenchmarkDotNet performance tests...");
+            BenchmarkRunner.Run<ProductServiceBenchmarks>();
+        }
+        else if (args.Length > 0 && args[0] == "load")
+        {
+            Console.WriteLine("Running NBomber load tests...");
+            Console.WriteLine("Make sure the API is running on http://localhost:5000");
+            Console.WriteLine("Press any key to start load testing...");
+            Console.ReadKey();
+
+            ApiLoadTests.RunLoadTests();
+        }
+        else
+        {
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  dotnet run benchmark  - Run BenchmarkDotNet micro-benchmarks");
+            Console.WriteLine("  dotnet run load       - Run NBomber load tests");
+            Console.WriteLine();
+            Console.WriteLine("For load tests, ensure the API is running:");
+            Console.WriteLine("  cd ../ProductCatalog && dotnet run");
+        }
+    }
+}' \
+"Program entry point for running performance tests"
+
+    # Create Memory Leak Detection Tests
+    create_file_interactive "MemoryLeakTests.cs" \
+'using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ProductCatalog.Data;
+using ProductCatalog.Models;
+using ProductCatalog.Services;
+using Xunit;
+
+namespace ProductCatalog.PerformanceTests;
+
+/// <summary>
+/// Memory leak detection tests
+/// Monitors memory usage patterns and potential leaks
+/// </summary>
+public class MemoryLeakTests
+{
+    [Fact]
+    public async Task ProductService_RepeatedOperations_DoesNotLeakMemory()
+    {
+        // Arrange
+        const int iterations = 1000;
+        var initialMemory = GC.GetTotalMemory(true);
+
+        // Act - Perform many operations
+        for (int i = 0; i < iterations; i++)
+        {
+            await PerformProductOperations();
+
+            // Force garbage collection every 100 iterations
+            if (i % 100 == 0)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+        }
+
+        // Final cleanup
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var finalMemory = GC.GetTotalMemory(false);
+        var memoryIncrease = finalMemory - initialMemory;
+
+        // Assert - Memory increase should be reasonable (less than 10MB)
+        Assert.True(memoryIncrease < 10 * 1024 * 1024,
+            $"Memory increased by {memoryIncrease / 1024 / 1024}MB, which may indicate a memory leak");
+    }
+
+    private async Task PerformProductOperations()
+    {
+        var options = new DbContextOptionsBuilder<ProductContext>()
+            .UseInMemoryDatabase($"MemoryTest_{Guid.NewGuid()}")
+            .Options;
+
+        using var context = new ProductContext(options);
+
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddLogging();
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<ProductService>>();
+
+        var service = new ProductService(context, logger);
+
+        // Create, read, update, delete operations
+        var product = new Product
+        {
+            Name = $"Memory Test Product {Guid.NewGuid()}",
+            Price = 15.99m,
+            Description = "Memory leak test"
+        };
+
+        var created = await service.CreateProductAsync(product);
+        var retrieved = await service.GetProductByIdAsync(created.Id);
+
+        if (retrieved != null)
+        {
+            retrieved.Price = 20.99m;
+            await service.UpdateProductAsync(retrieved);
+            await service.DeleteProductAsync(retrieved.Id);
+        }
+    }
+
+    [Fact]
+    public void DbContext_ProperDisposal_ReleasesResources()
+    {
+        // Arrange
+        var initialMemory = GC.GetTotalMemory(true);
+
+        // Act - Create and dispose many contexts
+        for (int i = 0; i < 100; i++)
+        {
+            using var context = CreateTestContext();
+            context.Products.Add(new Product
+            {
+                Name = $"Test {i}",
+                Price = 10.99m,
+                Description = "Test"
+            });
+            context.SaveChanges();
+        }
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var finalMemory = GC.GetTotalMemory(false);
+        var memoryIncrease = finalMemory - initialMemory;
+
+        // Assert - Memory should not increase significantly
+        Assert.True(memoryIncrease < 5 * 1024 * 1024,
+            $"DbContext disposal may not be working properly. Memory increased by {memoryIncrease / 1024 / 1024}MB");
+    }
+
+    private ProductContext CreateTestContext()
+    {
+        var options = new DbContextOptionsBuilder<ProductContext>()
+            .UseInMemoryDatabase($"DisposalTest_{Guid.NewGuid()}")
+            .Options;
+
+        return new ProductContext(options);
+    }
+}' \
+"Memory leak detection tests for monitoring resource usage"
+
+    # Create Exercise Guide for Exercise 4
+    create_file_interactive "EXERCISE_04_GUIDE.md" \
+'# Exercise 4: Performance Testing with BenchmarkDotNet
+
+## 🎯 Objective
+Implement comprehensive performance testing using BenchmarkDotNet for micro-benchmarks and NBomber for load testing.
+
+## ⏱️ Time Allocation
+**Total Time**: 35 minutes
+- BenchmarkDotNet Setup: 10 minutes
+- Micro-benchmark Implementation: 15 minutes
+- Load Testing: 10 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Run Micro-benchmarks
+```bash
+cd ProductCatalog.PerformanceTests
+dotnet run --configuration Release benchmark
+```
+
+### Step 2: Run Load Tests
+```bash
+# Terminal 1: Start the API
+cd ../ProductCatalog
+dotnet run
+
+# Terminal 2: Run load tests
+cd ../ProductCatalog.PerformanceTests
+dotnet run load
+```
+
+### Step 3: Understanding BenchmarkDotNet Results
+- **Mean**: Average execution time
+- **Error**: Half of 99.9% confidence interval
+- **StdDev**: Standard deviation of all measurements
+- **Allocated**: Memory allocated per operation
+
+### Step 4: Analyzing Performance
+```csharp
+[MemoryDiagnoser]  // Tracks memory allocations
+[SimpleJob]        // Single job configuration
+[RankColumn]       // Shows performance ranking
+```
+
+## ✅ Success Criteria
+- [ ] BenchmarkDotNet tests run successfully
+- [ ] Load tests complete without errors
+- [ ] Memory leak tests pass
+- [ ] Performance baselines are established
+- [ ] Bottlenecks are identified and documented
+
+## 🧪 Testing Your Implementation
+1. Run benchmarks: `dotnet run --configuration Release benchmark`
+2. Analyze performance results
+3. Run load tests: `dotnet run load`
+4. Check memory usage patterns
+5. Document performance characteristics
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- How to use BenchmarkDotNet for accurate performance measurement
+- Load testing strategies with NBomber
+- Memory leak detection techniques
+- Performance optimization identification
+- Establishing performance baselines for regression testing
+' \
+"Complete exercise guide for Performance Testing"
+
+    echo -e "${GREEN}🎉 Exercise 4 template created successfully!${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 Next steps:${NC}"
+    echo "1. Run benchmarks: ${CYAN}cd $PROJECT_NAME.PerformanceTests && dotnet run --configuration Release benchmark${NC}"
+    echo "2. Start API and run load tests: ${CYAN}dotnet run load${NC}"
+    echo "3. Follow the EXERCISE_04_GUIDE.md for implementation steps"
+    echo "4. Analyze performance results and identify optimization opportunities"
 
 fi
 

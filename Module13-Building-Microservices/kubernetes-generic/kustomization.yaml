@@ -1,0 +1,109 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ecommerce
+
+commonLabels:
+  app.kubernetes.io/part-of: ecommerce-microservices
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  # Infrastructure
+  - infrastructure/postgres.yaml
+  - infrastructure/rabbitmq.yaml
+  - infrastructure/redis.yaml
+  
+  # Microservices
+  - services/product-catalog.yaml
+  - services/order-management.yaml
+  - services/user-management.yaml
+  - services/notification-service.yaml
+  - services/api-gateway.yaml
+  
+  # Monitoring
+  - monitoring/prometheus.yaml
+  - monitoring/grafana.yaml
+  
+  # Ingress
+  - ingress/ingress.yaml
+
+# ConfigMap generator for common configuration
+configMapGenerator:
+  - name: common-config
+    literals:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - TZ=UTC
+
+# Secret generator for demo purposes (use external secret management in production)
+secretGenerator:
+  - name: db-credentials
+    literals:
+      - username=postgres
+      - password=changeme
+  - name: rabbitmq-credentials
+    literals:
+      - username=guest
+      - password=changeme
+  - name: redis-credentials
+    literals:
+      - password=changeme
+
+# Images - Update these to match your container registry
+images:
+  - name: product-catalog
+    newName: your-registry/product-catalog
+    newTag: latest
+  - name: order-management
+    newName: your-registry/order-management
+    newTag: latest
+  - name: user-management
+    newName: your-registry/user-management
+    newTag: latest
+  - name: notification-service
+    newName: your-registry/notification-service
+    newTag: latest
+  - name: api-gateway
+    newName: your-registry/api-gateway
+    newTag: latest
+
+# Common annotations
+commonAnnotations:
+  version: "1.0.0"
+  
+# Patches for environment-specific configurations
+patches:
+  # Add resource limits to all deployments
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  
+  # Add liveness and readiness probes
+  - target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/livenessProbe
+        value:
+          httpGet:
+            path: /health/live
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      - op: add
+        path: /spec/template/spec/containers/0/readinessProbe
+        value:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
