@@ -815,7 +815,8 @@ namespace RestfulAPI.Data
 • Action methods handle specific HTTP verbs"
     
     create_file_interactive "Controllers/ProductsController.cs" \
-'using Microsoft.AspNetCore.Mvc;
+'using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
 using RestfulAPI.DTOs;
@@ -938,13 +939,16 @@ namespace RestfulAPI.Controllers
         }
 
         /// <summary>
-        /// Create a new product
+        /// Create a new product (Admin only)
         /// </summary>
         /// <param name="createProductDto">Product creation data</param>
         /// <returns>Created product</returns>
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto createProductDto)
         {
             _logger.LogInformation("Creating new product: {ProductName}", createProductDto.Name);
@@ -994,15 +998,18 @@ namespace RestfulAPI.Controllers
         }
 
         /// <summary>
-        /// Update an existing product
+        /// Update an existing product (Admin only)
         /// </summary>
         /// <param name="id">Product ID</param>
         /// <param name="updateProductDto">Updated product data</param>
         /// <returns>No content</returns>
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto updateProductDto)
         {
             _logger.LogInformation("Updating product with ID: {ProductId}", id);
@@ -1052,13 +1059,16 @@ namespace RestfulAPI.Controllers
         }
 
         /// <summary>
-        /// Delete a product
+        /// Delete a product (Admin only)
         /// </summary>
         /// <param name="id">Product ID</param>
         /// <returns>No content</returns>
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             _logger.LogInformation("Deleting product with ID: {ProductId}", id);

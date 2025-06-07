@@ -551,6 +551,7 @@ namespace RestfulAPI.DTOs
 
         # Create Controllers
         New-FileInteractive -FilePath "Controllers/ProductsController.cs" -Description "RESTful API controller for product operations" -Content @'
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RestfulAPI.Data;
@@ -619,6 +620,7 @@ namespace RestfulAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ProductResponseDto>> CreateProduct(CreateProductDto createDto)
         {
             if (!ModelState.IsValid)
@@ -660,6 +662,7 @@ namespace RestfulAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateProduct(int id, UpdateProductDto updateDto)
         {
             if (!ModelState.IsValid)
@@ -689,6 +692,7 @@ namespace RestfulAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);

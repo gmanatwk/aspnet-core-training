@@ -73,15 +73,20 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new product
+    /// Create a new product (Admin only)
     /// </summary>
     /// <param name="createProductDto">Product creation data</param>
     /// <returns>Created product</returns>
     /// <response code="201">Returns the newly created product</response>
     /// <response code="400">If the request is invalid</response>
+    /// <response code="401">If the user is not authenticated</response>
+    /// <response code="403">If the user doesn't have Admin role</response>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] CreateProductDto createProductDto)
     {
         if (!ModelState.IsValid)
@@ -100,7 +105,7 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing product
+    /// Update an existing product (Admin only)
     /// </summary>
     /// <param name="id">Product ID</param>
     /// <param name="updateProductDto">Updated product data</param>
@@ -108,10 +113,15 @@ public class ProductsController : ControllerBase
     /// <response code="200">Returns the updated product</response>
     /// <response code="404">If the product is not found</response>
     /// <response code="400">If the request is invalid</response>
+    /// <response code="401">If the user is not authenticated</response>
+    /// <response code="403">If the user doesn't have Admin role</response>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ProductDto>> UpdateProduct(int id, [FromBody] UpdateProductDto updateProductDto)
     {
         if (!ModelState.IsValid)
@@ -131,7 +141,7 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Partially update a product using JSON Patch
+    /// Partially update a product using JSON Patch (Admin only)
     /// </summary>
     /// <param name="id">Product ID</param>
     /// <param name="patchDocument">JSON Patch document</param>
@@ -139,10 +149,15 @@ public class ProductsController : ControllerBase
     /// <response code="200">Returns the updated product</response>
     /// <response code="404">If the product is not found</response>
     /// <response code="400">If the patch document is invalid</response>
+    /// <response code="401">If the user is not authenticated</response>
+    /// <response code="403">If the user doesn't have Admin role</response>
     [HttpPatch("{id:int}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ProductDto>> PatchProduct(int id, [FromBody] JsonPatchDocument<UpdateProductDto> patchDocument)
     {
         if (patchDocument == null)
@@ -167,15 +182,20 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Delete a product
+    /// Delete a product (Admin only)
     /// </summary>
     /// <param name="id">Product ID</param>
     /// <returns>No content</returns>
     /// <response code="204">Product successfully deleted</response>
     /// <response code="404">If the product is not found</response>
+    /// <response code="401">If the user is not authenticated</response>
+    /// <response code="403">If the user doesn't have Admin role</response>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         _logger.LogInformation("Deleting product with ID: {ProductId}", id);
