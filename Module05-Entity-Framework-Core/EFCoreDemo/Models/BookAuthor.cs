@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace EFCoreDemo.Models;
 
 /// <summary>
@@ -10,6 +12,9 @@ public class BookAuthor
     public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
 
     // Navigation properties
+    [JsonIgnore]
     public virtual Book Book { get; set; } = null!;
+
+    [JsonIgnore]
     public virtual Author Author { get; set; } = null!;
 }

@@ -1,20 +1,43 @@
 using Microsoft.EntityFrameworkCore;
 using EFCoreDemo.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Handle circular references in JSON serialization
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
-// Add Entity Framework with SQL Server
+// Add Entity Framework with SQLite
 builder.Services.AddDbContext<BookStoreContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "BookStore API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "BookStore API - EF Core Demo",
+        Version = "v1",
+        Description = "A simple API to demonstrate Entity Framework Core operations. Use the Try it out button to test each endpoint.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "EF Core Training",
+            Email = "training@example.com"
+        }
+    });
+
+    // Configure Swagger to show detailed examples and documentation
+    c.EnableAnnotations();
+
+    // Add better parameter descriptions
+    c.DescribeAllParametersInCamelCase();
 });
 
 // Add CORS for development

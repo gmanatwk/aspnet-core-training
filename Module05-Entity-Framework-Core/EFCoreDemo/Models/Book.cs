@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -37,7 +38,10 @@ public class Book
     public int? PublisherId { get; set; }
 
     // Navigation properties (optional for Exercise 01, used in Exercise 02)
+    [JsonIgnore]
     public virtual Publisher? Publisher { get; set; }
+
+    [JsonIgnore]
     public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
 
     // Computed property for display

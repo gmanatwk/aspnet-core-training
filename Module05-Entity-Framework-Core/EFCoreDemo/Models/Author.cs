@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -28,6 +29,7 @@ public class Author
     public string Country { get; set; } = string.Empty;
 
     // Navigation properties
+    [JsonIgnore]
     public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
 
     // Computed property

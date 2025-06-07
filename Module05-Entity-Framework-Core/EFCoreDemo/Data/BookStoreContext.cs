@@ -53,7 +53,8 @@ public class BookStoreContext : DbContext
             entity.HasOne(e => e.Publisher)
                 .WithMany(p => p.Books)
                 .HasForeignKey(e => e.PublisherId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
         // Configure Author entity
@@ -94,6 +95,35 @@ public class BookStoreContext : DbContext
 
     private void SeedData(ModelBuilder modelBuilder)
     {
+        // Seed Publishers first
+        modelBuilder.Entity<Publisher>().HasData(
+            new Publisher
+            {
+                Id = 1,
+                Name = "Tech Publications",
+                Address = "123 Tech Street, Silicon Valley, CA",
+                Website = "https://techpublications.com",
+                FoundedYear = 1995
+            },
+            new Publisher
+            {
+                Id = 2,
+                Name = "Code Masters Press",
+                Address = "456 Developer Ave, Seattle, WA",
+                Website = "https://codemasters.com",
+                FoundedYear = 2001
+            },
+            new Publisher
+            {
+                Id = 3,
+                Name = "Programming Pros",
+                Address = "789 Software Blvd, Austin, TX",
+                Website = "https://programmingpros.com",
+                FoundedYear = 2010
+            }
+        );
+
+        // Seed Books with optional publisher references
         modelBuilder.Entity<Book>().HasData(
             new Book
             {
@@ -103,7 +133,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-1234567890",
                 Price = 29.99m,
                 PublishedDate = new DateTime(2023, 1, 15),
-                IsAvailable = true
+                IsAvailable = true,
+                PublisherId = 1 // Tech Publications
             },
             new Book
             {
@@ -113,7 +144,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-0987654321",
                 Price = 39.99m,
                 PublishedDate = new DateTime(2023, 3, 20),
-                IsAvailable = true
+                IsAvailable = true,
+                PublisherId = 2 // Code Masters Press
             },
             new Book
             {
@@ -123,7 +155,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-1122334455",
                 Price = 45.99m,
                 PublishedDate = new DateTime(2023, 6, 10),
-                IsAvailable = false
+                IsAvailable = false,
+                PublisherId = 3 // Programming Pros
             }
         );
     }

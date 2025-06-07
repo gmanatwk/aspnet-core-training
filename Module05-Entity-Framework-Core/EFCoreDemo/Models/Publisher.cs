@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -23,5 +24,6 @@ public class Publisher
     public int FoundedYear { get; set; }
 
     // Navigation properties
+    [JsonIgnore]
     public virtual ICollection<Book> Books { get; set; } = new List<Book>();
 }

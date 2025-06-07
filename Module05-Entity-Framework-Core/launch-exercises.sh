@@ -386,15 +386,26 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         dotnet add package Microsoft.EntityFrameworkCore.Tools
         dotnet add package Microsoft.EntityFrameworkCore.Design
 
+        # Install Swagger annotations for better API documentation
+        echo -e "${CYAN}Installing Swagger annotations...${NC}"
+        dotnet add package Swashbuckle.AspNetCore.Annotations
+
         # Update Program.cs with EF Core configuration
         create_file_interactive "Program.cs" \
 'using Microsoft.EntityFrameworkCore;
 using EFCoreDemo.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Handle circular references in JSON serialization
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 // Add Entity Framework with SQLite
 builder.Services.AddDbContext<BookStoreContext>(options =>
@@ -404,7 +415,23 @@ builder.Services.AddDbContext<BookStoreContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "BookStore API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "BookStore API - EF Core Demo",
+        Version = "v1",
+        Description = "A simple API to demonstrate Entity Framework Core operations. Use the Try it out button to test each endpoint.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "EF Core Training",
+            Email = "training@example.com"
+        }
+    });
+
+    // Configure Swagger to show detailed examples and documentation
+    c.EnableAnnotations();
+
+    // Add better parameter descriptions
+    c.DescribeAllParametersInCamelCase();
 });
 
 // Add CORS for development
@@ -461,6 +488,7 @@ app.Run();' \
     create_file_interactive "Models/Book.cs" \
 'using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -498,7 +526,10 @@ public class Book
     public int? PublisherId { get; set; }
 
     // Navigation properties (optional for Exercise 01, used in Exercise 02)
+    [JsonIgnore]
     public virtual Publisher? Publisher { get; set; }
+
+    [JsonIgnore]
     public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
 
     // Computed property for display
@@ -510,6 +541,7 @@ public class Book
     # Create Author entity
     create_file_interactive "Models/Author.cs" \
 'using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -539,6 +571,7 @@ public class Author
     public string Country { get; set; } = string.Empty;
 
     // Navigation properties
+    [JsonIgnore]
     public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
 
     // Computed property
@@ -549,6 +582,7 @@ public class Author
     # Create Publisher entity
     create_file_interactive "Models/Publisher.cs" \
 'using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace EFCoreDemo.Models;
 
@@ -573,13 +607,16 @@ public class Publisher
     public int FoundedYear { get; set; }
 
     // Navigation properties
+    [JsonIgnore]
     public virtual ICollection<Book> Books { get; set; } = new List<Book>();
 }' \
 "Publisher entity with one-to-many relationship to books"
 
     # Create BookAuthor junction entity
     create_file_interactive "Models/BookAuthor.cs" \
-'namespace EFCoreDemo.Models;
+'using System.Text.Json.Serialization;
+
+namespace EFCoreDemo.Models;
 
 /// <summary>
 /// BookAuthor junction entity for many-to-many relationship between Books and Authors
@@ -591,10 +628,142 @@ public class BookAuthor
     public string Role { get; set; } = "Primary Author"; // Primary Author, Co-Author, Editor
 
     // Navigation properties
+    [JsonIgnore]
     public virtual Book Book { get; set; } = null!;
+
+    [JsonIgnore]
     public virtual Author Author { get; set; } = null!;
 }' \
 "Junction entity for many-to-many relationship between Books and Authors"
+
+    # Create DTOs for API responses
+    create_file_interactive "Models/DTOs/BookDto.cs" \
+'using System.ComponentModel.DataAnnotations;
+
+namespace EFCoreDemo.Models.DTOs;
+
+/// <summary>
+/// Book DTO for API responses without circular references
+/// </summary>
+public class BookDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Author { get; set; } = string.Empty;
+    public string ISBN { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public DateTime PublishedDate { get; set; }
+    public bool IsAvailable { get; set; }
+    public string? PublisherName { get; set; }
+    public List<string> Authors { get; set; } = new List<string>();
+}
+
+/// <summary>
+/// Create Book DTO for API requests
+/// </summary>
+/// <example>
+/// {
+///   "title": "Learning ASP.NET Core",
+///   "author": "John Developer",
+///   "isbn": "978-1234567890",
+///   "price": 29.99,
+///   "publishedDate": "2024-01-15T00:00:00",
+///   "isAvailable": true,
+///   "publisherId": 1
+/// }
+/// </example>
+public class CreateBookDto
+{
+    /// <summary>Book title</summary>
+    /// <example>Learning ASP.NET Core</example>
+    [Required(ErrorMessage = "Title is required")]
+    [StringLength(200, ErrorMessage = "Title cannot exceed 200 characters")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Author name</summary>
+    /// <example>John Developer</example>
+    [Required(ErrorMessage = "Author is required")]
+    [StringLength(100, ErrorMessage = "Author name cannot exceed 100 characters")]
+    public string Author { get; set; } = string.Empty;
+
+    /// <summary>ISBN number</summary>
+    /// <example>978-1234567890</example>
+    [Required(ErrorMessage = "ISBN is required")]
+    [StringLength(20, ErrorMessage = "ISBN cannot exceed 20 characters")]
+    public string ISBN { get; set; } = string.Empty;
+
+    /// <summary>Book price</summary>
+    /// <example>29.99</example>
+    [Range(0.01, 9999.99, ErrorMessage = "Price must be between 0.01 and 9999.99")]
+    public decimal Price { get; set; }
+
+    /// <summary>Publication date</summary>
+    /// <example>2024-01-15T00:00:00</example>
+    [Required(ErrorMessage = "Published date is required")]
+    public DateTime PublishedDate { get; set; }
+
+    /// <summary>Whether the book is available</summary>
+    /// <example>true</example>
+    public bool IsAvailable { get; set; } = true;
+
+    /// <summary>Publisher ID (optional)</summary>
+    /// <example>1</example>
+    public int? PublisherId { get; set; }
+}
+
+/// <summary>
+/// Update Book DTO for API requests
+/// </summary>
+/// <example>
+/// {
+///   "title": "Advanced ASP.NET Core",
+///   "author": "Jane Developer",
+///   "isbn": "978-0987654321",
+///   "price": 39.99,
+///   "publishedDate": "2024-02-20T00:00:00",
+///   "isAvailable": true,
+///   "publisherId": 2
+/// }
+/// </example>
+public class UpdateBookDto
+{
+    /// <summary>Book title</summary>
+    /// <example>Advanced ASP.NET Core</example>
+    [Required(ErrorMessage = "Title is required")]
+    [StringLength(200, ErrorMessage = "Title cannot exceed 200 characters")]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Author name</summary>
+    /// <example>Jane Developer</example>
+    [Required(ErrorMessage = "Author is required")]
+    [StringLength(100, ErrorMessage = "Author name cannot exceed 100 characters")]
+    public string Author { get; set; } = string.Empty;
+
+    /// <summary>ISBN number</summary>
+    /// <example>978-0987654321</example>
+    [Required(ErrorMessage = "ISBN is required")]
+    [StringLength(20, ErrorMessage = "ISBN cannot exceed 20 characters")]
+    public string ISBN { get; set; } = string.Empty;
+
+    /// <summary>Book price</summary>
+    /// <example>39.99</example>
+    [Range(0.01, 9999.99, ErrorMessage = "Price must be between 0.01 and 9999.99")]
+    public decimal Price { get; set; }
+
+    /// <summary>Publication date</summary>
+    /// <example>2024-02-20T00:00:00</example>
+    [Required(ErrorMessage = "Published date is required")]
+    public DateTime PublishedDate { get; set; }
+
+    /// <summary>Whether the book is available</summary>
+    /// <example>true</example>
+    public bool IsAvailable { get; set; }
+
+    /// <summary>Publisher ID (optional)</summary>
+    /// <example>2</example>
+    public int? PublisherId { get; set; }
+}' \
+"DTOs for API requests and responses to avoid circular references"
 
     explain_concept "DbContext Configuration" \
 "DbContext is the bridge between your entities and database:
@@ -660,7 +829,8 @@ public class BookStoreContext : DbContext
             entity.HasOne(e => e.Publisher)
                 .WithMany(p => p.Books)
                 .HasForeignKey(e => e.PublisherId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
         // Configure Author entity
@@ -701,6 +871,35 @@ public class BookStoreContext : DbContext
 
     private void SeedData(ModelBuilder modelBuilder)
     {
+        // Seed Publishers first
+        modelBuilder.Entity<Publisher>().HasData(
+            new Publisher
+            {
+                Id = 1,
+                Name = "Tech Publications",
+                Address = "123 Tech Street, Silicon Valley, CA",
+                Website = "https://techpublications.com",
+                FoundedYear = 1995
+            },
+            new Publisher
+            {
+                Id = 2,
+                Name = "Code Masters Press",
+                Address = "456 Developer Ave, Seattle, WA",
+                Website = "https://codemasters.com",
+                FoundedYear = 2001
+            },
+            new Publisher
+            {
+                Id = 3,
+                Name = "Programming Pros",
+                Address = "789 Software Blvd, Austin, TX",
+                Website = "https://programmingpros.com",
+                FoundedYear = 2010
+            }
+        );
+
+        // Seed Books with optional publisher references
         modelBuilder.Entity<Book>().HasData(
             new Book
             {
@@ -710,7 +909,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-1234567890",
                 Price = 29.99m,
                 PublishedDate = new DateTime(2023, 1, 15),
-                IsAvailable = true
+                IsAvailable = true,
+                PublisherId = 1 // Tech Publications
             },
             new Book
             {
@@ -720,7 +920,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-0987654321",
                 Price = 39.99m,
                 PublishedDate = new DateTime(2023, 3, 20),
-                IsAvailable = true
+                IsAvailable = true,
+                PublisherId = 2 // Code Masters Press
             },
             new Book
             {
@@ -730,7 +931,8 @@ public class BookStoreContext : DbContext
                 ISBN = "978-1122334455",
                 Price = 45.99m,
                 PublishedDate = new DateTime(2023, 6, 10),
-                IsAvailable = false
+                IsAvailable = false,
+                PublisherId = 3 // Programming Pros
             }
         );
     }
@@ -768,6 +970,7 @@ public class BookStoreContext : DbContext
 using Microsoft.EntityFrameworkCore;
 using EFCoreDemo.Data;
 using EFCoreDemo.Models;
+using EFCoreDemo.Models.DTOs;
 
 namespace EFCoreDemo.Controllers;
 
@@ -789,15 +992,29 @@ public class BooksController : ControllerBase
     /// </summary>
     /// <returns>List of all books</returns>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Book>>> GetBooks()
+    public async Task<ActionResult<IEnumerable<BookDto>>> GetBooks()
     {
         try
         {
             _logger.LogInformation("Retrieving all books");
 
-            // TODO: Implement getting all books
-            // HINT: Use await _context.Books.ToListAsync()
-            return Ok(new { message = "TODO: Implement GetBooks method" });
+            var books = await _context.Books
+                .AsNoTracking()
+                .Select(b => new BookDto
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Author = b.Author,
+                    ISBN = b.ISBN,
+                    Price = b.Price,
+                    PublishedDate = b.PublishedDate,
+                    IsAvailable = b.IsAvailable,
+                    PublisherName = b.Publisher != null ? b.Publisher.Name : null
+                })
+                .OrderBy(b => b.Title)
+                .ToListAsync();
+
+            return Ok(books);
         }
         catch (Exception ex)
         {
@@ -812,15 +1029,34 @@ public class BooksController : ControllerBase
     /// <param name="id">Book ID</param>
     /// <returns>Book details</returns>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Book>> GetBook(int id)
+    public async Task<ActionResult<BookDto>> GetBook(int id)
     {
         try
         {
             _logger.LogInformation("Retrieving book with ID: {BookId}", id);
 
-            // TODO: Get a specific book by ID
-            // HINT: Use await _context.Books.FindAsync(id)
-            return Ok(new { message = $"TODO: Implement GetBook for id: {id}" });
+            var book = await _context.Books
+                .AsNoTracking()
+                .Where(b => b.Id == id)
+                .Select(b => new BookDto
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Author = b.Author,
+                    ISBN = b.ISBN,
+                    Price = b.Price,
+                    PublishedDate = b.PublishedDate,
+                    IsAvailable = b.IsAvailable,
+                    PublisherName = b.Publisher != null ? b.Publisher.Name : null
+                })
+                .FirstOrDefaultAsync();
+
+            if (book == null)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+
+            return Ok(book);
         }
         catch (Exception ex)
         {
@@ -832,10 +1068,31 @@ public class BooksController : ControllerBase
     /// <summary>
     /// Create a new book
     /// </summary>
-    /// <param name="book">Book to create</param>
+    /// <param name="createBookDto">Book data to create</param>
     /// <returns>Created book</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     POST /api/books
+    ///     {
+    ///        "title": "Learning ASP.NET Core",
+    ///        "author": "John Developer",
+    ///        "isbn": "978-1234567890",
+    ///        "price": 29.99,
+    ///        "publishedDate": "2024-01-15T00:00:00",
+    ///        "isAvailable": true,
+    ///        "publisherId": 1
+    ///     }
+    ///
+    /// </remarks>
+    /// <response code="201">Returns the newly created book</response>
+    /// <response code="400">If the book data is invalid</response>
+    /// <response code="409">If a book with the same ISBN already exists</response>
     [HttpPost]
-    public async Task<ActionResult<Book>> CreateBook(Book book)
+    [ProducesResponseType(typeof(BookDto), 201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(409)]
+    public async Task<ActionResult<BookDto>> CreateBook([FromBody] CreateBookDto createBookDto)
     {
         try
         {
@@ -844,14 +1101,55 @@ public class BooksController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            _logger.LogInformation("Creating new book: {BookTitle}", book.Title);
+            _logger.LogInformation("Creating new book: {BookTitle}", createBookDto.Title);
 
-            // TODO: Add book to database
-            // STEPS:
-            // 1. _context.Books.Add(book)
-            // 2. await _context.SaveChangesAsync()
-            // 3. Return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book)
-            return Ok(new { message = "TODO: Implement CreateBook method" });
+            // Check if ISBN already exists
+            var existingBook = await _context.Books
+                .FirstOrDefaultAsync(b => b.ISBN == createBookDto.ISBN);
+
+            if (existingBook != null)
+            {
+                return Conflict($"Book with ISBN {createBookDto.ISBN} already exists");
+            }
+
+            // Validate publisher exists if provided
+            if (createBookDto.PublisherId.HasValue)
+            {
+                var publisherExists = await _context.Publishers
+                    .AnyAsync(p => p.Id == createBookDto.PublisherId.Value);
+
+                if (!publisherExists)
+                {
+                    return BadRequest($"Publisher with ID {createBookDto.PublisherId} does not exist");
+                }
+            }
+
+            var book = new Book
+            {
+                Title = createBookDto.Title,
+                Author = createBookDto.Author,
+                ISBN = createBookDto.ISBN,
+                Price = createBookDto.Price,
+                PublishedDate = createBookDto.PublishedDate,
+                IsAvailable = createBookDto.IsAvailable,
+                PublisherId = createBookDto.PublisherId
+            };
+
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            var bookDto = new BookDto
+            {
+                Id = book.Id,
+                Title = book.Title,
+                Author = book.Author,
+                ISBN = book.ISBN,
+                Price = book.Price,
+                PublishedDate = book.PublishedDate,
+                IsAvailable = book.IsAvailable
+            };
+
+            return CreatedAtAction(nameof(GetBook), new { id = book.Id }, bookDto);
         }
         catch (Exception ex)
         {
@@ -860,11 +1158,159 @@ public class BooksController : ControllerBase
         }
     }
 
-    // TODO: Add PUT and DELETE methods
-    // PUT: api/books/5
-    // DELETE: api/books/5
+    /// <summary>
+    /// Update an existing book
+    /// </summary>
+    /// <param name="id">Book ID</param>
+    /// <param name="updateBookDto">Updated book data</param>
+    /// <returns>No content if successful</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     PUT /api/books/1
+    ///     {
+    ///        "title": "Advanced ASP.NET Core",
+    ///        "author": "Jane Developer",
+    ///        "isbn": "978-0987654321",
+    ///        "price": 39.99,
+    ///        "publishedDate": "2024-02-20T00:00:00",
+    ///        "isAvailable": true,
+    ///        "publisherId": 2
+    ///     }
+    ///
+    /// </remarks>
+    /// <response code="204">Book updated successfully</response>
+    /// <response code="400">If the book data is invalid</response>
+    /// <response code="404">If the book is not found</response>
+    /// <response code="409">If the ISBN conflicts with another book</response>
+    [HttpPut("{id}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(409)]
+    public async Task<IActionResult> UpdateBook(int id, [FromBody] UpdateBookDto updateBookDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var book = await _context.Books.FindAsync(id);
+            if (book == null)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+
+            // Check if ISBN is being changed and if it conflicts with another book
+            if (book.ISBN != updateBookDto.ISBN)
+            {
+                var existingBook = await _context.Books
+                    .FirstOrDefaultAsync(b => b.ISBN == updateBookDto.ISBN && b.Id != id);
+
+                if (existingBook != null)
+                {
+                    return Conflict($"Book with ISBN {updateBookDto.ISBN} already exists");
+                }
+            }
+
+            // Validate publisher exists if provided
+            if (updateBookDto.PublisherId.HasValue)
+            {
+                var publisherExists = await _context.Publishers
+                    .AnyAsync(p => p.Id == updateBookDto.PublisherId.Value);
+
+                if (!publisherExists)
+                {
+                    return BadRequest($"Publisher with ID {updateBookDto.PublisherId} does not exist");
+                }
+            }
+
+            book.Title = updateBookDto.Title;
+            book.Author = updateBookDto.Author;
+            book.ISBN = updateBookDto.ISBN;
+            book.Price = updateBookDto.Price;
+            book.PublishedDate = updateBookDto.PublishedDate;
+            book.IsAvailable = updateBookDto.IsAvailable;
+            book.PublisherId = updateBookDto.PublisherId;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating book {BookId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Delete a book
+    /// </summary>
+    /// <param name="id">Book ID</param>
+    /// <returns>No content if successful</returns>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteBook(int id)
+    {
+        try
+        {
+            var book = await _context.Books.FindAsync(id);
+            if (book == null)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+
+            _context.Books.Remove(book);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Deleted book {BookId}: {BookTitle}", id, book.Title);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting book {BookId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get all publishers (helper endpoint for testing)
+    /// </summary>
+    /// <returns>List of all publishers</returns>
+    [HttpGet("publishers")]
+    public async Task<ActionResult<IEnumerable<object>>> GetPublishers()
+    {
+        try
+        {
+            var publishers = await _context.Publishers
+                .AsNoTracking()
+                .Select(p => new
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Address = p.Address,
+                    Website = p.Website,
+                    FoundedYear = p.FoundedYear
+                })
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+
+            return Ok(publishers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving publishers");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    private bool BookExists(int id)
+    {
+        return _context.Books.Any(e => e.Id == id);
+    }
 }' \
-"BooksController with TODO implementations for students to complete"
+"BooksController with complete CRUD operations using DTOs to avoid circular references"
 
     # Create exercise guide
     create_file_interactive "EXERCISE_GUIDE.md" \
