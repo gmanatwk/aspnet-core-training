@@ -1907,6 +1907,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
     context.Database.EnsureCreated();
 
@@ -1919,6 +1920,28 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
     {
         await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
+    // Create default admin user
+    var adminEmail = "admin@example.com";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
+    {
+        adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FirstName = "Admin",
+            LastName = "User",
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
     }
 }
 
@@ -1961,6 +1984,18 @@ app.Run();' \
     dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore --version 8.0.11 > /dev/null 2>&1
     dotnet add package System.IdentityModel.Tokens.Jwt --version 8.0.2 > /dev/null 2>&1
     echo -e "${GREEN}✅ Authentication packages installed${NC}"
+
+    echo ""
+    echo -e "${GREEN}🔐 Default Admin Account Created:${NC}"
+    echo -e "${YELLOW}Email:${NC} admin@example.com"
+    echo -e "${YELLOW}Password:${NC} Admin123!"
+    echo ""
+    echo -e "${CYAN}📋 Testing Protected Endpoints:${NC}"
+    echo "1. Login with admin credentials to get JWT token"
+    echo "2. Use 'Authorize' button in Swagger UI"
+    echo "3. Enter: Bearer <your-jwt-token>"
+    echo "4. Test POST/PUT/DELETE endpoints (Admin only)"
+    echo ""
     
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     # Exercise 3: Versioning & Documentation
@@ -2436,6 +2471,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
     context.Database.EnsureCreated();
 
@@ -2448,6 +2484,28 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
     {
         await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
+    // Create default admin user
+    var adminEmail = "admin@example.com";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
+    {
+        adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FirstName = "Admin",
+            LastName = "User",
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
     }
 }
 

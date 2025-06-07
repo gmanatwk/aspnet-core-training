@@ -1400,6 +1400,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
     context.Database.EnsureCreated();
 
@@ -1412,6 +1413,28 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
     {
         await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
+    // Create default admin user
+    var adminEmail = "admin@example.com";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
+    {
+        adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FirstName = "Admin",
+            LastName = "User",
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
     }
 }
 
@@ -1454,6 +1477,17 @@ app.Run();
         Write-Host "• Secure endpoints with [Authorize]"
         Write-Host "• User management"
         Write-Host "• Authentication middleware"
+        Write-Host ""
+        Write-ColorOutput "🔐 Default Admin Account Created:" -Color Green
+        Write-ColorOutput "Email: admin@example.com" -Color Yellow
+        Write-ColorOutput "Password: Admin123!" -Color Yellow
+        Write-Host ""
+        Write-ColorOutput "📋 Testing Protected Endpoints:" -Color Cyan
+        Write-Host "1. Login with admin credentials to get JWT token"
+        Write-Host "2. Use 'Authorize' button in Swagger UI"
+        Write-Host "3. Enter: Bearer <your-jwt-token>"
+        Write-Host "4. Test POST/PUT/DELETE endpoints (Admin only)"
+        Write-Host ""
     }
 
     "exercise03" {
@@ -1942,6 +1976,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
     context.Database.EnsureCreated();
 
@@ -1954,6 +1989,28 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
     {
         await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
+    // Create default admin user
+    var adminEmail = "admin@example.com";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
+    {
+        adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FirstName = "Admin",
+            LastName = "User",
+            CreatedAt = DateTime.UtcNow,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
     }
 }
 
