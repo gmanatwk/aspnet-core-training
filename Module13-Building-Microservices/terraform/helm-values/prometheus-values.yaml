@@ -1,0 +1,257 @@
+# Prometheus Stack Values for Azure AKS
+grafana:
+  enabled: true
+  adminUser: admin
+  persistence:
+    enabled: true
+    storageClassName: managed-premium
+    size: 10Gi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - grafana.ecommerce.local
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.ecommerce.local
+  
+  # Azure Monitor integration
+  additionalDataSources:
+    - name: Azure Monitor
+      type: grafana-azure-monitor-datasource
+      access: proxy
+      jsonData:
+        cloudName: azuremonitor
+        subscriptionId: ${AZURE_SUBSCRIPTION_ID}
+        tenantId: ${AZURE_TENANT_ID}
+        clientId: ${AZURE_CLIENT_ID}
+        clientSecret: ${AZURE_CLIENT_SECRET}
+  
+  # Pre-configured dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'microservices'
+          orgId: 1
+          folder: 'Microservices'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/microservices
+  
+  dashboardsConfigMaps:
+    microservices: "grafana-microservices-dashboards"
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 30d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: managed-premium
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    
+    # Service discovery for microservices
+    serviceMonitorSelector:
+      matchLabels:
+        prometheus: kube-prometheus
+    
+    podMonitorSelector:
+      matchLabels:
+        prometheus: kube-prometheus
+    
+    # Additional scrape configs
+    additionalScrapeConfigs:
+      - job_name: 'azure-metrics'
+        azure_sd_configs:
+          - subscription_id: ${AZURE_SUBSCRIPTION_ID}
+            tenant_id: ${AZURE_TENANT_ID}
+            client_id: ${AZURE_CLIENT_ID}
+            client_secret: ${AZURE_CLIENT_SECRET}
+            refresh_interval: 300s
+            resource_group: ${RESOURCE_GROUP}
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 8Gi
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: managed-premium
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    
+    # Alert routing configuration
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ['alertname', 'cluster', 'service']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 12h
+        receiver: 'default-receiver'
+        routes:
+          - match:
+              severity: critical
+            receiver: 'critical-receiver'
+          - match:
+              severity: warning
+            receiver: 'warning-receiver'
+      receivers:
+        - name: 'default-receiver'
+          webhook_configs:
+            - url: 'http://notification-service.ecommerce-apps.svc.cluster.local/alerts'
+        - name: 'critical-receiver'
+          webhook_configs:
+            - url: 'http://notification-service.ecommerce-apps.svc.cluster.local/alerts/critical'
+        - name: 'warning-receiver'
+          webhook_configs:
+            - url: 'http://notification-service.ecommerce-apps.svc.cluster.local/alerts/warning'
+
+# Default Prometheus rules with custom rules for microservices
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: true
+    kubelet: true
+    kubeProxy: false
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: true
+    kubeSchedulerRecording: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Additional Prometheus rules for microservices
+additionalPrometheusRulesMap:
+  microservices-rules:
+    groups:
+      - name: microservices.rules
+        interval: 30s
+        rules:
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+              /
+              sum(rate(http_requests_total[5m])) by (service)
+              > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High error rate detected"
+              description: "Service {{ $labels.service }} has error rate above 5% (current: {{ $value | humanizePercentage }})"
+          
+          - alert: HighResponseTime
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+              ) > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High response time detected"
+              description: "Service {{ $labels.service }} has 95th percentile response time above 1s"
+          
+          - alert: PodMemoryUsage
+            expr: |
+              container_memory_usage_bytes{pod!="", image!=""} 
+              / 
+              container_spec_memory_limit_bytes{pod!="", image!=""} 
+              > 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory usage detected"
+              description: "Pod {{ $labels.pod }} memory usage is above 80%"
+          
+          - alert: ServiceDown
+            expr: up{job=~".*-service"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service is down"
+              description: "Service {{ $labels.job }} is down"
+
+# Node exporter configuration
+nodeExporter:
+  enabled: true
+
+# Kube state metrics configuration
+kubeStateMetrics:
+  enabled: true
+
+# Prometheus operator configuration
+prometheusOperator:
+  enabled: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+
+# Component specific configurations
+kubeApiServer:
+  enabled: true
+
+kubeControllerManager:
+  enabled: true
+
+kubeScheduler:
+  enabled: true
+
+kubeEtcd:
+  enabled: false
+
+kubelet:
+  enabled: true
+  serviceMonitor:
+    metricRelabelings:
+      - action: replace
+        sourceLabels:
+          - node
+        targetLabel: instance

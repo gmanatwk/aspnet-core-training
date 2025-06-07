@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-catalog-config
+  labels:
+    app: product-catalog
+data:
+  appsettings.Production.json: |
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning",
+          "Microsoft.EntityFrameworkCore": "Warning"
+        }
+      },
+      "Serilog": {
+        "Using": ["Serilog.Sinks.Console", "Serilog.Sinks.ApplicationInsights"],
+        "MinimumLevel": {
+          "Default": "Information",
+          "Override": {
+            "Microsoft": "Warning",
+            "System": "Warning"
+          }
+        },
+        "WriteTo": [
+          {
+            "Name": "Console",
+            "Args": {
+              "outputTemplate": "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"
+            }
+          },
+          {
+            "Name": "ApplicationInsights",
+            "Args": {
+              "telemetryClient": "TelemetryConfiguration.Active",
+              "telemetryConverter": "Serilog.Sinks.ApplicationInsights.TelemetryConverters.TraceTelemetryConverter, Serilog.Sinks.ApplicationInsights"
+            }
+          }
+        ],
+        "Enrich": ["FromLogContext", "WithMachineName", "WithThreadId"]
+      },
+      "AllowedHosts": "*",
+      "ServiceDiscovery": {
+        "OrderManagement": "http://order-management",
+        "UserManagement": "http://user-management",
+        "NotificationService": "http://notification-service"
+      },
+      "HealthChecks": {
+        "UI": {
+          "Enabled": false
+        }
+      },
+      "Resilience": {
+        "Http": {
+          "MaxRetryAttempts": 3,
+          "CircuitBreakerFailureThreshold": 0.5,
+          "CircuitBreakerSamplingDuration": "00:00:10",
+          "CircuitBreakerDurationOfBreak": "00:00:30",
+          "CircuitBreakerHandledEventsAllowedBeforeBreaking": 3
+        }
+      },
+      "Caching": {
+        "DefaultExpirationMinutes": 5,
+        "ProductListExpirationMinutes": 10
+      },
+      "RateLimiting": {
+        "PermitLimit": 100,
+        "Window": "00:01:00",
+        "QueueLimit": 50
+      }
+    }

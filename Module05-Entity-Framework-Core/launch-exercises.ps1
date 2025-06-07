@@ -487,7 +487,7 @@ public class Book
     $ExerciseGuideContent = @'
 # Exercise 1: Basic EF Core Setup and CRUD Operations
 
-## [TARGET] Objective
+## 🎯 Objective
 Set up Entity Framework Core in an ASP.NET Core application and implement basic CRUD operations.
 
 ## ⏱️ Time Allocation
@@ -496,7 +496,71 @@ Set up Entity Framework Core in an ASP.NET Core application and implement basic 
 - Entity and DbContext Creation: 10 minutes
 - CRUD Operations: 10 minutes
 
-## [LAUNCH] Getting Started
+## 🚀 Getting Started
+
+### Step 1: Run Initial Migration
+```bash
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+### Step 2: Complete the GetBooks method
+```csharp
+var books = await _context.Books
+    .Where(b => b.IsAvailable)
+    .OrderBy(b => b.Title)
+    .ToListAsync();
+
+return Ok(books);
+```
+
+## ✅ Success Criteria
+- [ ] Entity Framework Core is properly configured
+- [ ] Book entity is created with validation
+- [ ] DbContext is configured with Fluent API
+- [ ] Database is created with seed data
+- [ ] All CRUD endpoints are working
+- [ ] Proper error handling is implemented
+
+## 🔧 Testing Your Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test each endpoint with sample data
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- How to set up Entity Framework Core in ASP.NET Core
+- Entity configuration using data annotations and Fluent API
+- Creating and configuring DbContext
+- Implementing basic CRUD operations
+- Database seeding strategies
+- Handling database connections and migrations
+'@
+
+    New-FileInteractive -FilePath "EXERCISE_GUIDE.md" -Content $ExerciseGuideContent -Description "Complete exercise guide with implementation steps"
+
+    Write-Host "[PARTY] Exercise 1 template created successfully!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
+    Write-Host "1. Run: dotnet ef migrations add InitialCreate" -ForegroundColor Cyan
+    Write-Host "2. Run: dotnet ef database update" -ForegroundColor Cyan
+    Write-Host "3. Run: dotnet run" -ForegroundColor Cyan
+    Write-Host "4. Visit: http://localhost:5000/swagger" -ForegroundColor Cyan
+    Write-Host "5. Follow the EXERCISE_GUIDE.md for implementation steps" -ForegroundColor White
+
+} elseif ($ExerciseName -eq "exercise02") {
+    Write-Host "[INFO] Exercise 2 implementation would be added here..." -ForegroundColor Cyan
+    Write-Host "This exercise builds on Exercise 1 with advanced LINQ queries" -ForegroundColor Yellow
+
+} elseif ($ExerciseName -eq "exercise03") {
+    Write-Host "[INFO] Exercise 3 implementation would be added here..." -ForegroundColor Cyan
+    Write-Host "This exercise implements the Repository pattern" -ForegroundColor Yellow
+
+}
+
+Write-Host ""
+Write-Host "[OK] Module 5 Exercise Setup Complete!" -ForegroundColor Green
+Write-Host "Happy coding! [LAUNCH]" -ForegroundColor Cyan
 
 ### Step 1: Run Initial Migration
 ```powershell

@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  labels:
+    app: api-gateway
+data:
+  appsettings.Production.json: |
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning",
+          "Yarp": "Information"
+        }
+      },
+      "AllowedHosts": "*",
+      "ReverseProxy": {
+        "Routes": {
+          "products-route": {
+            "ClusterId": "products-cluster",
+            "Match": {
+              "Path": "/api/products/{**catch-all}"
+            },
+            "Transforms": [
+              { "PathPattern": "/api/products/{**catch-all}" },
+              { "RequestHeader": "X-Forwarded-For": "{RemoteIpAddress}" },
+              { "RequestHeader": "X-Forwarded-Proto": "{RequestScheme}" }
+            ]
+          },
+          "orders-route": {
+            "ClusterId": "orders-cluster",
+            "Match": {
+              "Path": "/api/orders/{**catch-all}"
+            },
+            "Transforms": [
+              { "PathPattern": "/api/orders/{**catch-all}" },
+              { "RequestHeader": "X-Forwarded-For": "{RemoteIpAddress}" },
+              { "RequestHeader": "X-Forwarded-Proto": "{RequestScheme}" }
+            ]
+          },
+          "users-route": {
+            "ClusterId": "users-cluster",
+            "Match": {
+              "Path": "/api/users/{**catch-all}"
+            },
+            "Transforms": [
+              { "PathPattern": "/api/users/{**catch-all}" },
+              { "RequestHeader": "X-Forwarded-For": "{RemoteIpAddress}" },
+              { "RequestHeader": "X-Forwarded-Proto": "{RequestScheme}" }
+            ]
+          },
+          "auth-route": {
+            "ClusterId": "users-cluster",
+            "Match": {
+              "Path": "/api/auth/{**catch-all}"
+            },
+            "Transforms": [
+              { "PathPattern": "/api/auth/{**catch-all}" },
+              { "RequestHeader": "X-Forwarded-For": "{RemoteIpAddress}" },
+              { "RequestHeader": "X-Forwarded-Proto": "{RequestScheme}" }
+            ]
+          },
+          "notifications-route": {
+            "ClusterId": "notifications-cluster",
+            "Match": {
+              "Path": "/api/notifications/{**catch-all}"
+            },
+            "Transforms": [
+              { "PathPattern": "/api/notifications/{**catch-all}" },
+              { "RequestHeader": "X-Forwarded-For": "{RemoteIpAddress}" },
+              { "RequestHeader": "X-Forwarded-Proto": "{RequestScheme}" }
+            ]
+          }
+        },
+        "Clusters": {
+          "products-cluster": {
+            "LoadBalancingPolicy": "RoundRobin",
+            "HealthCheck": {
+              "Active": {
+                "Enabled": true,
+                "Interval": "00:00:10",
+                "Timeout": "00:00:05",
+                "Policy": "ConsecutiveFailures",
+                "Path": "/health/ready"
+              }
+            }
+          },
+          "orders-cluster": {
+            "LoadBalancingPolicy": "RoundRobin",
+            "HealthCheck": {
+              "Active": {
+                "Enabled": true,
+                "Interval": "00:00:10",
+                "Timeout": "00:00:05",
+                "Policy": "ConsecutiveFailures",
+                "Path": "/health/ready"
+              }
+            }
+          },
+          "users-cluster": {
+            "LoadBalancingPolicy": "RoundRobin",
+            "HealthCheck": {
+              "Active": {
+                "Enabled": true,
+                "Interval": "00:00:10",
+                "Timeout": "00:00:05",
+                "Policy": "ConsecutiveFailures",
+                "Path": "/health/ready"
+              }
+            }
+          },
+          "notifications-cluster": {
+            "LoadBalancingPolicy": "RoundRobin",
+            "HealthCheck": {
+              "Active": {
+                "Enabled": true,
+                "Interval": "00:00:10",
+                "Timeout": "00:00:05",
+                "Policy": "ConsecutiveFailures",
+                "Path": "/health/ready"
+              }
+            }
+          }
+        }
+      },
+      "RateLimiting": {
+        "PermitLimit": 1000,
+        "Window": "00:01:00",
+        "QueueLimit": 100
+      },
+      "Authentication": {
+        "Schemes": {
+          "Bearer": {
+            "Authority": "https://login.microsoftonline.com/${AZURE_TENANT_ID}",
+            "Audience": "api://${AZURE_CLIENT_ID}"
+          }
+        }
+      },
+      "Cors": {
+        "AllowedOrigins": ["*"],
+        "AllowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "AllowedHeaders": ["*"],
+        "ExposedHeaders": ["*"],
+        "AllowCredentials": false
+      }
+    }

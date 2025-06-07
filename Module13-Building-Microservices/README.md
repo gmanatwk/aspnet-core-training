@@ -96,6 +96,13 @@ Microservices architecture is a design approach where applications are built as 
 - Add monitoring with Application Insights
 - Implement circuit breaker patterns
 
+### **Exercise 5: Azure Cloud Deployment with Terraform**
+- Deploy complete infrastructure using Terraform
+- Set up Azure Kubernetes Service (AKS)
+- Configure Azure SQL, Service Bus, and Key Vault
+- Implement production-grade monitoring with Prometheus/Grafana
+- Configure auto-scaling and high availability
+
 ## 🛠️ Technologies Used
 
 ### **Core Technologies:**
@@ -130,22 +137,41 @@ Module13-Building-Microservices/
 │   ├── Exercise01-Service-Decomposition.md
 │   ├── Exercise02-Building-Core-Services.md
 │   ├── Exercise03-Communication-Patterns.md
-│   └── Exercise04-Production-Deployment.md
+│   ├── Exercise04-Production-Deployment.md
+│   └── Exercise05-Azure-Terraform-Deployment.md
 ├── Resources/
 │   ├── microservices-design-patterns.md
 │   ├── service-discovery-guide.md
 │   ├── messaging-patterns.md
 │   ├── monitoring-best-practices.md
 │   └── deployment-strategies.md
-└── SourceCode/
-    └── ECommerceMS/ (Complete microservices solution)
-        ├── docker-compose.yml
-        ├── ApiGateway/
-        ├── ProductCatalog.Service/
-        ├── OrderManagement.Service/
-        ├── UserManagement.Service/
-        ├── Notification.Service/
-        └── SharedLibraries/
+├── SourceCode/
+│   └── ECommerceMS/ (Complete microservices solution)
+│       ├── docker-compose.yml
+│       ├── ApiGateway/
+│       ├── ProductCatalog.Service/
+│       ├── OrderManagement.Service/
+│       ├── UserManagement.Service/
+│       ├── Notification.Service/
+│       └── SharedLibraries/
+├── terraform/ (Infrastructure as Code)
+│   ├── main.tf
+│   ├── kubernetes.tf
+│   ├── variables.tf
+│   ├── terraform.tfvars.example
+│   ├── deploy.sh
+│   ├── helm-values/
+│   └── README.md
+└── kubernetes/ (Kubernetes manifests)
+    └── base/
+        ├── kustomization.yaml
+        ├── product-catalog/
+        ├── order-management/
+        ├── user-management/
+        ├── notification-service/
+        ├── api-gateway/
+        ├── ingress.yaml
+        └── network-policies.yaml
 ```
 
 ## 🎯 Real-World Scenario
@@ -257,10 +283,11 @@ To get started immediately:
 ## ⚡ Next Steps
 
 After completing this module:
-- **Production Deployment**: Deploy to Azure Kubernetes Service (AKS)
+- **Production Deployment**: Complete Exercise 5 to deploy to Azure Kubernetes Service (AKS) using Terraform
 - **Advanced Patterns**: Implement CQRS and Event Sourcing
-- **Service Mesh**: Explore Istio or Linkerd
+- **Service Mesh**: Explore Istio or Linkerd for advanced traffic management
 - **Observability**: Advanced monitoring with Jaeger and Prometheus
+- **Multi-Cloud**: Extend deployment to AWS EKS or Google GKE
 
 ---
 
