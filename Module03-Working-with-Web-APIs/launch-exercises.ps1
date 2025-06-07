@@ -1430,6 +1430,24 @@ app.MapControllers();
 app.Run();
 '@
 
+        # Create appsettings.json with JWT configuration
+        New-FileInteractive -FilePath "appsettings.json" -Description "Application settings with JWT configuration" -Content @'
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Jwt": {
+    "Key": "your-super-secret-key-that-is-at-least-32-characters-long-for-security",
+    "Issuer": "RestfulAPI",
+    "Audience": "RestfulAPIUsers"
+  }
+}
+'@
+
         Write-ColorOutput "Exercise 2 setup complete!" -Color Green
         Write-ColorOutput "New features added:" -Color Yellow
         Write-Host "• JWT authentication"
@@ -1956,6 +1974,26 @@ app.MapHealthChecks("/health");
 
 app.Run();
 '@
+
+        # Create appsettings.json with JWT configuration (if not exists)
+        if (-not (Test-Path "appsettings.json")) {
+            New-FileInteractive -FilePath "appsettings.json" -Description "Application settings with JWT configuration" -Content @'
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Jwt": {
+    "Key": "your-super-secret-key-that-is-at-least-32-characters-long-for-security",
+    "Issuer": "RestfulAPI",
+    "Audience": "RestfulAPIUsers"
+  }
+}
+'@
+        }
 
         Write-ColorOutput "Exercise 3 setup complete!" -Color Green
         Write-ColorOutput "Advanced features added:" -Color Yellow

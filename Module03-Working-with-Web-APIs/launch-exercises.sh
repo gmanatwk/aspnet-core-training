@@ -1937,6 +1937,24 @@ app.MapControllers();
 app.Run();' \
 "Program.cs configured with Identity and JWT authentication"
 
+    # Create appsettings.json with JWT configuration
+    create_file_interactive "appsettings.json" \
+'{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Jwt": {
+    "Key": "your-super-secret-key-that-is-at-least-32-characters-long-for-security",
+    "Issuer": "RestfulAPI",
+    "Audience": "RestfulAPIUsers"
+  }
+}' \
+"Application settings with JWT configuration"
+
     # Install packages
     echo -e "${CYAN}Installing authentication packages...${NC}"
     dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.11 > /dev/null 2>&1
@@ -2450,6 +2468,26 @@ app.MapHealthChecks("/health");
 
 app.Run();' \
 "Program.cs configured for multiple API versions with v1 and v2 support"
+
+    # Create appsettings.json with JWT configuration (if not exists)
+    if [ ! -f "appsettings.json" ]; then
+        create_file_interactive "appsettings.json" \
+'{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Jwt": {
+    "Key": "your-super-secret-key-that-is-at-least-32-characters-long-for-security",
+    "Issuer": "RestfulAPI",
+    "Audience": "RestfulAPIUsers"
+  }
+}' \
+"Application settings with JWT configuration"
+    fi
 fi
 
 echo ""
