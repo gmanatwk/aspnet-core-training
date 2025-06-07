@@ -19,26 +19,7 @@ builder.Services.AddDbContext<BookStoreContext>(options =>
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "BookStore API - EF Core Demo",
-        Version = "v1",
-        Description = "A simple API to demonstrate Entity Framework Core operations. Use the Try it out button to test each endpoint.",
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
-        {
-            Name = "EF Core Training",
-            Email = "training@example.com"
-        }
-    });
-
-    // Configure Swagger to show detailed examples and documentation
-    c.EnableAnnotations();
-
-    // Add better parameter descriptions
-    c.DescribeAllParametersInCamelCase();
-});
+builder.Services.AddSwaggerGen();
 
 // Add CORS for development
 builder.Services.AddCors(options =>

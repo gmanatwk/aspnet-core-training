@@ -386,10 +386,6 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         dotnet add package Microsoft.EntityFrameworkCore.Tools
         dotnet add package Microsoft.EntityFrameworkCore.Design
 
-        # Install Swagger annotations for better API documentation
-        echo -e "${CYAN}Installing Swagger annotations...${NC}"
-        dotnet add package Swashbuckle.AspNetCore.Annotations
-
         # Update Program.cs with EF Core configuration
         create_file_interactive "Program.cs" \
 'using Microsoft.EntityFrameworkCore;
@@ -413,26 +409,7 @@ builder.Services.AddDbContext<BookStoreContext>(options =>
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "BookStore API - EF Core Demo",
-        Version = "v1",
-        Description = "A simple API to demonstrate Entity Framework Core operations. Use the Try it out button to test each endpoint.",
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
-        {
-            Name = "EF Core Training",
-            Email = "training@example.com"
-        }
-    });
-
-    // Configure Swagger to show detailed examples and documentation
-    c.EnableAnnotations();
-
-    // Add better parameter descriptions
-    c.DescribeAllParametersInCamelCase();
-});
+builder.Services.AddSwaggerGen();
 
 // Add CORS for development
 builder.Services.AddCors(options =>
