@@ -485,6 +485,13 @@ Encryption protects sensitive data at rest and in transit:
             exit 1
         }
 
+        # Install encryption packages
+        Write-Host "📦 Installing encryption packages..." -ForegroundColor Cyan
+        Set-Location "SecurityDemo"
+        dotnet add package Azure.Security.KeyVault.Secrets --version 4.5.0
+        dotnet add package Azure.Identity --version 1.10.4
+        Set-Location ".."
+
         # Create encryption service
         Create-FileInteractive "Services/EncryptionService.cs" @'
 using System.Security.Cryptography;
@@ -542,21 +549,51 @@ public class EncryptionService : IEncryptionService
 
     public string HashPassword(string password)
     {
-        return BCrypt.Net.BCrypt.HashPassword(password);
+        using var rng = RandomNumberGenerator.Create();
+        var salt = new byte[32];
+        rng.GetBytes(salt);
+
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256);
+        var hash = pbkdf2.GetBytes(32);
+
+        var hashBytes = new byte[64];
+        Array.Copy(salt, 0, hashBytes, 0, 32);
+        Array.Copy(hash, 0, hashBytes, 32, 32);
+
+        return Convert.ToBase64String(hashBytes);
     }
 
     public bool VerifyPassword(string password, string hash)
     {
-        return BCrypt.Net.BCrypt.Verify(password, hash);
+        try
+        {
+            var hashBytes = Convert.FromBase64String(hash);
+            var salt = new byte[32];
+            Array.Copy(hashBytes, 0, salt, 0, 32);
+
+            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256);
+            var computedHash = pbkdf2.GetBytes(32);
+
+            for (int i = 0; i < 32; i++)
+            {
+                if (hashBytes[i + 32] != computedHash[i])
+                    return false;
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
-'@ "Encryption service with AES and BCrypt password hashing"
+'@ "Encryption service with AES and PBKDF2 password hashing"
 
         Write-Success "✅ Exercise 3: Encryption & Key Management completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Install BCrypt.Net-Next package" -ForegroundColor Cyan
-        Write-Host "2. Configure Azure Key Vault integration" -ForegroundColor Cyan
-        Write-Host "3. Implement secure configuration management" -ForegroundColor Cyan
+        Write-Host "1. Configure Azure Key Vault integration" -ForegroundColor Cyan
+        Write-Host "2. Implement secure configuration management" -ForegroundColor Cyan
+        Write-Host "3. Test password hashing with PBKDF2" -ForegroundColor Cyan
     }
 
     "exercise04" {

@@ -265,6 +265,113 @@ Asynchronous programming improves application responsiveness and scalability:
             Set-Location $ProjectName
         }
 
+        # Create User model first
+        Create-FileInteractive "Models/User.cs" @'
+namespace AsyncDemo.Models;
+
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+'@ "User model for async data operations"
+
+        # Create async data service interface
+        Create-FileInteractive "Data/IAsyncDataService.cs" @'
+using AsyncDemo.Models;
+
+namespace AsyncDemo.Data;
+
+public interface IAsyncDataService
+{
+    Task<List<User>> GetAllUsersAsync();
+    Task<User?> GetUserByIdAsync(int id);
+    Task<User> CreateUserAsync(string name, string email);
+    Task<object> GetExternalUserDataAsync(int userId);
+}
+'@ "Interface for async data operations"
+
+        # Create async data service implementation
+        Create-FileInteractive "Data/AsyncDataService.cs" @'
+using AsyncDemo.Models;
+using System.Text.Json;
+
+namespace AsyncDemo.Data;
+
+public class AsyncDataService : IAsyncDataService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<AsyncDataService> _logger;
+    private static readonly List<User> _users = new()
+    {
+        new User { Id = 1, Name = "John Doe", Email = "john@example.com" },
+        new User { Id = 2, Name = "Jane Smith", Email = "jane@example.com" }
+    };
+
+    public AsyncDataService(HttpClient httpClient, ILogger<AsyncDataService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        _logger.LogInformation("Fetching all users");
+        await Task.Delay(100);
+        return _users.ToList();
+    }
+
+    public async Task<User?> GetUserByIdAsync(int id)
+    {
+        _logger.LogInformation("Fetching user with ID: {UserId}", id);
+        await Task.Delay(50);
+        return _users.FirstOrDefault(u => u.Id == id);
+    }
+
+    public async Task<User> CreateUserAsync(string name, string email)
+    {
+        _logger.LogInformation("Creating user: {Name}, {Email}", name, email);
+        await Task.Delay(200);
+
+        var user = new User
+        {
+            Id = _users.Count + 1,
+            Name = name,
+            Email = email
+        };
+
+        _users.Add(user);
+        return user;
+    }
+
+    public async Task<object> GetExternalUserDataAsync(int userId)
+    {
+        _logger.LogInformation("Fetching external data for user: {UserId}", userId);
+
+        try
+        {
+            var response = await _httpClient.GetAsync($"https://jsonplaceholder.typicode.com/users/{userId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<object>(content) ?? new { message = "No data" };
+            }
+
+            return new { message = "External service unavailable" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch external data");
+            return new { message = "Error fetching external data" };
+        }
+    }
+}
+'@ "Implementation of async data service with mock data"
+
         # Create basic async service
         Create-FileInteractive "Services/AsyncBasicsService.cs" @'
 namespace AsyncDemo.Services;
@@ -275,6 +382,7 @@ public interface IAsyncBasicsService
     Task<List<string>> GetMultipleDataAsync();
     ValueTask<int> CalculateAsync(int value);
     Task<string> HandleExceptionAsync();
+    Task<string> GetDataWithTimeoutAsync(int timeoutMs);
 }
 
 public class AsyncBasicsService : IAsyncBasicsService
@@ -346,6 +454,25 @@ public class AsyncBasicsService : IAsyncBasicsService
         }
     }
 
+    public async Task<string> GetDataWithTimeoutAsync(int timeoutMs)
+    {
+        _logger.LogInformation("Starting data retrieval with timeout: {TimeoutMs}ms", timeoutMs);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+
+        try
+        {
+            // Simulate work that might take longer than timeout
+            await Task.Delay(timeoutMs + 500, cts.Token);
+            return "Data retrieved successfully";
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Data retrieval timed out after {TimeoutMs}ms", timeoutMs);
+            throw new TimeoutException($"Operation timed out after {timeoutMs}ms");
+        }
+    }
+
     private async Task<string> GetSingleDataAsync(string dataName, int delayMs)
     {
         await Task.Delay(delayMs);
@@ -356,8 +483,11 @@ public class AsyncBasicsService : IAsyncBasicsService
 
         Write-Success "✅ Exercise 1: Basic Async/Await Fundamentals completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Register service in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Create controller to test async methods" -ForegroundColor Cyan
+        Write-Host "1. Register services in Program.cs:" -ForegroundColor Cyan
+        Write-Host "   builder.Services.AddScoped<IAsyncBasicsService, AsyncBasicsService>();" -ForegroundColor Gray
+        Write-Host "   builder.Services.AddScoped<IAsyncDataService, AsyncDataService>();" -ForegroundColor Gray
+        Write-Host "   builder.Services.AddHttpClient<AsyncDataService>();" -ForegroundColor Gray
+        Write-Host "2. Test async API endpoints" -ForegroundColor Cyan
         Write-Host "3. Compare sync vs async performance" -ForegroundColor Cyan
     }
 
@@ -470,8 +600,10 @@ public class WeatherData
 
         Write-Success "✅ Exercise 2: Async API Development completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Configure HttpClient in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Create async controllers" -ForegroundColor Cyan
+        Write-Host "1. Register additional services in Program.cs:" -ForegroundColor Cyan
+        Write-Host "   builder.Services.AddScoped<IAsyncApiService, AsyncApiService>();" -ForegroundColor Gray
+        Write-Host "   builder.Services.AddHttpClient<AsyncApiService>();" -ForegroundColor Gray
+        Write-Host "2. Test weather API and parallel processing" -ForegroundColor Cyan
         Write-Host "3. Test cancellation token functionality" -ForegroundColor Cyan
     }
 

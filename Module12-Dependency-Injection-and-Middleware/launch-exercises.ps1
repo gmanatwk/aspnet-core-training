@@ -49,7 +49,7 @@ function Explain-Concept {
 function Show-LearningObjectives {
     param([string]$Exercise)
 
-    Write-Host "🎯 DI/Middleware Objectives for $Exercise:" -ForegroundColor Blue
+    Write-Host "🎯 DI/Middleware Objectives for ${Exercise}:" -ForegroundColor Blue
 
     switch ($Exercise) {
         "exercise01" {
@@ -112,7 +112,7 @@ function Show-LearningObjectives {
 function Show-CreationOverview {
     param([string]$Exercise)
 
-    Write-Host "📋 DI/Middleware Components for $Exercise:" -ForegroundColor Cyan
+    Write-Host "📋 DI/Middleware Components for ${Exercise}:" -ForegroundColor Cyan
 
     switch ($Exercise) {
         "exercise01" {
