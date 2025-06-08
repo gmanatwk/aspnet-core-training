@@ -763,6 +763,7 @@ elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     # Create background service
     create_file_interactive "Services/DataProcessingBackgroundService.cs" \
 'using Microsoft.Extensions.DependencyInjection;
+using AsyncDemo.Data;
 
 namespace AsyncDemo.Services;
 

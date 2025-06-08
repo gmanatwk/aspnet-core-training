@@ -538,12 +538,19 @@ public class Product
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; }
-    public string Category { get; set; } = string.Empty;
+    public string? SKU { get; set; }
+    public int? CategoryId { get; set; }
     public int StockQuantity { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedDate { get; set; }
+
+    // Navigation property
+    public virtual Category? Category { get; set; }
 }
+
+// Category class is defined in DatabaseModels.cs to avoid duplication
 
 public class ProductSummary
 {
@@ -825,7 +832,7 @@ public class ProductService : IProductService
             Id = p.Id,
             Name = p.Name,
             Price = p.Price,
-            Category = p.Category
+            Category = p.Category?.Name ?? "Unknown"
         }).ToList();
 
         await _cacheService.SetAsync(ProductSummariesCacheKey, summaries, TimeSpan.FromMinutes(5));
@@ -900,11 +907,11 @@ public class ProductService : IProductService
     {
         var sampleProducts = new[]
         {
-            new Product { Id = _nextId++, Name = "Laptop Pro", Description = "High-performance laptop", Price = 1299.99m, Category = "Electronics", StockQuantity = 50 },
-            new Product { Id = _nextId++, Name = "Wireless Mouse", Description = "Ergonomic wireless mouse", Price = 29.99m, Category = "Electronics", StockQuantity = 200 },
-            new Product { Id = _nextId++, Name = "Coffee Mug", Description = "Ceramic coffee mug", Price = 12.99m, Category = "Kitchen", StockQuantity = 100 },
-            new Product { Id = _nextId++, Name = "Desk Chair", Description = "Comfortable office chair", Price = 199.99m, Category = "Furniture", StockQuantity = 25 },
-            new Product { Id = _nextId++, Name = "Notebook", Description = "Spiral-bound notebook", Price = 4.99m, Category = "Office", StockQuantity = 500 }
+            new Product { Id = _nextId++, Name = "Laptop Pro", Description = "High-performance laptop", Price = 1299.99m, CategoryId = 1, StockQuantity = 50 },
+            new Product { Id = _nextId++, Name = "Wireless Mouse", Description = "Ergonomic wireless mouse", Price = 29.99m, CategoryId = 1, StockQuantity = 200 },
+            new Product { Id = _nextId++, Name = "Coffee Mug", Description = "Ceramic coffee mug", Price = 12.99m, CategoryId = 2, StockQuantity = 100 },
+            new Product { Id = _nextId++, Name = "Desk Chair", Description = "Comfortable office chair", Price = 199.99m, CategoryId = 3, StockQuantity = 25 },
+            new Product { Id = _nextId++, Name = "Notebook", Description = "Spiral-bound notebook", Price = 4.99m, CategoryId = 4, StockQuantity = 500 }
         };
 
         _products.AddRange(sampleProducts);
@@ -1296,15 +1303,15 @@ public class OptimizedPerformanceContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Price).HasPrecision(18, 2);
             entity.Property(e => e.SKU).HasMaxLength(50);
 
             // Performance indexes
-            entity.HasIndex(e => e.Name).HasDatabaseName("IX_Product_Name");
-            entity.HasIndex(e => e.SKU).IsUnique().HasDatabaseName("IX_Product_SKU");
-            entity.HasIndex(e => e.CategoryId).HasDatabaseName("IX_Product_CategoryId");
-            entity.HasIndex(e => e.Price).HasDatabaseName("IX_Product_Price");
-            entity.HasIndex(e => new { e.CategoryId, e.Price }).HasDatabaseName("IX_Product_Category_Price");
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.SKU).IsUnique();
+            entity.HasIndex(e => e.CategoryId);
+            entity.HasIndex(e => e.Price);
+            entity.HasIndex(e => new { e.CategoryId, e.Price });
         });
 
         // Configure Category entity
@@ -1312,7 +1319,7 @@ public class OptimizedPerformanceContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
-            entity.HasIndex(e => e.Name).IsUnique().HasDatabaseName("IX_Category_Name");
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Configure Customer entity
@@ -1323,8 +1330,8 @@ public class OptimizedPerformanceContext : DbContext
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);
 
-            entity.HasIndex(e => e.Email).IsUnique().HasDatabaseName("IX_Customer_Email");
-            entity.HasIndex(e => new { e.LastName, e.FirstName }).HasDatabaseName("IX_Customer_Name");
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => new { e.LastName, e.FirstName });
         });
 
         // Configure Order entity
@@ -1332,11 +1339,11 @@ public class OptimizedPerformanceContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.OrderNumber).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
 
-            entity.HasIndex(e => e.OrderNumber).IsUnique().HasDatabaseName("IX_Order_OrderNumber");
-            entity.HasIndex(e => e.CustomerId).HasDatabaseName("IX_Order_CustomerId");
-            entity.HasIndex(e => e.OrderDate).HasDatabaseName("IX_Order_OrderDate");
+            entity.HasIndex(e => e.OrderNumber).IsUnique();
+            entity.HasIndex(e => e.CustomerId);
+            entity.HasIndex(e => e.OrderDate);
 
             // Foreign key relationships
             entity.HasOne(e => e.Customer)
@@ -1349,11 +1356,11 @@ public class OptimizedPerformanceContext : DbContext
         modelBuilder.Entity<OrderItem>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
-            entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
+            entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
 
-            entity.HasIndex(e => e.OrderId).HasDatabaseName("IX_OrderItem_OrderId");
-            entity.HasIndex(e => e.ProductId).HasDatabaseName("IX_OrderItem_ProductId");
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.ProductId);
 
             // Foreign key relationships
             entity.HasOne(e => e.Order)
@@ -1487,34 +1494,7 @@ public enum OrderStatus
     Cancelled = 4
 }
 
-// Enhanced Product model
-public class Product
-{
-    public int Id { get; set; }
-
-    [Required]
-    [StringLength(200)]
-    public string Name { get; set; } = string.Empty;
-
-    [StringLength(1000)]
-    public string? Description { get; set; }
-
-    [Range(0, double.MaxValue)]
-    public decimal Price { get; set; }
-
-    [StringLength(50)]
-    public string? SKU { get; set; }
-
-    public int? CategoryId { get; set; }
-
-    public bool IsActive { get; set; } = true;
-
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedDate { get; set; }
-
-    // Navigation properties
-    public virtual Category? Category { get; set; }
-}' \
+// Note: Product model is defined in Product.cs to avoid duplication' \
 "Enhanced models for database optimization with proper relationships and indexes"
 
     # Create Database Query Optimization Service
@@ -1664,7 +1644,6 @@ public class DatabaseOptimizationService : IDatabaseOptimizationService
         _logger.LogInformation("Getting orders with details using query splitting - CustomerId: {CustomerId}", customerId);
 
         return await _context.Orders
-            .AsSplitQuery() // Split complex queries for better performance
             .Include(o => o.Customer)
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
@@ -1687,26 +1666,22 @@ public class DatabaseOptimizationService : IDatabaseOptimizationService
 
     public async Task<List<ProductSalesReport>> GetProductSalesReportAsync()
     {
-        _logger.LogInformation("Getting product sales report using raw SQL");
+        _logger.LogInformation("Getting product sales report using LINQ aggregations");
 
-        // Raw SQL for complex aggregations
-        var sql = @"
-            SELECT
-                p.Id,
-                p.Name,
-                p.Price,
-                COALESCE(SUM(oi.Quantity), 0) as TotalQuantitySold,
-                COALESCE(SUM(oi.TotalPrice), 0) as TotalRevenue,
-                COUNT(DISTINCT o.Id) as OrderCount
-            FROM Products p
-            LEFT JOIN OrderItems oi ON p.Id = oi.ProductId
-            LEFT JOIN Orders o ON oi.OrderId = o.Id
-            WHERE p.IsActive = 1
-            GROUP BY p.Id, p.Name, p.Price
-            ORDER BY TotalRevenue DESC";
-
-        return await _context.Database
-            .SqlQueryRaw<ProductSalesReport>(sql)
+        // Note: Using LINQ instead of raw SQL for EF Core 8 compatibility
+        return await _context.OrderItems
+            .Include(oi => oi.Product)
+            .GroupBy(oi => new { oi.Product!.Id, oi.Product.Name, oi.Product.Price })
+            .Select(g => new ProductSalesReport
+            {
+                Id = g.Key.Id,
+                Name = g.Key.Name,
+                Price = g.Key.Price,
+                TotalQuantitySold = g.Sum(oi => oi.Quantity),
+                TotalRevenue = g.Sum(oi => oi.TotalPrice),
+                OrderCount = g.Count()
+            })
+            .OrderByDescending(p => p.TotalRevenue)
             .ToListAsync();
     }
 }
@@ -1911,21 +1886,18 @@ public class MemoryOptimizationService : IMemoryOptimizationService
         var outputBuffer = ArrayPool<byte>.Shared.Rent(input.Length * 2);
         try
         {
-            var inputSpan = input.Span;
-            var outputSpan = outputBuffer.AsSpan();
-
-            // Process data using Span<T> for zero-allocation operations
-            for (int i = 0; i < inputSpan.Length; i++)
+            // Process data efficiently without using Span in async method
+            for (int i = 0; i < input.Length; i++)
             {
-                outputSpan[i * 2] = inputSpan[i];
-                outputSpan[i * 2 + 1] = (byte)(inputSpan[i] ^ 0xFF); // Simple transformation
+                outputBuffer[i * 2] = input.Span[i];
+                outputBuffer[i * 2 + 1] = (byte)(input.Span[i] ^ 0xFF); // Simple transformation
             }
 
             await Task.Delay(5); // Simulate async work
 
             // Return only the used portion
             var result = new byte[input.Length * 2];
-            outputSpan[..(input.Length * 2)].CopyTo(result);
+            Array.Copy(outputBuffer, 0, result, 0, input.Length * 2);
             return result;
         }
         finally
@@ -2041,13 +2013,11 @@ public class MemoryOptimizationService : IMemoryOptimizationService
     {
         _logger.LogInformation("Deserializing JSON efficiently - Size: {Size}", jsonBytes.Length);
 
-        // Use ReadOnlyMemory<byte> to avoid string allocation
-        var reader = new Utf8JsonReader(jsonBytes.Span);
-
         // Simulate async processing
         await Task.Yield();
 
-        return JsonSerializer.Deserialize<T>(ref reader);
+        // Use ReadOnlyMemory<byte> to avoid string allocation
+        return JsonSerializer.Deserialize<T>(jsonBytes.Span);
     }
 }
 
