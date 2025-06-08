@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "🎯 Async Programming Objectives for $ExerciseName:" -ForegroundColor Blue
+    Write-Host "🎯 Async Programming Objectives for $Exercise:" -ForegroundColor Blue
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "Basic Async/Await Fundamentals:" -ForegroundColor Cyan
             Write-Host "  ⚡ 1. Understanding async/await patterns"
@@ -97,11 +97,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "📋 Async Components for $ExerciseName:" -ForegroundColor Cyan
+    Write-Host "📋 Async Components for $Exercise:" -ForegroundColor Cyan
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "• Basic async service implementations"
             Write-Host "• Task-based method examples"
@@ -202,10 +202,10 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host ""
 
 # Show learning objectives
-Show-LearningObjectives $ExerciseName
+Show-LearningObjectives -Exercise $ExerciseName
 
 # Show what will be created
-Show-CreationOverview $ExerciseName
+Show-CreationOverview -Exercise $ExerciseName
 
 if ($Preview) {
     Write-Info "Preview mode - no files will be created"

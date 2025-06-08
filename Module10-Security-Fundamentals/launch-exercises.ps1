@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "🎯 Security Learning Objectives for $ExerciseName:" -ForegroundColor Blue
+    Write-Host "🎯 Security Learning Objectives for $Exercise:" -ForegroundColor Blue
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "Security Headers Implementation:" -ForegroundColor Cyan
             Write-Host "  🛡️  1. Configure comprehensive HTTP security headers"
@@ -123,11 +123,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "📋 Security Components for $ExerciseName:" -ForegroundColor Cyan
+    Write-Host "📋 Security Components for $Exercise:" -ForegroundColor Cyan
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "• Security headers middleware"
             Write-Host "• Content Security Policy configuration"
@@ -244,10 +244,10 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host ""
 
 # Show learning objectives
-Show-LearningObjectives $ExerciseName
+Show-LearningObjectives -Exercise $ExerciseName
 
 # Show what will be created
-Show-CreationOverview $ExerciseName
+Show-CreationOverview -Exercise $ExerciseName
 
 if ($Preview) {
     Write-Info "Preview mode - no files will be created"

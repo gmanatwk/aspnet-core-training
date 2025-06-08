@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "🎯 Learning Objectives for $ExerciseName:" -ForegroundColor Blue
+    Write-Host "🎯 Learning Objectives for $Exercise:" -ForegroundColor Blue
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "• Understand Docker containerization for ASP.NET Core"
             Write-Host "• Create optimized Dockerfile with multi-stage builds"
@@ -156,7 +156,7 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host ""
 
 # Show learning objectives
-Show-LearningObjectives $ExerciseName
+Show-LearningObjectives -Exercise $ExerciseName
 
 if ($Preview) {
     Write-Info "Preview mode - no files will be created"

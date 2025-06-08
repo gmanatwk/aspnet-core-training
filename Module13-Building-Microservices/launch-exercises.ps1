@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "🎯 Microservices Objectives for $ExerciseName:" -ForegroundColor Blue
+    Write-Host "🎯 Microservices Objectives for $Exercise:" -ForegroundColor Blue
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "Service Decomposition & Domain-Driven Design:" -ForegroundColor Cyan
             Write-Host "  🏗️ 1. Domain analysis and bounded context identification"
@@ -123,11 +123,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($ExerciseName)
+    param([string]$Exercise)
 
-    Write-Host "📋 Microservices Components for $ExerciseName:" -ForegroundColor Cyan
+    Write-Host "📋 Microservices Components for $Exercise:" -ForegroundColor Cyan
 
-    switch ($ExerciseName) {
+    switch ($Exercise) {
         "exercise01" {
             Write-Host "• Domain analysis templates and worksheets"
             Write-Host "• Bounded context documentation"
@@ -244,10 +244,10 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host ""
 
 # Show learning objectives
-Show-LearningObjectives $ExerciseName
+Show-LearningObjectives -Exercise $ExerciseName
 
 # Show what will be created
-Show-CreationOverview $ExerciseName
+Show-CreationOverview -Exercise $ExerciseName
 
 if ($Preview) {
     Write-Info "Preview mode - no files will be created"
