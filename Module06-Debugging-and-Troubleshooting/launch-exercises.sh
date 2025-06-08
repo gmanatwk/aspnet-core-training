@@ -1286,7 +1286,8 @@ public class PerformanceMiddleware
 
             if (elapsedMs > _slowRequestThresholdMs)
             {
-                _logger.LogPerformanceWarning($"{context.Request.Method} {path}", elapsedMs, _slowRequestThresholdMs);
+                _logger.LogWarning("Slow request detected: {Method} {Path} took {ElapsedMs}ms (threshold: {ThresholdMs}ms)",
+                    context.Request.Method, path, elapsedMs, _slowRequestThresholdMs);
             }
 
             // Add performance headers
