@@ -49,7 +49,7 @@ function Explain-Concept {
 function Show-LearningObjectives {
     param([string]$Exercise)
 
-    Write-Host "🎯 Learning Objectives for $Exercise:" -ForegroundColor Blue
+    Write-Host "🎯 Learning Objectives for ${Exercise}:" -ForegroundColor Blue
 
     switch ($Exercise) {
         "exercise01" {

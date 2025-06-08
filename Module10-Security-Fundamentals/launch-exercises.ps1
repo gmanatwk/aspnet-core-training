@@ -49,7 +49,7 @@ function Explain-Concept {
 function Show-LearningObjectives {
     param([string]$Exercise)
 
-    Write-Host "🎯 Security Learning Objectives for $Exercise:" -ForegroundColor Blue
+    Write-Host "🎯 Security Learning Objectives for ${Exercise}:" -ForegroundColor Blue
 
     switch ($Exercise) {
         "exercise01" {
@@ -125,7 +125,7 @@ function Show-LearningObjectives {
 function Show-CreationOverview {
     param([string]$Exercise)
 
-    Write-Host "📋 Security Components for $Exercise:" -ForegroundColor Cyan
+    Write-Host "📋 Security Components for ${Exercise}:" -ForegroundColor Cyan
 
     switch ($Exercise) {
         "exercise01" {
