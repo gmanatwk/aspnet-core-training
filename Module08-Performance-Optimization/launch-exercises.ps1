@@ -389,12 +389,12 @@ Caching is one of the most effective performance optimization techniques:
             # Install caching packages
             Set-Location "$ProjectName.API"
             Write-Host "📦 Installing caching and performance packages..." -ForegroundColor Cyan
-            dotnet add package Microsoft.Extensions.Caching.Memory
-            dotnet add package Microsoft.Extensions.Caching.StackExchangeRedis
-            dotnet add package StackExchange.Redis
-            dotnet add package Microsoft.AspNetCore.OutputCaching
-            dotnet add package Microsoft.EntityFrameworkCore.InMemory
-            dotnet add package BenchmarkDotNet
+            dotnet add package Microsoft.Extensions.Caching.StackExchangeRedis --version 8.0.0
+            dotnet add package StackExchange.Redis --version 2.7.33
+            dotnet add package Microsoft.EntityFrameworkCore.InMemory --version 8.0.0
+            # Note: Microsoft.Extensions.Caching.Memory and OutputCaching are built into .NET 8.0
+            # Note: BenchmarkDotNet removed due to version conflicts with EF Core Design
+            # For performance testing, use built-in Stopwatch or external tools
             Set-Location ".."
         } else {
             # We're already in the project directory from the check above
@@ -1198,9 +1198,10 @@ Database optimization is crucial for application performance:
 
         Write-Host "📦 Adding database optimization packages..." -ForegroundColor Cyan
         Set-Location "$ProjectName.API"
-        dotnet add package Microsoft.EntityFrameworkCore.SqlServer
-        dotnet add package Microsoft.EntityFrameworkCore.Tools
-        dotnet add package Microsoft.EntityFrameworkCore.Design
+        # Use specific versions to avoid conflicts
+        dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.0.0
+        dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.0
+        dotnet add package Microsoft.EntityFrameworkCore.Design --version 8.0.0
         Set-Location ".."
 
         # Create DbContext with performance optimizations

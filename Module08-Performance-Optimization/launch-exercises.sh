@@ -417,11 +417,12 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
 
         # Install performance packages
         echo -e "${CYAN}Installing performance optimization packages...${NC}"
-        dotnet add package Microsoft.Extensions.Caching.Memory
         dotnet add package Microsoft.Extensions.Caching.StackExchangeRedis
         dotnet add package Microsoft.AspNetCore.ResponseCompression
-        dotnet add package BenchmarkDotNet
         dotnet add package Microsoft.EntityFrameworkCore.InMemory
+        # Note: Microsoft.Extensions.Caching.Memory is built into .NET 8.0
+        # Note: BenchmarkDotNet removed due to version conflicts with EF Core Design
+        # For performance testing, use built-in Stopwatch or external tools
 
         # Update Program.cs with performance configuration
         create_file_interactive "Program.cs" \
