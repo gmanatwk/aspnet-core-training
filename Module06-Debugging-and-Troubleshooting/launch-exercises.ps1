@@ -846,15 +846,884 @@ After completing this exercise, you should be able to:
     }
 
     "exercise02" {
-        Write-Host "[INFO] Exercise 2: Comprehensive Logging Implementation" -ForegroundColor Green
-        Write-Host "[INFO] This exercise builds on Exercise 1" -ForegroundColor Yellow
-        Write-Host "[INFO] Please run Exercise 1 first, then use the SourceCode version for complete logging features" -ForegroundColor Cyan
+        # Exercise 2: Comprehensive Logging Implementation
+
+        Show-Concept -ConceptName "Structured Logging with Serilog" -Explanation @"
+Modern logging requires more than simple text messages:
+• Structured data: Log events as structured data, not just strings
+• Multiple sinks: Write logs to console, files, databases simultaneously
+• Log enrichment: Add contextual information automatically
+• Performance: Asynchronous logging for high throughput
+• Filtering: Different log levels for different components
+"@
+
+        if (-not $SkipProjectCreation) {
+            Write-Host "[ERROR] Exercise 2 requires Exercise 1 to be completed first" -ForegroundColor Red
+            Write-Host "[INFO] Please run: .\launch-exercises.ps1 exercise01" -ForegroundColor Yellow
+            exit 1
+        }
+
+        Write-Host "[CLEAN] Cleaning up any existing files..." -ForegroundColor Cyan
+        Remove-Item -Path "Extensions/LoggingExtensions.cs" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Middleware/RequestLoggingMiddleware.cs" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Middleware/PerformanceMiddleware.cs" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Controllers/LoggingTestController.cs" -Force -ErrorAction SilentlyContinue
+
+        Write-Host "[PACKAGE] Adding Serilog packages..." -ForegroundColor Cyan
+        dotnet add package Serilog.AspNetCore --version 8.0.3
+        dotnet add package Serilog.Sinks.Console --version 6.0.0
+        dotnet add package Serilog.Sinks.File --version 6.0.0
+        dotnet add package Serilog.Enrichers.Environment --version 3.0.1
+        dotnet add package Serilog.Enrichers.Thread --version 4.0.0
+        dotnet add package Serilog.Settings.Configuration --version 8.0.4
+
+        # Update appsettings.json with Serilog configuration
+        New-FileInteractive -FilePath "appsettings.json" -Description "Serilog configuration with console and file sinks" -Content @'
+{
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.Hosting.Lifetime": "Information",
+        "Microsoft.AspNetCore": "Warning"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "Console",
+        "Args": {
+          "theme": "Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme::Code, Serilog.Sinks.Console",
+          "outputTemplate": "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"
+        }
+      },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "Logs/log-.txt",
+          "rollingInterval": "Day",
+          "rollOnFileSizeLimit": true,
+          "fileSizeLimitBytes": 10485760,
+          "retainedFileCountLimit": 30,
+          "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj} {Properties:j}{NewLine}{Exception}"
+        }
+      }
+    ],
+    "Enrich": ["FromLogContext", "WithMachineName", "WithThreadId", "WithProcessId"]
+  },
+  "AllowedHosts": "*"
+}
+'@
+
+        # Update Program.cs with Serilog
+        New-FileInteractive -FilePath "Program.cs" -Description "Program.cs with comprehensive Serilog configuration" -Content @'
+using Serilog;
+using Serilog.Events;
+using Microsoft.AspNetCore.Diagnostics;
+
+// Configure Serilog early
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("Starting web application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Add Serilog
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
+
+    // Add services to the container
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new() { Title = "Debugging Demo API", Version = "v1" });
+    });
+
+    // Add CORS for development
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAll", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+    });
+
+    // Add HTTP context accessor for logging context
+    builder.Services.AddHttpContextAccessor();
+
+    var app = builder.Build();
+
+    // Request logging middleware
+    app.UseSerilogRequestLogging(options =>
+    {
+        // Customize the message template
+        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+
+        // Choose the level based on status code
+        options.GetLevel = (httpContext, elapsed, ex) =>
+        {
+            if (ex != null || httpContext.Response.StatusCode > 499)
+                return LogEventLevel.Error;
+            if (httpContext.Response.StatusCode > 399)
+                return LogEventLevel.Warning;
+            if (elapsed > 1000)
+                return LogEventLevel.Warning;
+            return LogEventLevel.Information;
+        };
+
+        // Attach additional properties to the request log
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+            diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].ToString());
+            diagnosticContext.Set("RemoteIP", httpContext.Connection.RemoteIpAddress?.ToString());
+        };
+    });
+
+    // Configure the HTTP request pipeline
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Debugging Demo API v1");
+            c.RoutePrefix = "swagger";
+        });
+
+        app.UseDeveloperExceptionPage();
+    }
+    else
+    {
+        app.UseExceptionHandler("/Error");
+    }
+
+    app.UseCors("AllowAll");
+    app.UseHttpsRedirection();
+    app.UseAuthorization();
+    app.MapControllers();
+
+    // Add a root redirect to swagger
+    app.MapGet("/", () => Results.Redirect("/swagger"));
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+'@
+
+        # Create logging extensions
+        New-FileInteractive -FilePath "Extensions/LoggingExtensions.cs" -Description "Logging extension methods for structured logging patterns" -Content @'
+using Serilog;
+using System.Diagnostics;
+
+namespace DebuggingDemo.Extensions;
+
+public static class LoggingExtensions
+{
+    /// <summary>
+    /// Logs method entry with parameters
+    /// </summary>
+    public static IDisposable BeginMethodScope(this Serilog.ILogger logger, string methodName, params object[] parameters)
+    {
+        logger.Information("Entering {MethodName} with parameters {@Parameters}", methodName, parameters);
+        var stopwatch = Stopwatch.StartNew();
+
+        return new MethodScope(logger, methodName, stopwatch);
+    }
+
+    /// <summary>
+    /// Enriches log context with correlation ID
+    /// </summary>
+    public static void EnrichWithCorrelationId(this IDiagnosticContext diagnosticContext, HttpContext httpContext)
+    {
+        var correlationId = httpContext.TraceIdentifier;
+        diagnosticContext.Set("CorrelationId", correlationId);
+    }
+
+    private class MethodScope : IDisposable
+    {
+        private readonly Serilog.ILogger _logger;
+        private readonly string _methodName;
+        private readonly Stopwatch _stopwatch;
+
+        public MethodScope(Serilog.ILogger logger, string methodName, Stopwatch stopwatch)
+        {
+            _logger = logger;
+            _methodName = methodName;
+            _stopwatch = stopwatch;
+        }
+
+        public void Dispose()
+        {
+            _stopwatch.Stop();
+            _logger.Information("Exiting {MethodName} after {ElapsedMilliseconds}ms",
+                _methodName, _stopwatch.ElapsedMilliseconds);
+        }
+    }
+}
+
+/// <summary>
+/// Helper class for structured logging
+/// </summary>
+public static class LogHelper
+{
+    public static void LogPerformanceWarning(this Serilog.ILogger logger, string operation, long elapsedMs, long thresholdMs = 1000)
+    {
+        if (elapsedMs > thresholdMs)
+        {
+            logger.Warning("Slow operation detected: {Operation} took {ElapsedMs}ms (threshold: {ThresholdMs}ms)",
+                operation, elapsedMs, thresholdMs);
+        }
+    }
+
+    public static void LogBusinessEvent(this Serilog.ILogger logger, string eventName, object data)
+    {
+        logger.Information("Business event: {EventName} with data {@EventData}", eventName, data);
+    }
+
+    public static void LogSecurityEvent(this Serilog.ILogger logger, string action, string username, bool success)
+    {
+        if (success)
+        {
+            logger.Information("Security: {Action} succeeded for user {Username}", action, username);
+        }
+        else
+        {
+            logger.Warning("Security: {Action} failed for user {Username}", action, username);
+        }
+    }
+}
+'@
+
+        # Create middleware for request/response logging
+        New-FileInteractive -FilePath "Middleware/RequestLoggingMiddleware.cs" -Description "Request/response logging middleware for detailed HTTP logging" -Content @'
+using System.Diagnostics;
+using System.Text;
+using Serilog;
+using Serilog.Events;
+
+namespace DebuggingDemo.Middleware;
+
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly Serilog.ILogger _logger = Log.ForContext<RequestLoggingMiddleware>();
+
+    public RequestLoggingMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // Skip logging for certain paths
+        if (ShouldSkipLogging(context.Request.Path))
+        {
+            await _next(context);
+            return;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var originalBodyStream = context.Response.Body;
+
+        try
+        {
+            // Log request
+            await LogRequest(context);
+
+            // Capture response body
+            using var responseBody = new MemoryStream();
+            context.Response.Body = responseBody;
+
+            await _next(context);
+
+            // Log response
+            await LogResponse(context, responseBody, stopwatch.ElapsedMilliseconds);
+
+            // Copy the response body back to the original stream
+            await responseBody.CopyToAsync(originalBodyStream);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            LogError(context, ex, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        finally
+        {
+            context.Response.Body = originalBodyStream;
+        }
+    }
+
+    private bool ShouldSkipLogging(PathString path)
+    {
+        var pathValue = path.Value?.ToLower() ?? string.Empty;
+        return pathValue.Contains("/swagger") ||
+               pathValue.Contains("/health") ||
+               pathValue.Contains(".js") ||
+               pathValue.Contains(".css");
+    }
+
+    private async Task LogRequest(HttpContext context)
+    {
+        // Enable buffering to allow multiple reads
+        context.Request.EnableBuffering();
+
+        var request = context.Request;
+        var body = string.Empty;
+
+        if (request.ContentLength > 0 && request.ContentLength < 10000)
+        {
+            request.Body.Position = 0;
+            using var reader = new StreamReader(request.Body, Encoding.UTF8, leaveOpen: true);
+            body = await reader.ReadToEndAsync();
+            request.Body.Position = 0;
+        }
+
+        _logger.Information("HTTP Request: {Method} {Path} {QueryString} Body: {Body}",
+            request.Method,
+            request.Path,
+            request.QueryString,
+            body);
+    }
+
+    private async Task LogResponse(HttpContext context, MemoryStream responseBody, long elapsedMs)
+    {
+        responseBody.Position = 0;
+        var body = string.Empty;
+
+        if (responseBody.Length > 0 && responseBody.Length < 10000)
+        {
+            body = await new StreamReader(responseBody).ReadToEndAsync();
+        }
+
+        responseBody.Position = 0;
+
+        var level = context.Response.StatusCode >= 400 ? LogEventLevel.Warning : LogEventLevel.Information;
+
+        _logger.Write(level, "HTTP Response: {StatusCode} {ElapsedMs}ms Body: {Body}",
+            context.Response.StatusCode,
+            elapsedMs,
+            body);
+    }
+
+    private void LogError(HttpContext context, Exception ex, long elapsedMs)
+    {
+        _logger.Error(ex, "HTTP Request failed: {Method} {Path} after {ElapsedMs}ms",
+            context.Request.Method,
+            context.Request.Path,
+            elapsedMs);
+    }
+}
+
+public static class RequestLoggingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestLoggingMiddleware>();
+    }
+}
+'@
+
+        # Create performance logging middleware
+        New-FileInteractive -FilePath "Middleware/PerformanceMiddleware.cs" -Description "Performance monitoring middleware to track slow requests" -Content @'
+using System.Diagnostics;
+using DebuggingDemo.Extensions;
+
+namespace DebuggingDemo.Middleware;
+
+public class PerformanceMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<PerformanceMiddleware> _logger;
+    private readonly int _slowRequestThresholdMs;
+
+    public PerformanceMiddleware(RequestDelegate next, ILogger<PerformanceMiddleware> logger, IConfiguration configuration)
+    {
+        _next = next;
+        _logger = logger;
+        _slowRequestThresholdMs = configuration.GetValue<int>("Performance:SlowRequestThresholdMs", 1000);
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var path = context.Request.Path;
+
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            var elapsedMs = stopwatch.ElapsedMilliseconds;
+
+            if (elapsedMs > _slowRequestThresholdMs)
+            {
+                _logger.LogWarning("Slow request detected: {Method} {Path} took {ElapsedMs}ms (threshold: {ThresholdMs}ms)",
+                    context.Request.Method, path, elapsedMs, _slowRequestThresholdMs);
+            }
+
+            // Add performance headers
+            context.Response.Headers.Add("X-Response-Time-ms", elapsedMs.ToString());
+
+            // Log performance metrics
+            using (_logger.BeginScope(new Dictionary<string, object>
+            {
+                ["RequestPath"] = path.Value,
+                ["RequestMethod"] = context.Request.Method,
+                ["StatusCode"] = context.Response.StatusCode,
+                ["ElapsedMilliseconds"] = elapsedMs
+            }))
+            {
+                _logger.LogInformation("Request completed in {ElapsedMilliseconds}ms", elapsedMs);
+            }
+        }
+    }
+}
+
+public static class PerformanceMiddlewareExtensions
+{
+    public static IApplicationBuilder UsePerformanceLogging(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<PerformanceMiddleware>();
+    }
+}
+'@
+
+        Write-Host "[OK] Exercise 2 template created successfully!" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "[NEXT] Next steps:" -ForegroundColor Yellow
+        Write-Host "1. Build the project: dotnet build" -ForegroundColor Cyan
+        Write-Host "2. Run the application: dotnet run" -ForegroundColor Cyan
+        Write-Host "3. Visit: http://localhost:5000/swagger" -ForegroundColor Cyan
+        Write-Host "4. Check the Logs/ directory for log files" -ForegroundColor Cyan
+        Write-Host "5. Test different log levels and structured logging" -ForegroundColor Cyan
     }
 
     "exercise03" {
-        Write-Host "[INFO] Exercise 3: Exception Handling and Monitoring" -ForegroundColor Green
-        Write-Host "[INFO] This exercise builds on previous exercises" -ForegroundColor Yellow
-        Write-Host "[INFO] Please run previous exercises first, then use the SourceCode version for complete features" -ForegroundColor Cyan
+        # Exercise 3: Exception Handling and Monitoring
+
+        Show-Concept -ConceptName "Production-Ready Exception Handling" -Explanation @"
+Production applications need robust error handling:
+• Global exception middleware: Catch all unhandled exceptions
+• Structured error responses: Consistent error format (RFC 7807)
+• Health checks: Monitor application and dependency health
+• Performance monitoring: Track application metrics
+• Diagnostic endpoints: Custom troubleshooting tools
+"@
+
+        if (-not $SkipProjectCreation) {
+            Write-Host "[ERROR] Exercise 3 requires previous exercises to be completed first" -ForegroundColor Red
+            Write-Host "[INFO] Please run exercises 1 and 2 first" -ForegroundColor Yellow
+            exit 1
+        }
+
+        Write-Host "[CLEAN] Cleaning up any existing files..." -ForegroundColor Cyan
+        Remove-Item -Path "Middleware/ExceptionHandlingMiddleware.cs" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Services/HealthChecks" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Models/ErrorResponse.cs" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "Controllers/HealthController.cs" -Force -ErrorAction SilentlyContinue
+
+        Write-Host "[PACKAGE] Adding health check packages..." -ForegroundColor Cyan
+        dotnet add package Microsoft.AspNetCore.Diagnostics.HealthChecks --version 2.2.0
+        dotnet add package Microsoft.Extensions.Diagnostics.HealthChecks --version 8.0.11
+
+        # Create global exception handling middleware
+        New-FileInteractive -FilePath "Middleware/ExceptionHandlingMiddleware.cs" -Description "Global exception handling middleware with structured error responses" -Content @'
+using System.Net;
+using System.Text.Json;
+using DebuggingDemo.Models;
+
+namespace DebuggingDemo.Middleware;
+
+public class ExceptionHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IWebHostEnvironment _environment;
+
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger, IWebHostEnvironment environment)
+    {
+        _next = next;
+        _logger = logger;
+        _environment = environment;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unhandled exception occurred. RequestId: {RequestId}", context.TraceIdentifier);
+            await HandleExceptionAsync(context, ex);
+        }
+    }
+
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        context.Response.ContentType = "application/json";
+
+        var errorResponse = new ErrorResponse
+        {
+            RequestId = context.TraceIdentifier,
+            Timestamp = DateTime.UtcNow
+        };
+
+        switch (exception)
+        {
+            case ArgumentException argEx:
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                errorResponse.Title = "Bad Request";
+                errorResponse.Detail = argEx.Message;
+                errorResponse.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1";
+                break;
+
+            case UnauthorizedAccessException:
+                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                errorResponse.Title = "Unauthorized";
+                errorResponse.Detail = "Access denied";
+                errorResponse.Type = "https://tools.ietf.org/html/rfc7235#section-3.1";
+                break;
+
+            case KeyNotFoundException:
+                context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                errorResponse.Title = "Not Found";
+                errorResponse.Detail = exception.Message;
+                errorResponse.Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4";
+                break;
+
+            default:
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                errorResponse.Title = "Internal Server Error";
+                errorResponse.Detail = _environment.IsDevelopment() ? exception.Message : "An error occurred while processing your request";
+                errorResponse.Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1";
+                break;
+        }
+
+        errorResponse.Status = context.Response.StatusCode;
+
+        // Add stack trace in development
+        if (_environment.IsDevelopment())
+        {
+            errorResponse.Extensions = new Dictionary<string, object>
+            {
+                ["stackTrace"] = exception.StackTrace ?? string.Empty,
+                ["innerException"] = exception.InnerException?.Message ?? string.Empty
+            };
+        }
+
+        var jsonResponse = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        await context.Response.WriteAsync(jsonResponse);
+    }
+}
+
+public static class ExceptionHandlingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseGlobalExceptionHandling(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<ExceptionHandlingMiddleware>();
+    }
+}
+'@
+
+        # Create error response model
+        New-FileInteractive -FilePath "Models/ErrorResponse.cs" -Description "RFC 7807 compliant error response model" -Content @'
+namespace DebuggingDemo.Models;
+
+/// <summary>
+/// RFC 7807 Problem Details for HTTP APIs
+/// </summary>
+public class ErrorResponse
+{
+    /// <summary>
+    /// A URI reference that identifies the problem type
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A short, human-readable summary of the problem type
+    /// </summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The HTTP status code
+    /// </summary>
+    public int Status { get; set; }
+
+    /// <summary>
+    /// A human-readable explanation specific to this occurrence of the problem
+    /// </summary>
+    public string Detail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A URI reference that identifies the specific occurrence of the problem
+    /// </summary>
+    public string Instance { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Unique request identifier for tracking
+    /// </summary>
+    public string RequestId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Timestamp when the error occurred
+    /// </summary>
+    public DateTime Timestamp { get; set; }
+
+    /// <summary>
+    /// Additional properties for debugging (development only)
+    /// </summary>
+    public Dictionary<string, object>? Extensions { get; set; }
+}
+'@
+
+        # Create database health check
+        New-FileInteractive -FilePath "Services/HealthChecks/DatabaseHealthCheck.cs" -Description "Database connectivity health check" -Content @'
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace DebuggingDemo.Services.HealthChecks;
+
+public class DatabaseHealthCheck : IHealthCheck
+{
+    private readonly ILogger<DatabaseHealthCheck> _logger;
+
+    public DatabaseHealthCheck(ILogger<DatabaseHealthCheck> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Simulate database connectivity check
+            await Task.Delay(100, cancellationToken);
+
+            // In a real application, you would check actual database connectivity
+            // Example: await _context.Database.CanConnectAsync(cancellationToken);
+
+            var isHealthy = DateTime.UtcNow.Second % 10 != 0; // Simulate occasional failure
+
+            if (isHealthy)
+            {
+                _logger.LogInformation("Database health check passed");
+                return HealthCheckResult.Healthy("Database connection is healthy", new Dictionary<string, object>
+                {
+                    ["server"] = "localhost",
+                    ["database"] = "DebuggingDemo",
+                    ["responseTime"] = "100ms"
+                });
+            }
+            else
+            {
+                _logger.LogWarning("Database health check failed");
+                return HealthCheckResult.Unhealthy("Database connection failed", null, new Dictionary<string, object>
+                {
+                    ["server"] = "localhost",
+                    ["database"] = "DebuggingDemo",
+                    ["error"] = "Connection timeout"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Database health check threw an exception");
+            return HealthCheckResult.Unhealthy("Database health check failed with exception", ex);
+        }
+    }
+}
+'@
+
+        # Create external API health check
+        New-FileInteractive -FilePath "Services/HealthChecks/ExternalApiHealthCheck.cs" -Description "External API dependency health check" -Content @'
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace DebuggingDemo.Services.HealthChecks;
+
+public class ExternalApiHealthCheck : IHealthCheck
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<ExternalApiHealthCheck> _logger;
+    private readonly string _apiUrl;
+
+    public ExternalApiHealthCheck(HttpClient httpClient, ILogger<ExternalApiHealthCheck> logger, IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _apiUrl = configuration.GetValue<string>("ExternalApi:HealthCheckUrl") ?? "https://httpbin.org/status/200";
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Checking external API health at {ApiUrl}", _apiUrl);
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var response = await _httpClient.GetAsync(_apiUrl, cancellationToken);
+            stopwatch.Stop();
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("External API health check passed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+                return HealthCheckResult.Healthy("External API is responding", new Dictionary<string, object>
+                {
+                    ["url"] = _apiUrl,
+                    ["statusCode"] = (int)response.StatusCode,
+                    ["responseTime"] = $"{stopwatch.ElapsedMilliseconds}ms"
+                });
+            }
+            else
+            {
+                _logger.LogWarning("External API health check failed with status {StatusCode}", response.StatusCode);
+                return HealthCheckResult.Unhealthy($"External API returned {response.StatusCode}", null, new Dictionary<string, object>
+                {
+                    ["url"] = _apiUrl,
+                    ["statusCode"] = (int)response.StatusCode,
+                    ["responseTime"] = $"{stopwatch.ElapsedMilliseconds}ms"
+                });
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("External API health check timed out");
+            return HealthCheckResult.Unhealthy("External API health check timed out");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External API health check failed with exception");
+            return HealthCheckResult.Unhealthy("External API health check failed", ex);
+        }
+    }
+}
+'@
+
+        # Create health controller
+        New-FileInteractive -FilePath "Controllers/HealthController.cs" -Description "Health check endpoints for monitoring" -Content @'
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace DebuggingDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class HealthController : ControllerBase
+{
+    private readonly HealthCheckService _healthCheckService;
+    private readonly ILogger<HealthController> _logger;
+
+    public HealthController(HealthCheckService healthCheckService, ILogger<HealthController> logger)
+    {
+        _healthCheckService = healthCheckService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get overall health status
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetHealth()
+    {
+        var healthReport = await _healthCheckService.CheckHealthAsync();
+
+        var response = new
+        {
+            Status = healthReport.Status.ToString(),
+            TotalDuration = healthReport.TotalDuration.TotalMilliseconds,
+            Entries = healthReport.Entries.Select(entry => new
+            {
+                Name = entry.Key,
+                Status = entry.Value.Status.ToString(),
+                Duration = entry.Value.Duration.TotalMilliseconds,
+                Description = entry.Value.Description,
+                Data = entry.Value.Data,
+                Exception = entry.Value.Exception?.Message
+            })
+        };
+
+        var statusCode = healthReport.Status == HealthStatus.Healthy ? 200 : 503;
+        return StatusCode(statusCode, response);
+    }
+
+    /// <summary>
+    /// Get detailed health information
+    /// </summary>
+    [HttpGet("detailed")]
+    public async Task<IActionResult> GetDetailedHealth()
+    {
+        var healthReport = await _healthCheckService.CheckHealthAsync();
+
+        _logger.LogInformation("Health check requested - Overall status: {Status}", healthReport.Status);
+
+        var response = new
+        {
+            Status = healthReport.Status.ToString(),
+            TotalDuration = $"{healthReport.TotalDuration.TotalMilliseconds}ms",
+            Timestamp = DateTime.UtcNow,
+            Entries = healthReport.Entries.ToDictionary(
+                entry => entry.Key,
+                entry => new
+                {
+                    Status = entry.Value.Status.ToString(),
+                    Duration = $"{entry.Value.Duration.TotalMilliseconds}ms",
+                    Description = entry.Value.Description,
+                    Data = entry.Value.Data,
+                    Exception = entry.Value.Exception?.Message,
+                    StackTrace = entry.Value.Exception?.StackTrace
+                })
+        };
+
+        var statusCode = healthReport.Status == HealthStatus.Healthy ? 200 : 503;
+        return StatusCode(statusCode, response);
+    }
+}
+'@
+
+        Write-Host "[OK] Exercise 3 template created successfully!" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "[NEXT] Next steps:" -ForegroundColor Yellow
+        Write-Host "1. Update Program.cs to register health checks and exception middleware" -ForegroundColor Cyan
+        Write-Host "2. Build the project: dotnet build" -ForegroundColor Cyan
+        Write-Host "3. Run the application: dotnet run" -ForegroundColor Cyan
+        Write-Host "4. Visit: http://localhost:5000/swagger" -ForegroundColor Cyan
+        Write-Host "5. Test health endpoints: /api/health and /api/health/detailed" -ForegroundColor Cyan
+        Write-Host "6. Test exception handling by triggering errors" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "[TIP] Add these to Program.cs:" -ForegroundColor Blue
+        Write-Host "  builder.Services.AddHealthChecks()" -ForegroundColor White
+        Write-Host "    .AddCheck<DatabaseHealthCheck>(\"database\")" -ForegroundColor White
+        Write-Host "    .AddCheck<ExternalApiHealthCheck>(\"external-api\");" -ForegroundColor White
+        Write-Host "  app.UseGlobalExceptionHandling();" -ForegroundColor White
+        Write-Host "  app.MapHealthChecks(\"/health\");" -ForegroundColor White
     }
 }
 

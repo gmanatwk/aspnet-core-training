@@ -874,6 +874,12 @@ elif [[ $EXERCISE_NAME == "exercise02" ]]; then
         exit 1
     fi
 
+    echo -e "${CYAN}Cleaning up any existing files...${NC}"
+    rm -f Extensions/LoggingExtensions.cs 2>/dev/null
+    rm -f Middleware/RequestLoggingMiddleware.cs 2>/dev/null
+    rm -f Middleware/PerformanceMiddleware.cs 2>/dev/null
+    rm -f Controllers/LoggingTestController.cs 2>/dev/null
+    
     echo -e "${CYAN}Adding Serilog packages...${NC}"
     dotnet add package Serilog.AspNetCore --version 8.0.3
     dotnet add package Serilog.Sinks.Console --version 6.0.0
