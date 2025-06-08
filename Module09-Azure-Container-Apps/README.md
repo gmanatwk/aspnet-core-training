@@ -113,12 +113,12 @@ gh --version
 - **Microservices Ready**: Service discovery and communication
 - **Environment Management**: Isolated environments for different stages
 
-### 2. Container Fundamentals
-- **Docker Images**: Building lightweight, secure container images
-- **Multi-stage Builds**: Optimizing image size and security
-- **Base Image Selection**: Choosing the right runtime and SDK images
-- **Layer Caching**: Improving build performance
-- **Security Scanning**: Identifying vulnerabilities in images
+### 2. Cloud Build Fundamentals
+- **ACR Build Tasks**: Building images in the cloud without Docker
+- **Automated Builds**: Azure detects and builds .NET projects automatically
+- **Base Image Management**: Azure selects optimal base images
+- **Build Caching**: Azure handles caching for performance
+- **Security Scanning**: Built-in vulnerability scanning in ACR
 
 ### 3. Deployment and DevOps
 - **Infrastructure as Code**: Bicep templates for repeatable deployments
@@ -149,18 +149,18 @@ Module09-Azure-Container-Apps/
 ├── README.md
 ├── SourceCode/
 │   ├── ContainerAppsDemo/
-│   │   ├── API/
-│   │   ├── Web/
-│   │   ├── Shared/
-│   │   └── Infrastructure/
+│   │   ├── ContainerAppsDemo.csproj
+│   │   ├── Program.cs
+│   │   ├── Controllers/
+│   │   └── deploy-to-azure.sh
 ├── Exercises/
-│   ├── Exercise01-Basic-Containerization.md
-│   ├── Exercise02-Azure-Deployment.md
+│   ├── Exercise01-Azure-Setup.md
+│   ├── Exercise02-Cloud-Build-Deploy.md
 │   ├── Exercise03-CI-CD-Pipeline.md
 │   └── Exercise04-Advanced-Configuration.md
 └── Resources/
     ├── deployment-templates/
-    ├── docker-best-practices.md
+    ├── azure-build-guide.md
     ├── troubleshooting-guide.md
     └── monitoring-setup.md
 ```
@@ -340,7 +340,8 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Build and push image
+    # No Docker needed - Azure builds the image!
+    - name: Build image in Azure
       run: |
         az acr build --registry myregistry \
           --image myapi:${{ github.sha }} .
@@ -475,22 +476,14 @@ az containerapp update --name myapp --resource-group myRG \
 
 ### ❌ Avoid These Mistakes
 
-**1. Large Container Images**
-```dockerfile
-# BAD - Single stage build
-FROM mcr.microsoft.com/dotnet/sdk:8.0
-COPY . .
-RUN dotnet publish -c Release
-ENTRYPOINT ["dotnet", "MyApp.dll"]
+**1. Trying to Use Docker Locally**
+```bash
+# BAD - Trying to build locally
+docker build -t myapp .
+docker push myregistry.azurecr.io/myapp
 
-# GOOD - Multi-stage build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-COPY . .
-RUN dotnet publish -c Release -o /app
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-COPY --from=build /app .
-ENTRYPOINT ["dotnet", "MyApp.dll"]
+# GOOD - Let Azure build for you
+az acr build --registry myregistry --image myapp:v1 .
 ```
 
 **2. Hardcoded Configuration**
@@ -514,8 +507,13 @@ az containerapp update --name myapp --set-env-vars "API_KEY=secretref:api-key"
 
 **4. Missing Health Checks**
 ```csharp
-// GOOD - Implement health checks
+// GOOD - Implement health checks for Azure
+builder.Services.AddHealthChecks();
 app.MapHealthChecks("/healthz");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 ```
 
 ---
@@ -536,8 +534,8 @@ app.MapHealthChecks("/healthz");
 
 ### Tools and Utilities
 - [Azure Container Apps CLI Extension](https://github.com/microsoft/azure-container-apps)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [Visual Studio Code Docker Extension](https://code.visualstudio.com/docs/containers/overview)
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Visual Studio Code Azure Extension](https://code.visualstudio.com/docs/azure/extensions)
 - [Bicep VS Code Extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-bicep)
 
 ### Community Resources

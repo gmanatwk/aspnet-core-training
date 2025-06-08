@@ -1,547 +1,391 @@
-# Exercise 4: Advanced Configuration
+# Exercise 4: Advanced Configuration and Monitoring
 
 ## 🎯 Objective
-Configure advanced monitoring, custom domains, service communication, and production-ready security features for your Azure Container Apps deployment. This exercise covers enterprise-level configuration and operational excellence.
+Configure advanced features for your Azure Container Apps deployment including monitoring, custom domains, networking, and production-ready configurations—all without Docker Desktop.
 
 ## ⏱️ Estimated Time: 15 minutes
 
 ## 📋 Prerequisites
 - Completed Exercises 1-3
-- Application deployed via CI/CD pipeline
-- Basic understanding of Application Insights and Azure monitoring
-- Custom domain (optional, can use Azure-provided domain)
+- Azure Container Apps deployment running
+- Application Insights created (from Exercise 2)
+- Basic understanding of Azure networking
 
 ## 🎓 Learning Goals
-- Set up comprehensive Application Insights monitoring
-- Configure custom domains with SSL certificates
-- Implement service-to-service communication
-- Set up centralized logging and alerting
-- Configure network security and access controls
-- Implement advanced scaling and performance optimization
+- Configure comprehensive monitoring with Application Insights
+- Set up custom domains and SSL certificates
+- Implement advanced networking configurations
+- Configure autoscaling rules
+- Set up alerts and dashboards
 
 ---
 
 ## 📚 Background Information
 
-### Production Monitoring Strategy
-Production container applications require comprehensive observability:
-- **Application Performance Monitoring (APM)**: Request tracing, dependency tracking
-- **Infrastructure Monitoring**: Container metrics, resource usage
-- **Log Aggregation**: Centralized logging across all services
-- **Alerting**: Proactive notification of issues
-- **Health Checks**: Deep health monitoring beyond basic HTTP checks
+### Production-Ready Container Apps
+Moving to production requires additional configurations:
 
-### Service Communication Patterns
-In microservices architectures, services need to communicate securely:
-- **Service Discovery**: Finding and connecting to other services
-- **Load Balancing**: Distributing requests across instances
-- **Circuit Breakers**: Handling service failures gracefully
-- **Authentication**: Securing service-to-service communication
+- **Monitoring**: Application Insights for deep telemetry
+- **Security**: Custom domains with managed certificates
+- **Networking**: VNet integration for secure communication
+- **Performance**: Autoscaling based on various metrics
+- **Reliability**: Health probes and circuit breakers
+
+### Azure Monitor Integration
+Container Apps provides built-in integration with Azure Monitor:
+- **Metrics**: CPU, memory, requests, latency
+- **Logs**: Application and system logs
+- **Traces**: Distributed tracing across services
+- **Alerts**: Proactive notification of issues
+
+---
+
+## 🛠️ Setup Instructions
+
+### Load Previous Configuration
+```bash
+# Load your variables from previous exercises
+$RESOURCE_GROUP="rg-containerapp-demo"
+$LOCATION="eastus"
+$ACR_NAME=$(az acr list --resource-group $RESOURCE_GROUP --query "[0].name" -o tsv)
+$ENVIRONMENT="containerapp-env"
+$KEY_VAULT=$(az keyvault list --resource-group $RESOURCE_GROUP --query "[0].name" -o tsv)
+```
 
 ---
 
 ## 📝 Tasks
 
-### Task 1: Application Insights Integration (5 minutes)
+### Task 1: Enhanced Monitoring Setup (5 minutes)
 
-#### 1.1 Create Application Insights Resource
+1. **Ensure Application Insights is configured**:
 ```bash
-# Set variables
-RESOURCE_GROUP="rg-containerapp-demo"
-APP_INSIGHTS_NAME="ai-productapi-$(date +%s)"
-LOCATION="eastus"
+# Get or create Application Insights
+$APP_INSIGHTS=$(az monitor app-insights component list `
+  --resource-group $RESOURCE_GROUP `
+  --query "[0].name" -o tsv)
 
-# Create Application Insights
-az monitor app-insights component create \
-    --app $APP_INSIGHTS_NAME \
-    --location $LOCATION \
-    --resource-group $RESOURCE_GROUP \
-    --application-type web
+if (-not $APP_INSIGHTS) {
+    $APP_INSIGHTS="appi-containerapp"
+    az monitor app-insights component create `
+      --app $APP_INSIGHTS `
+      --location $LOCATION `
+      --resource-group $RESOURCE_GROUP
+}
 
 # Get connection string
-APP_INSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show \
-    --app $APP_INSIGHTS_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --query connectionString \
-    --output tsv)
-
-echo "Connection String: $APP_INSIGHTS_CONNECTION_STRING"
+$APPINSIGHTS_CONNECTION=$(az monitor app-insights component show `
+  --app $APP_INSIGHTS `
+  --resource-group $RESOURCE_GROUP `
+  --query connectionString -o tsv)
 ```
 
-#### 1.2 Update Application Code for Monitoring
-Add Application Insights to your ProductApi project:
-
+2. **Update Container App with enhanced monitoring**:
 ```bash
-# Add Application Insights package
-cd ProductApi
-dotnet add package Microsoft.ApplicationInsights.AspNetCore
+az containerapp update `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --set-env-vars `
+    "ApplicationInsights__ConnectionString=$APPINSIGHTS_CONNECTION" `
+    "ASPNETCORE_ENVIRONMENT=Production"
 ```
 
-Update `Program.cs`:
+3. **Create custom dashboard**:
+```bash
+# Create dashboard JSON
+@"
+{
+  "properties": {
+    "lenses": [
+      {
+        "parts": [
+          {
+            "position": {"x": 0, "y": 0, "colSpan": 6, "rowSpan": 4},
+            "metadata": {
+              "type": "Extension/Microsoft_Azure_Monitoring/PartType/MetricsChartPart",
+              "settings": {
+                "title": "Container App Performance",
+                "subtitle": "CPU and Memory Usage"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+"@ | Out-File -FilePath dashboard.json
 
+az portal dashboard create `
+  --name "ContainerAppDashboard" `
+  --resource-group $RESOURCE_GROUP `
+  --input-path dashboard.json
+```
+
+### Task 2: Configure Custom Domain (5 minutes)
+
+1. **Add custom domain** (requires domain ownership):
+```bash
+# Example with Azure DNS
+$CUSTOM_DOMAIN="api.yourdomain.com"
+
+# Add custom domain to Container App
+az containerapp hostname add `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --hostname $CUSTOM_DOMAIN
+
+# Bind managed certificate (automatic SSL)
+az containerapp hostname bind `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --hostname $CUSTOM_DOMAIN `
+  --environment $ENVIRONMENT `
+  --validation-method CNAME
+```
+
+2. **Configure DNS** (in your DNS provider):
+```text
+Type: CNAME
+Name: api
+Value: weatherapi.azurecontainerapps.io
+TTL: 3600
+```
+
+### Task 3: Advanced Scaling Configuration (3 minutes)
+
+1. **Configure HTTP scaling rules**:
+```bash
+az containerapp update `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --min-replicas 1 `
+  --max-replicas 10 `
+  --scale-rule-name http-rule `
+  --scale-rule-type http `
+  --scale-rule-metadata concurrentRequests=50
+```
+
+2. **Add CPU-based scaling**:
+```bash
+az containerapp update `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --scale-rule-name cpu-rule `
+  --scale-rule-type azure-monitor `
+  --scale-rule-metadata "metricName=cpu" "metricResourceUri=/subscriptions/.../resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/weatherapi" "targetValue=70"
+```
+
+3. **Configure scheduled scaling** (business hours):
+```bash
+# Scale up during business hours (8 AM - 6 PM weekdays)
+az containerapp update `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --scale-rule-name schedule-rule `
+  --scale-rule-type cron `
+  --scale-rule-metadata `
+    timezone="America/New_York" `
+    start="0 8 * * MON-FRI" `
+    end="0 18 * * MON-FRI" `
+    desiredReplicas=5
+```
+
+### Task 4: Create Monitoring Alerts (2 minutes)
+
+1. **Create response time alert**:
+```bash
+az monitor metrics alert create `
+  --name "SlowResponseTime" `
+  --resource-group $RESOURCE_GROUP `
+  --scopes "/subscriptions/.../resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/weatherapi" `
+  --condition "avg requests/latency > 500" `
+  --window-size 5m `
+  --evaluation-frequency 1m `
+  --severity 2 `
+  --description "Alert when average response time exceeds 500ms"
+```
+
+2. **Create error rate alert**:
+```bash
+az monitor metrics alert create `
+  --name "HighErrorRate" `
+  --resource-group $RESOURCE_GROUP `
+  --scopes "/subscriptions/.../resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/weatherapi" `
+  --condition "avg requests/failed > 10" `
+  --window-size 5m `
+  --evaluation-frequency 1m `
+  --severity 1 `
+  --description "Alert when error rate exceeds 10 requests per minute"
+```
+
+---
+
+## ✅ Verification Steps
+
+1. **Check Application Insights**:
+```bash
+# Open Application Insights in browser
+$APP_INSIGHTS_ID=$(az monitor app-insights component show `
+  --app $APP_INSIGHTS `
+  --resource-group $RESOURCE_GROUP `
+  --query id -o tsv)
+
+Start-Process "https://portal.azure.com/#resource$APP_INSIGHTS_ID/overview"
+```
+
+2. **Generate load for monitoring**:
+```bash
+# Simple load test
+$APP_URL=$(az containerapp show `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+# Generate 100 requests
+1..100 | ForEach-Object {
+    Invoke-RestMethod -Uri "https://$APP_URL/weatherforecast" -Method Get
+    Start-Sleep -Milliseconds 100
+}
+```
+
+3. **View metrics**:
+```bash
+# Get recent metrics
+az monitor metrics list `
+  --resource "/subscriptions/.../resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/weatherapi" `
+  --metric "Requests" `
+  --interval PT1M `
+  --start-time (Get-Date).AddMinutes(-10).ToString("yyyy-MM-ddTHH:mm:ssZ") `
+  --end-time (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+
+---
+
+## 🎉 Success Criteria
+
+You've successfully completed this exercise if:
+- ✅ Application Insights is collecting telemetry
+- ✅ Custom dashboard is created
+- ✅ Autoscaling rules are configured
+- ✅ Monitoring alerts are active
+- ✅ Metrics are visible in Azure Portal
+
+---
+
+## 🚀 Bonus Challenges
+
+1. **Add Distributed Tracing**:
 ```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Add Application Insights
+// In Program.cs
 builder.Services.AddApplicationInsightsTelemetry();
-
-// Add health checks with detailed checks
-builder.Services.AddHealthChecks()
-    .AddCheck("self", () => HealthCheckResult.Healthy("API is healthy"))
-    .AddCheck("database", () => 
-    {
-        // Simulate database health check
-        var isHealthy = DateTime.UtcNow.Second % 10 != 0; // Fail 10% of the time for demo
-        return isHealthy ? HealthCheckResult.Healthy("Database is healthy") 
-                        : HealthCheckResult.Unhealthy("Database connection failed");
-    });
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+builder.Services.ConfigureTelemetryModule<DependencyTrackingTelemetryModule>((module, o) => 
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-// Add detailed health check endpoint
-app.MapHealthChecks("/healthz", new HealthCheckOptions
-{
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "application/json";
-        var result = new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds
-            }),
-            totalDuration = report.TotalDuration.TotalMilliseconds
-        };
-        await context.Response.WriteAsync(JsonSerializer.Serialize(result));
-    }
+    module.EnableSqlCommandTextInstrumentation = true;
 });
-
-// Add simple health check
-app.MapHealthChecks("/health");
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-// Add info endpoint for monitoring
-app.MapGet("/info", (IWebHostEnvironment env, IConfiguration config) => new
-{
-    Environment = env.EnvironmentName,
-    Version = config["APP_VERSION"] ?? "1.0.0",
-    Timestamp = DateTime.UtcNow,
-    MachineName = Environment.MachineName,
-    ConnectionString = !string.IsNullOrEmpty(config.GetConnectionString("ApplicationInsights"))
-});
-
-app.Run();
 ```
 
-#### 1.3 Update Container App with Application Insights
+2. **Configure VNet Integration**:
 ```bash
-CONTAINER_APP_NAME="productapi"
+# Create VNet
+az network vnet create `
+  --name vnet-containerapp `
+  --resource-group $RESOURCE_GROUP `
+  --address-prefix 10.0.0.0/16 `
+  --subnet-name subnet-containerapp `
+  --subnet-prefix 10.0.0.0/24
 
-# Update container app with Application Insights connection string
-az containerapp update \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING"
-
-# Redeploy with updated code (trigger your CI/CD pipeline or manual update)
+# Update Container Apps Environment
+az containerapp env update `
+  --name $ENVIRONMENT `
+  --resource-group $RESOURCE_GROUP `
+  --infrastructure-subnet-resource-id "/subscriptions/.../subnets/subnet-containerapp"
 ```
 
-### Task 2: Advanced Logging and Monitoring (3 minutes)
-
-#### 2.1 Create Log Analytics Queries
-Access Log Analytics workspace and create useful queries:
-
+3. **Implement Health Check Dashboard**:
 ```bash
-# Get Log Analytics workspace info
-LOG_WORKSPACE=$(az monitor log-analytics workspace list \
-    --resource-group $RESOURCE_GROUP \
-    --query "[0].name" \
-    --output tsv)
-
-echo "Log Analytics Workspace: $LOG_WORKSPACE"
-```
-
-Useful KQL queries for Container Apps:
-
-```kql
-// Container App Logs
+# Create Log Analytics query for health checks
+$QUERY = @"
 ContainerAppConsoleLogs_CL
-| where ContainerAppName_s == "productapi"
-| order by TimeGenerated desc
-| take 100
+| where ContainerAppName_s == 'weatherapi'
+| where Log_s contains 'health'
+| summarize HealthChecks = count() by bin(TimeGenerated, 1m)
+| render timechart
+"@
 
-// HTTP Requests
-requests
-| where name contains "WeatherForecast"
-| summarize count(), avg(duration) by bin(timestamp, 5m)
-| order by timestamp desc
-
-// Failed Requests
-requests
-| where success == false
-| project timestamp, name, resultCode, duration
-| order by timestamp desc
-
-// Dependencies
-dependencies
-| where name contains "database"
-| summarize count(), avg(duration) by bin(timestamp, 5m)
-| order by timestamp desc
-
-// Performance Counters
-performanceCounters
-| where name == "% Processor Time"
-| summarize avg(value) by bin(timestamp, 5m)
-| order by timestamp desc
+# Save as dashboard widget
 ```
 
-#### 2.2 Set Up Alerts
+4. **Set Up Multi-Region Deployment**:
 ```bash
-# Create action group for notifications
-ACTION_GROUP_NAME="ag-productapi-alerts"
-
-az monitor action-group create \
-    --name $ACTION_GROUP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --short-name "ProductAPI"
-
-# Create alert for high error rate
-az monitor metrics alert create \
-    --name "High Error Rate" \
-    --resource-group $RESOURCE_GROUP \
-    --scopes "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$CONTAINER_APP_NAME" \
-    --condition "avg requests/failed > 5" \
-    --window-size 5m \
-    --evaluation-frequency 1m \
-    --action $ACTION_GROUP_NAME
-
-# Create alert for high response time
-az monitor metrics alert create \
-    --name "High Response Time" \
-    --resource-group $RESOURCE_GROUP \
-    --scopes "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$CONTAINER_APP_NAME" \
-    --condition "avg requests/duration > 1000" \
-    --window-size 5m \
-    --evaluation-frequency 1m \
-    --action $ACTION_GROUP_NAME
-```
-
-### Task 3: Service-to-Service Communication (4 minutes)
-
-#### 3.1 Create a Second Service
-Create a simple user service to demonstrate service communication:
-
-```bash
-# Create UserService project
-mkdir UserService
-cd UserService
-dotnet new webapi -n UserService
-
-# Add Application Insights
-dotnet add package Microsoft.ApplicationInsights.AspNetCore
-dotnet add package System.Text.Json
-```
-
-Create `UserService/Controllers/UsersController.cs`:
-
-```csharp
-using Microsoft.AspNetCore.Mvc;
-
-namespace UserService.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class UsersController : ControllerBase
-{
-    private static readonly List<User> Users = new()
-    {
-        new User { Id = 1, Name = "John Doe", Email = "email@yourdomain.com" },
-        new User { Id = 2, Name = "Jane Smith", Email = "email@yourdomain.com" },
-        new User { Id = 3, Name = "Bob Johnson", Email = "email@yourdomain.com" }
-    };
-
-    [HttpGet]
-    public ActionResult<IEnumerable<User>> Get()
-    {
-        return Ok(Users);
-    }
-
-    [HttpGet("{id}")]
-    public ActionResult<User> Get(int id)
-    {
-        var user = Users.FirstOrDefault(u => u.Id == id);
-        return user == null ? NotFound() : Ok(user);
-    }
-}
-
-public record User
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-}
-```
-
-Create `UserService/Dockerfile`:
-
-```dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
-WORKDIR /app
-EXPOSE 8080
-
-RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -s /bin/sh -D appuser
-USER appuser
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
-WORKDIR /src
-
-COPY ["UserService.csproj", "."]
-RUN dotnet restore "./UserService.csproj" --runtime linux-musl-x64
-
-COPY . .
-RUN dotnet build "UserService.csproj" -c Release -o /app/build --runtime linux-musl-x64 --no-restore
-
-FROM build AS publish
-RUN dotnet publish "UserService.csproj" -c Release -o /app/publish \
-    --runtime linux-musl-x64 \
-    --self-contained false \
-    --no-restore
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl --fail http://localhost:8080/health || exit 1
-
-ENTRYPOINT ["dotnet", "UserService.dll"]
-```
-
-#### 3.2 Deploy UserService
-```bash
-# Build and push UserService
-ACR_NAME="your-acr-name"  # Use your ACR name from previous exercises
-
-az acr build \
-    --registry $ACR_NAME \
-    --image userservice:v1.0 \
-    .
-
-# Deploy UserService
-az containerapp create \
-    --name userservice \
-    --resource-group $RESOURCE_GROUP \
-    --environment env-containerapp-demo \
-    --image $ACR_NAME.azurecr.io/userservice:v1.0 \
-    --registry-server $ACR_NAME.azurecr.io \
-    --target-port 8080 \
-    --ingress internal \
-    --cpu 0.25 \
-    --memory 0.5Gi \
-    --min-replicas 1 \
-    --max-replicas 3 \
-    --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING"
-```
-
-#### 3.3 Update ProductApi to Call UserService
-Add HTTP client to ProductApi:
-
-```csharp
-// In Program.cs, add HTTP client
-builder.Services.AddHttpClient("UserService", client =>
-{
-    client.BaseAddress = new Uri("https://userservice.internal.your-environment-url.eastus.azurecontainerapps.io/");
-    client.DefaultRequestHeaders.Add("User-Agent", "ProductApi/1.0");
-});
-
-// Add new controller method
-[HttpGet("users")]
-public async Task<IActionResult> GetUsers([FromServices] IHttpClientFactory httpClientFactory)
-{
-    try
-    {
-        var client = httpClientFactory.CreateClient("UserService");
-        var response = await client.GetAsync("api/users");
-        
-        if (response.IsSuccessStatusCode)
-        {
-            var users = await response.Content.ReadAsStringAsync();
-            return Ok(new { Users = JsonSerializer.Deserialize<object[]>(users) });
-        }
-        
-        return StatusCode((int)response.StatusCode, "Failed to fetch users");
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, $"Error calling UserService: {ex.Message}");
-    }
-}
-```
-
-### Task 4: Network Security and Custom Domains (3 minutes)
-
-#### 4.1 Configure Custom Domain (Optional)
-If you have a custom domain:
-
-```bash
-CUSTOM_DOMAIN="api.yourdomain.com"
-
-# Add custom domain
-az containerapp hostname add \
-    --hostname $CUSTOM_DOMAIN \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP
-
-# Bind certificate (requires domain verification)
-az containerapp hostname bind \
-    --hostname $CUSTOM_DOMAIN \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --validation-method CNAME
-```
-
-#### 4.2 Configure Network Access Control
-```bash
-# Configure access restrictions (if using VNET integration)
-az containerapp ingress access-restriction set \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --rule-name "Allow-Office" \
-    --ip-address "203.0.113.0/24" \
-    --action Allow \
-    --description "Allow office network"
-
-# Configure CORS for web applications
-az containerapp ingress cors enable \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --allowed-origins "https://yourdomain.com" \
-    --allowed-methods "GET,POST,PUT,DELETE" \
-    --allowed-headers "Content-Type,Authorization"
-```
-
-#### 4.3 Advanced Scaling Configuration
-```bash
-# Configure advanced scaling rules
-az containerapp update \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --scale-rule-name "cpu-scaling" \
-    --scale-rule-type "cpu" \
-    --scale-rule-metadata "type=Utilization" "value=70" \
-    --scale-rule-name "memory-scaling" \
-    --scale-rule-type "memory" \
-    --scale-rule-metadata "type=Utilization" "value=80"
-
-# Set advanced replica configuration
-az containerapp update \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --min-replicas 2 \
-    --max-replicas 10
+# Deploy to second region
+$LOCATION2="westus"
+az containerapp create `
+  --name weatherapi-west `
+  --resource-group $RESOURCE_GROUP `
+  --environment $ENVIRONMENT `
+  --image "$ACR_NAME.azurecr.io/weatherapi:latest" `
+  --target-port 80 `
+  --ingress external `
+  --location $LOCATION2
 ```
 
 ---
 
-## ✅ Verification Checklist
+## 📚 Key Takeaways
 
-Mark each item as complete:
-
-- [ ] Integrated Application Insights with detailed telemetry
-- [ ] Set up comprehensive health checks with detailed responses
-- [ ] Created Log Analytics queries for monitoring
-- [ ] Configured alerts for error rates and performance
-- [ ] Deployed second service (UserService) for communication
-- [ ] Implemented service-to-service HTTP communication
-- [ ] Configured internal and external ingress appropriately
-- [ ] Set up network security and access controls
-- [ ] Implemented advanced scaling rules
-- [ ] Verified all monitoring and communication works
+- **Comprehensive Monitoring**: Application Insights provides deep insights
+- **Auto-scaling**: Multiple scaling strategies for different scenarios
+- **Security**: Custom domains with automatic SSL certificates
+- **Alerting**: Proactive monitoring prevents issues
+- **No Docker Required**: All configurations done through Azure
 
 ---
 
-## 🔍 Testing Your Configuration
+## 🧹 Cleanup
 
-### Test Application Insights
+To avoid ongoing charges:
 ```bash
-# Get your container app URL
-APP_URL=$(az containerapp show \
-    --name $CONTAINER_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --query properties.configuration.ingress.fqdn \
-    --output tsv)
+# Remove all resources
+az group delete --name $RESOURCE_GROUP --yes --no-wait
 
-# Generate some traffic for monitoring
-for i in {1..50}; do
-    curl https://$APP_URL/WeatherForecast
-    curl https://$APP_URL/healthz
-    curl https://$APP_URL/info
-    sleep 1
-done
-
-# Generate some errors (if you added the users endpoint)
-for i in {1..10}; do
-    curl https://$APP_URL/WeatherForecast/users
-    sleep 1
-done
-```
-
-### Verify Monitoring Data
-1. **Go to Azure Portal**
-2. **Navigate to Application Insights resource**
-3. **Check these sections**:
-   - Live Metrics Stream
-   - Application Map
-   - Performance
-   - Failures
-   - Logs
-
-### Test Health Checks
-```bash
-# Test detailed health check
-curl https://$APP_URL/healthz | jq '.'
-
-# Test simple health check
-curl https://$APP_URL/health
+# Or just scale down
+az containerapp update `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --min-replicas 0 `
+  --max-replicas 1
 ```
 
 ---
 
-## 🎯 Expected Outcomes
+---
 
-After completing this exercise, you should have:
+## 🎓 Module Summary
 
-1. **Comprehensive Monitoring**: Full observability into application performance
-2. **Service Architecture**: Multi-service communication pattern
-3. **Production Readiness**: Health checks, alerts, and scaling configuration
-4. **Security Configuration**: Network access controls and secure communication
-5. **Operational Excellence**: Centralized logging and monitoring
+Congratulations! You've completed Module 9 and learned how to:
+- ✅ Deploy ASP.NET Core apps to Azure without Docker Desktop
+- ✅ Use Azure Container Registry for cloud builds
+- ✅ Implement CI/CD with GitHub Actions
+- ✅ Configure monitoring and alerts
+- ✅ Set up production-ready configurations
 
-### Monitoring Capabilities
-- **Request Tracing**: End-to-end request visibility
-- **Dependency Tracking**: External service call monitoring
-- **Performance Metrics**: Response times, throughput, error rates
-- **Custom Metrics**: Business-specific measurements
-- **Alerting**: Proactive issue notification
+### What You've Achieved
+1. **Cloud-Native Development**: Built and deployed without local containers
+2. **Enterprise Features**: Monitoring, scaling, custom domains
+3. **Security**: Managed identities, Key Vault, SSL
+4. **Automation**: Complete CI/CD pipeline
+5. **Cost Optimization**: Scale to zero capabilities
+
+### Next Steps
+- Explore Module 10: Security Fundamentals
+- Try deploying a multi-service application
+- Implement more advanced networking scenarios
+- Explore Dapr integration for microservices
+
+---
+
+**🎉 Well done!** You're now ready to deploy production applications to Azure Container Apps without needing Docker Desktop!
 
 ---
 

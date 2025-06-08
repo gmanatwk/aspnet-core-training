@@ -18,20 +18,7 @@ public class DiagnosticInfo
     public Dictionary<string, object> AdditionalInfo { get; set; } = new();
 }
 
-/// <summary>
-/// Represents performance metrics for a request
-/// </summary>
-public class PerformanceMetrics
-{
-    public string RequestId { get; set; } = string.Empty;
-    public string Method { get; set; } = string.Empty;
-    public string Path { get; set; } = string.Empty;
-    public int StatusCode { get; set; }
-    public long ElapsedMilliseconds { get; set; }
-    public long MemoryUsedBytes { get; set; }
-    public DateTime Timestamp { get; set; }
-    public Dictionary<string, object> CustomMetrics { get; set; } = new();
-}
+
 
 /// <summary>
 /// Represents a log entry for structured logging

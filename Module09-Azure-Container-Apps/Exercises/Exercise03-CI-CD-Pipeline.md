@@ -1,87 +1,107 @@
-# Exercise 3: CI/CD Pipeline
+# Exercise 3: CI/CD Pipeline with GitHub Actions (No Docker Required)
 
 ## 🎯 Objective
-Implement automated deployment using GitHub Actions to build, test, and deploy your containerized ASP.NET Core application to Azure Container Apps. This exercise covers GitOps principles, infrastructure as code, and production deployment strategies.
+Implement a complete CI/CD pipeline using GitHub Actions that builds and deploys your application to Azure Container Apps without requiring Docker locally.
 
 ## ⏱️ Estimated Time: 30 minutes
 
 ## 📋 Prerequisites
-- Completed Exercise 2 (Azure Deployment)
-- GitHub account
-- Azure Container Apps environment from Exercise 2
-- Basic understanding of YAML and Git workflows
+- Completed Exercises 1 and 2
+- GitHub account with a repository
+- Azure resources from previous exercises
+- WeatherAPI project pushed to GitHub
 
 ## 🎓 Learning Goals
-- Create GitHub Actions workflows for container applications
-- Implement automated testing in CI/CD pipelines
-- Configure secure authentication with Azure using service principals
-- Set up environment-specific deployments
-- Implement deployment approvals and rollback strategies
-- Use Infrastructure as Code with Bicep templates
+- Create GitHub Actions workflows for Azure
+- Implement cloud-based container builds
+- Set up automated deployments
+- Configure environment-specific deployments
+- Implement security best practices
 
 ---
 
 ## 📚 Background Information
 
-### CI/CD for Container Applications
-Continuous Integration and Continuous Deployment for containers involves:
-- **Build**: Creating container images automatically
-- **Test**: Running automated tests in containerized environments
-- **Security**: Scanning images for vulnerabilities
-- **Deploy**: Automatic deployment to target environments
-- **Monitor**: Tracking deployment success and application health
+### CI/CD Without Local Docker
+Traditional CI/CD pipelines often require Docker to build images locally. With Azure Container Registry build tasks, we can:
 
-### GitHub Actions for Azure
-GitHub Actions provides native integration with Azure services:
-- **Azure Login**: Secure authentication using service principals
-- **Container Registry**: Direct integration with ACR
-- **Container Apps**: Native deployment support
-- **Infrastructure**: Bicep and ARM template deployment
+- **Build in the Cloud**: No Docker needed on build agents
+- **Secure by Default**: No Docker socket exposure
+- **Consistent Builds**: Same environment as production
+- **Cost Effective**: No need for self-hosted runners
+
+### GitHub Actions + Azure
+- **Native Integration**: Azure Login action for authentication
+- **Managed Secrets**: GitHub secrets for secure configuration
+- **Matrix Builds**: Deploy to multiple environments
+- **Approval Gates**: Manual approval for production
 
 ---
 
 ## 🛠️ Setup Instructions
 
-### Step 1: Create GitHub Repository
-1. Create a new repository on GitHub or use an existing one
-2. Initialize with your ProductApi code from Exercise 1
-3. Ensure your Dockerfile and source code are in the repository
+### Step 1: Prepare Your Repository
 
-### Step 2: Azure Service Principal Setup
-Create a service principal for GitHub Actions authentication:
-
+1. **Create a GitHub repository** (if not already done):
 ```bash
-# Set variables
-SUBSCRIPTION_ID=$(az account show --query id --output tsv)
-RESOURCE_GROUP="rg-containerapp-demo"  # From Exercise 2
-SP_NAME="sp-github-containerapp"
+# Initialize git in your project
+cd WeatherAPI
+git init
+git add .
+git commit -m "Initial commit"
 
-# Create service principal
-az ad sp create-for-rbac \
-    --name $SP_NAME \
-    --role Contributor \
-    --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP \
-    --sdk-auth
-
-# Save the output - you'll need it for GitHub secrets
+# Create repository on GitHub and push
+gh repo create weatherapi-azure --public --source=. --remote=origin --push
 ```
 
-### Step 3: Configure GitHub Secrets
-Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+2. **Verify repository structure**:
+```
+WeatherAPI/
+├── Program.cs
+├── WeatherAPI.csproj
+├── Dockerfile
+├── appsettings.json
+└── Controllers/
+    └── WeatherForecastController.cs
+```
 
-- `AZURE_CREDENTIALS`: The entire JSON output from the service principal creation
-- `AZURE_SUBSCRIPTION_ID`: Your Azure subscription ID
-- `AZURE_RG`: Your resource group name
-- `ACR_NAME`: Your Azure Container Registry name
+### Step 2: Configure Azure Service Principal
+
+1. **Create service principal for GitHub Actions**:
+```bash
+# Create service principal
+$SP_NAME="GitHub-Actions-WeatherAPI"
+$SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+$SP_CREDENTIALS=$(az ad sp create-for-rbac `
+  --name $SP_NAME `
+  --role contributor `
+  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
+  --sdk-auth)
+
+Write-Host "Save these credentials as a GitHub secret:" -ForegroundColor Yellow
+Write-Host $SP_CREDENTIALS -ForegroundColor Cyan
+```
+
+2. **Add GitHub secrets**:
+   - Go to your GitHub repository
+   - Navigate to Settings > Secrets and variables > Actions
+   - Add new repository secret:
+     - Name: `AZURE_CREDENTIALS`
+     - Value: The JSON output from the command above
 
 ---
 
 ## 📝 Tasks
 
-### Task 1: Create Basic CI/CD Workflow (15 minutes)
+### Task 1: Create Basic CI/CD Workflow (10 minutes)
 
-Create `.github/workflows/deploy.yml`:
+1. **Create workflow directory**:
+```bash
+mkdir -p .github/workflows
+```
 
+2. **Create `.github/workflows/deploy.yml`**:
 ```yaml
 name: Build and Deploy to Azure Container Apps
 
@@ -90,210 +110,116 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_APP: productapi
-  AZURE_CONTAINER_ENV: env-containerapp-demo
-  CONTAINER_IMAGE_NAME: productapi
+  RESOURCE_GROUP: rg-containerapp-demo
+  ACR_NAME: <your-acr-name>  # Replace with your ACR name
+  CONTAINER_APP_NAME: weatherapi
+  CONTAINER_APP_ENV: containerapp-env
 
 jobs:
-  build-and-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build application
-      run: dotnet build --no-restore --configuration Release
-
-    - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal
-
-    - name: Login to Azure
+    - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Build and push container image
+    - name: Build and push image to ACR
       run: |
+        # Build image in Azure Container Registry (no Docker needed!)
         az acr build \
-          --registry ${{ secrets.ACR_NAME }} \
-          --image ${{ env.CONTAINER_IMAGE_NAME }}:${{ github.sha }} \
-          --image ${{ env.CONTAINER_IMAGE_NAME }}:latest \
+          --registry ${{ env.ACR_NAME }} \
+          --image weatherapi:${{ github.sha }} \
+          --image weatherapi:latest \
           .
-
-  deploy-to-azure:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Deploy to Container Apps
       run: |
         az containerapp update \
-          --name ${{ env.AZURE_CONTAINER_APP }} \
-          --resource-group ${{ secrets.AZURE_RG }} \
-          --image ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_IMAGE_NAME }}:${{ github.sha }}
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ env.ACR_NAME }}.azurecr.io/weatherapi:${{ github.sha }}
 
     - name: Get application URL
       run: |
         APP_URL=$(az containerapp show \
-          --name ${{ env.AZURE_CONTAINER_APP }} \
-          --resource-group ${{ secrets.AZURE_RG }} \
-          --query properties.configuration.ingress.fqdn \
-          --output tsv)
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn -o tsv)
         echo "Application deployed to: https://$APP_URL"
+        echo "APP_URL=https://$APP_URL" >> $GITHUB_ENV
+
+    - name: Test deployment
+      run: |
+        sleep 30  # Wait for app to be ready
+        curl -f ${{ env.APP_URL }}/healthz || exit 1
+        echo "Health check passed!"
 ```
 
-### Task 2: Add Unit Tests (5 minutes)
+3. **Update ACR name in workflow**:
+   - Replace `<your-acr-name>` with your actual ACR name from Exercise 1
 
-Create a simple unit test project to demonstrate testing in the pipeline:
+### Task 2: Add Environment-Specific Deployments (10 minutes)
 
-```bash
-# In your repository root
-dotnet new xunit -n ProductApi.Tests
-cd ProductApi.Tests
-dotnet add reference ../ProductApi/ProductApi.csproj
-dotnet add package Microsoft.AspNetCore.Mvc.Testing
-```
-
-Create `ProductApi.Tests/WeatherForecastTests.cs`:
-
-```csharp
-using Microsoft.AspNetCore.Mvc.Testing;
-using System.Net;
-using Xunit;
-
-namespace ProductApi.Tests;
-
-public class WeatherForecastTests : IClassFixture<WebApplicationFactory<Program>>
-{
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public WeatherForecastTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
-
-    [Fact]
-    public async Task Get_WeatherForecast_ReturnsSuccessAndCorrectContentType()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/WeatherForecast");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/json; charset=utf-8", 
-            response.Content.Headers.ContentType?.ToString());
-    }
-
-    [Fact]
-    public async Task Get_HealthCheck_ReturnsHealthy()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/healthz");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-}
-```
-
-Update your solution file to include the test project:
-
-```bash
-# Add test project to solution
-dotnet sln add ProductApi.Tests/ProductApi.Tests.csproj
-```
-
-### Task 3: Enhanced Workflow with Environment Strategy (5 minutes)
-
-Create `.github/workflows/deploy-with-environments.yml`:
-
+1. **Create multi-environment workflow** - Update `.github/workflows/deploy.yml`:
 ```yaml
-name: Deploy with Environments
+name: Build and Deploy to Azure Container Apps
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
-  CONTAINER_IMAGE_NAME: productapi
+  RESOURCE_GROUP: rg-containerapp-demo
+  ACR_NAME: <your-acr-name>
+  CONTAINER_APP_ENV: containerapp-env
 
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.build.outputs.image-tag }}
     
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Run tests
-      run: |
-        dotnet restore
-        dotnet build --configuration Release
-        dotnet test --configuration Release --no-build
-
-    - name: Login to Azure
+    - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Extract metadata
-      id: meta
-      run: |
-        echo "tags=${{ secrets.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-
-    - name: Build and push
+    - name: Build and push image
       id: build
       run: |
+        IMAGE_TAG="${{ github.sha }}"
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        
+        # Build in ACR (no local Docker!)
         az acr build \
-          --registry ${{ secrets.ACR_NAME }} \
-          --image ${{ env.CONTAINER_IMAGE_NAME }}:${{ github.sha }} \
-          --image ${{ env.CONTAINER_IMAGE_NAME }}:latest \
+          --registry ${{ env.ACR_NAME }} \
+          --image weatherapi:$IMAGE_TAG \
+          --image weatherapi:latest \
           .
 
   deploy-staging:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
     environment: staging
+    if: github.ref == 'refs/heads/develop'
     
     steps:
-    - name: Login to Azure
+    - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -301,169 +227,191 @@ jobs:
     - name: Deploy to staging
       run: |
         az containerapp update \
-          --name ${{ env.CONTAINER_IMAGE_NAME }}-staging \
-          --resource-group ${{ secrets.AZURE_RG }} \
-          --image ${{ needs.build.outputs.image-tag }} \
-          --revision-suffix staging-${{ github.run_number }}
+          --name weatherapi-staging \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ env.ACR_NAME }}.azurecr.io/weatherapi:${{ needs.build.outputs.image-tag }} \
+          --set-env-vars "ASPNETCORE_ENVIRONMENT=Staging"
 
   deploy-production:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     environment: production
+    if: github.ref == 'refs/heads/main'
     
     steps:
-    - name: Login to Azure
+    - name: Log in to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Deploy to production
       run: |
-        az containerapp update \
-          --name ${{ env.CONTAINER_IMAGE_NAME }} \
-          --resource-group ${{ secrets.AZURE_RG }} \
-          --image ${{ needs.build.outputs.image-tag }} \
-          --revision-suffix prod-${{ github.run_number }}
+        # Deploy with traffic splitting (canary deployment)
+        az containerapp revision copy \
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ env.ACR_NAME }}.azurecr.io/weatherapi:${{ needs.build.outputs.image-tag }} \
+          --revision-suffix ${{ github.run_number }}
+        
+        # Split traffic 90/10
+        LATEST_REVISION=$(az containerapp revision list \
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query "[0].name" -o tsv)
+        
+        PREVIOUS_REVISION=$(az containerapp revision list \
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query "[1].name" -o tsv)
+        
+        az containerapp ingress traffic set \
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --revision-weight $LATEST_REVISION=10 $PREVIOUS_REVISION=90
 
     - name: Run smoke tests
       run: |
         APP_URL=$(az containerapp show \
-          --name ${{ env.CONTAINER_IMAGE_NAME }} \
-          --resource-group ${{ secrets.AZURE_RG }} \
-          --query properties.configuration.ingress.fqdn \
-          --output tsv)
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn -o tsv)
         
-        # Wait for deployment
-        sleep 30
-        
-        # Test endpoints
+        # Run basic smoke tests
         curl -f https://$APP_URL/healthz || exit 1
-        curl -f https://$APP_URL/WeatherForecast || exit 1
+        curl -f https://$APP_URL/weatherforecast || exit 1
         
-        echo "✅ Smoke tests passed!"
-        echo "🚀 Application deployed to: https://$APP_URL"
+        echo "Smoke tests passed!"
+
+    - name: Complete deployment
+      if: success()
+      run: |
+        # Route 100% traffic to new revision
+        az containerapp ingress traffic set \
+          --name weatherapi \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --revision-weight latest=100
 ```
 
-### Task 4: Infrastructure as Code with Bicep (5 minutes)
+2. **Configure GitHub environments**:
+   - Go to Settings > Environments
+   - Create "staging" environment
+   - Create "production" environment with:
+     - Required reviewers (add yourself)
+     - Wait timer (optional, e.g., 5 minutes)
 
-Create `infrastructure/main.bicep`:
+### Task 3: Add Build Validation (5 minutes)
 
-```bicep
-@description('The name of the container app')
-param containerAppName string = 'productapi'
+1. **Create PR validation workflow** - `.github/workflows/pr-validation.yml`:
 
-@description('The location for all resources')
-param location string = resourceGroup().location
+```yaml
+name: PR Validation
 
-@description('The container image to deploy')
-param containerImage string
+on:
+  pull_request:
+    branches: [ main, develop ]
 
-@description('The environment name')
-param environmentName string = 'env-containerapp'
+env:
+  DOTNET_VERSION: '8.0.x'
 
-@description('The ACR login server')
-param acrLoginServer string
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --no-restore
+    
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    
+    - name: Check code formatting
+      run: |
+        dotnet format --verify-no-changes --verbosity diagnostic
+    
+    - name: Run security scan
+      run: |
+        dotnet tool install --global security-scan
+        security-scan ./WeatherAPI.csproj || true
+```
 
-@description('The ACR username')
-@secure()
-param acrUsername string
+### Task 4: Add Monitoring and Notifications (5 minutes)
 
-@description('The ACR password')
-@secure()
-param acrPassword string
+1. **Update main workflow with notifications**:
+```yaml
+    # Add this step at the end of each job
+    - name: Send notification
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: |
+          Deployment ${{ job.status }} for ${{ github.sha }}
+          Environment: ${{ github.job }}
+          Author: ${{ github.actor }}
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}  # Optional
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+```
 
-// Log Analytics Workspace
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: '${containerAppName}-logs'
-  location: location
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: 30
-  }
-}
+2. **Add deployment status badge** to README.md:
+```markdown
+# WeatherAPI
 
-// Container Apps Environment
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
-  name: environmentName
-  location: location
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
-      }
-    }
-  }
-}
+[![Build and Deploy](https://github.com/YOUR_USERNAME/weatherapi-azure/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/weatherapi-azure/actions/workflows/deploy.yml)
 
-// Container App
-resource containerApp 'Microsoft.App/containerApps@2022-03-01' = {
-  name: containerAppName
-  location: location
-  properties: {
-    managedEnvironmentId: containerAppEnvironment.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 8080
-        allowInsecure: false
-      }
-      registries: [
-        {
-          server: acrLoginServer
-          username: acrUsername
-          passwordSecretRef: 'acr-password'
-        }
-      ]
-      secrets: [
-        {
-          name: 'acr-password'
-          value: acrPassword
-        }
-      ]
-    }
-    template: {
-      containers: [
-        {
-          name: containerAppName
-          image: containerImage
-          resources: {
-            cpu: json('0.25')
-            memory: '0.5Gi'
-          }
-          env: [
-            {
-              name: 'ASPNETCORE_ENVIRONMENT'
-              value: 'Production'
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 1
-        maxReplicas: 5
-        rules: [
-          {
-            name: 'http-rule'
-            http: {
-              metadata: {
-                concurrentRequests: '10'
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-}
+Azure Container Apps deployment example without Docker Desktop.
+```
 
-// Outputs
-output containerAppFQDN string = containerApp.properties.configuration.ingress.fqdn
-output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+---
+
+## ✅ Verification Steps
+
+1. **Push code to trigger workflow**:
+```bash
+git add .
+git commit -m "Add GitHub Actions workflow"
+git push origin main
+```
+
+2. **Monitor workflow execution**:
+   - Go to Actions tab in GitHub
+   - Watch the workflow progress
+   - Check each step for success
+
+3. **Verify deployment**:
+```bash
+# Get the deployed app URL
+$APP_URL=$(az containerapp show `
+  --name weatherapi `
+  --resource-group $RESOURCE_GROUP `
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+# Test the deployment
+curl https://$APP_URL/healthz
+curl https://$APP_URL/weatherforecast
+```
+
+---
+
+## 🎉 Success Criteria
+
+You've successfully completed this exercise if:
+- ✅ GitHub Actions workflow is created and running
+- ✅ Code builds in Azure Container Registry (no local Docker)
+- ✅ Automated deployment to Container Apps works
+- ✅ Environment-specific deployments are configured
+- ✅ PR validation is in place
+- ✅ Deployment status is visible in GitHub
 ```
 
 Add Bicep deployment to your workflow by replacing the deploy step:
@@ -501,58 +449,13 @@ Mark each item as complete:
 
 ---
 
-## 🔍 Testing Your Pipeline
+## 📚 Key Takeaways
 
-### Test the Workflow
-1. **Push to repository**:
-```bash
-git add .
-git commit -m "Add CI/CD pipeline"
-git push origin main
-```
-
-2. **Monitor GitHub Actions**:
-   - Go to your repository on GitHub
-   - Click on "Actions" tab
-   - Watch the workflow execution
-
-3. **Verify deployment**:
-   - Check that all jobs complete successfully
-   - Visit the application URL from the workflow output
-   - Test the endpoints
-
-### Test Pull Request Workflow
-1. **Create feature branch**:
-```bash
-git checkout -b feature/update-message
-```
-
-2. **Make a change**:
-```csharp
-// In WeatherForecastController.cs, update the Get method
-[HttpGet(Name = "GetWeatherForecast")]
-public IEnumerable<WeatherForecast> Get()
-{
-    return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-    {
-        Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-        TemperatureC = Random.Shared.Next(-20, 55),
-        Summary = Summaries[Random.Shared.Next(Summaries.Length)] + " (Updated via CI/CD)"
-    })
-    .ToArray();
-}
-```
-
-3. **Create pull request**:
-```bash
-git add .
-git commit -m "Update weather forecast message"
-git push origin feature/update-message
-```
-
-4. **Create PR on GitHub and verify**:
-   - Only build and test jobs should run (no deployment)
-   - All tests should pass
+- **No Docker Required**: ACR builds eliminate local Docker needs
+- **Secure Pipelines**: Service principals provide secure access
+- **Environment Management**: Separate staging and production deployments
+- **Cost Control**: Scale to zero for non-production environments
+- **Automated Testing**: Integrate tests into the pipeline
 
 ---
 
@@ -576,43 +479,20 @@ After completing this exercise, you should have:
 
 ---
 
-## 🔧 Common Issues and Solutions
+## 🧹 Cleanup Actions
 
-### Issue 1: Service Principal Authentication Fails
+To clean up GitHub Actions resources:
 ```bash
-# Verify service principal has correct permissions
-az role assignment list --assignee <service-principal-id>
+# Remove service principal (optional)
+az ad sp delete --id $(az ad sp list --display-name "GitHub-Actions-WeatherAPI" --query [0].id -o tsv)
 
-# Ensure GitHub secrets are correct
-# Check AZURE_CREDENTIALS format matches az ad sp create-for-rbac --sdk-auth output
+# Remove GitHub secrets manually through UI
 ```
 
-### Issue 2: Container Registry Access Denied
-```bash
-# Verify ACR admin is enabled
-az acr update --name $ACR_NAME --admin-enabled true
+---
 
-# Check ACR credentials in GitHub secrets
-az acr credential show --name $ACR_NAME
-```
-
-### Issue 3: Tests Fail in Pipeline
-```bash
-# Run tests locally first
-dotnet test --verbosity normal
-
-# Check test project references
-dotnet list reference
-```
-
-### Issue 4: Deployment Fails
-```bash
-# Check container app exists
-az containerapp show --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP
-
-# Verify image exists in ACR
-az acr repository show-tags --name $ACR_NAME --repository productapi
-```
+## Next Steps
+Proceed to [Exercise 4: Advanced Configuration and Monitoring](Exercise04-Advanced-Configuration.md)
 
 ---
 
