@@ -1048,7 +1048,7 @@ public static class LoggingExtensions
     /// <summary>
     /// Logs method entry with parameters
     /// </summary>
-    public static IDisposable BeginMethodScope(this ILogger logger, string methodName, params object[] parameters)
+    public static IDisposable BeginMethodScope(this Serilog.ILogger logger, string methodName, params object[] parameters)
     {
         logger.Information("Entering {MethodName} with parameters {@Parameters}", methodName, parameters);
         var stopwatch = Stopwatch.StartNew();
@@ -1067,11 +1067,11 @@ public static class LoggingExtensions
 
     private class MethodScope : IDisposable
     {
-        private readonly ILogger _logger;
+        private readonly Serilog.ILogger _logger;
         private readonly string _methodName;
         private readonly Stopwatch _stopwatch;
 
-        public MethodScope(ILogger logger, string methodName, Stopwatch stopwatch)
+        public MethodScope(Serilog.ILogger logger, string methodName, Stopwatch stopwatch)
         {
             _logger = logger;
             _methodName = methodName;
@@ -1092,7 +1092,7 @@ public static class LoggingExtensions
 /// </summary>
 public static class LogHelper
 {
-    public static void LogPerformanceWarning(this ILogger logger, string operation, long elapsedMs, long thresholdMs = 1000)
+    public static void LogPerformanceWarning(this Serilog.ILogger logger, string operation, long elapsedMs, long thresholdMs = 1000)
     {
         if (elapsedMs > thresholdMs)
         {
@@ -1101,12 +1101,12 @@ public static class LogHelper
         }
     }
 
-    public static void LogBusinessEvent(this ILogger logger, string eventName, object data)
+    public static void LogBusinessEvent(this Serilog.ILogger logger, string eventName, object data)
     {
         logger.Information("Business event: {EventName} with data {@EventData}", eventName, data);
     }
 
-    public static void LogSecurityEvent(this ILogger logger, string action, string username, bool success)
+    public static void LogSecurityEvent(this Serilog.ILogger logger, string action, string username, bool success)
     {
         if (success)
         {
@@ -1132,7 +1132,7 @@ namespace DebuggingDemo.Middleware;
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger _logger = Log.ForContext<RequestLoggingMiddleware>();
+    private readonly Serilog.ILogger _logger = Log.ForContext<RequestLoggingMiddleware>();
 
     public RequestLoggingMiddleware(RequestDelegate next)
     {
