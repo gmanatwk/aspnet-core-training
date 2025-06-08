@@ -418,6 +418,10 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
         echo -e "${CYAN}Creating solution and projects for testing...${NC}"
 
+        # Create project directory
+        mkdir -p "$PROJECT_NAME"
+        cd "$PROJECT_NAME"
+
         # Create solution
         dotnet new sln -n "$PROJECT_NAME"
 
@@ -451,6 +455,8 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         dotnet add package Microsoft.EntityFrameworkCore.InMemory
 
         cd ..
+    else
+        # We're already in the project directory from the check above
     fi
 
     explain_concept "Test-Driven Development Models" \

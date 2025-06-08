@@ -370,6 +370,10 @@ Unit testing is the foundation of a robust testing strategy:
         if (-not $SkipProjectCreation) {
             Write-Host "[CREATE] Creating solution and projects for testing..." -ForegroundColor Cyan
 
+            # Create project directory
+            New-Item -ItemType Directory -Name $ProjectName -Force
+            Set-Location $ProjectName
+
             # Create solution
             dotnet new sln -n $ProjectName
 
@@ -404,6 +408,8 @@ Unit testing is the foundation of a robust testing strategy:
             dotnet add package Microsoft.EntityFrameworkCore.InMemory
 
             Set-Location ".."
+        } else {
+            # We're already in the project directory from the check above
         }
 
         Show-Concept -ConceptName "Test-Driven Development Models" -Explanation @"
@@ -821,6 +827,7 @@ Integration testing verifies that different parts of your application work toget
         if (-not $SkipProjectCreation) {
             Write-Host "[ERROR] Exercise 2 requires Exercise 1 to be completed first!" -ForegroundColor Red
             Write-Host "[INFO] Please run: .\launch-exercises.ps1 exercise01" -ForegroundColor Yellow
+            Write-Host "[DEBUG] Looking for project directory: $ProjectName" -ForegroundColor Yellow
             exit 1
         }
 
