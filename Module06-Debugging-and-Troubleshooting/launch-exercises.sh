@@ -1331,11 +1331,13 @@ namespace DebuggingDemo.Controllers;
 public class LoggingTestController : ControllerBase
 {
     private readonly ILogger<LoggingTestController> _logger;
+    private readonly Serilog.ILogger _serilogLogger;
     private readonly IDiagnosticContext _diagnosticContext;
 
     public LoggingTestController(ILogger<LoggingTestController> logger, IDiagnosticContext diagnosticContext)
     {
         _logger = logger;
+        _serilogLogger = Log.ForContext<LoggingTestController>();
         _diagnosticContext = diagnosticContext;
     }
 
@@ -1389,7 +1391,7 @@ public class LoggingTestController : ControllerBase
     [HttpGet("test-performance")]
     public async Task<IActionResult> TestPerformanceLogging()
     {
-        using (var scope = _logger.BeginMethodScope(nameof(TestPerformanceLogging)))
+        using (var scope = _serilogLogger.BeginMethodScope(nameof(TestPerformanceLogging)))
         {
             _logger.LogInformation("Starting performance test");
 
@@ -1402,7 +1404,7 @@ public class LoggingTestController : ControllerBase
 
             // Log a performance warning if slow
             var totalTime = 1300;
-            _logger.LogPerformanceWarning("TestPerformanceLogging", totalTime);
+            _serilogLogger.LogPerformanceWarning("TestPerformanceLogging", totalTime);
 
             return Ok(new { Message = "Performance test completed", ElapsedMs = totalTime });
         }
@@ -1438,7 +1440,7 @@ public class LoggingTestController : ControllerBase
     public IActionResult TestBusinessEventLogging([FromBody] Order order)
     {
         // Log business event
-        _logger.LogBusinessEvent("OrderCreated", new
+        _serilogLogger.LogBusinessEvent("OrderCreated", new
         {
             OrderId = order.Id,
             UserId = order.UserId,
@@ -1466,7 +1468,7 @@ public class LoggingTestController : ControllerBase
         // Simulate authentication
         var success = request.Username == "admin";
 
-        _logger.LogSecurityEvent("Login", request.Username, success);
+        _serilogLogger.LogSecurityEvent("Login", request.Username, success);
 
         if (!success)
         {
