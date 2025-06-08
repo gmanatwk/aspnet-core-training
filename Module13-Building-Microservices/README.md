@@ -1,31 +1,30 @@
-# Module 13: Building Microservices
+# Module 13: Building Microservices with Azure
 
 ## 🎯 Learning Objectives
 
 By the end of this module, you will be able to:
 
-- ✅ **Understand Microservices Architecture**: Grasp the fundamentals of microservices design patterns and principles
-- ✅ **Design Service Boundaries**: Identify and define proper service boundaries using Domain-Driven Design (DDD)
-- ✅ **Implement Inter-Service Communication**: Build synchronous and asynchronous communication between services
-- ✅ **Handle Distributed Data Management**: Implement data consistency patterns and manage distributed transactions
-- ✅ **Deploy Microservices**: Use containers and orchestration for microservices deployment
-- ✅ **Monitor and Debug**: Implement distributed tracing, logging, and monitoring for microservices
-- ✅ **Implement Resilience Patterns**: Build fault-tolerant services with retry, circuit breaker, and bulkhead patterns
+- ✅ **Understand Microservices Architecture**: Learn what microservices are and when to use them
+- ✅ **Build Cloud-Native Services**: Create services designed for Azure Container Apps
+- ✅ **Deploy to Azure Container Apps**: Deploy microservices without managing infrastructure
+- ✅ **Implement Service Communication**: Use Azure Service Bus for messaging
+- ✅ **Leverage Azure Services**: Use Azure SQL, Key Vault, and Application Insights
 
 ## 📚 Module Overview
 
 **Duration**: 3 hours  
-**Difficulty**: Advanced  
+**Difficulty**: Intermediate  
 **Prerequisites**: 
-- Completion of Modules 1-12
-- Understanding of ASP.NET Core Web APIs
-- Basic knowledge of containers and Docker
-- Familiarity with distributed systems concepts
+- Completion of Module 3 (Web APIs)
+- Azure subscription (free tier is sufficient)
+- Azure CLI installed
+- Basic understanding of cloud concepts
 
-**Deployment Flexibility**: This module provides multiple deployment options:
-- ☁️ **Cloud-Specific**: Azure AKS with Terraform for Azure users
-- 🐳 **Cloud-Agnostic**: Docker Swarm for any infrastructure
-- ☸️ **Multi-Cloud**: Generic Kubernetes for any K8s cluster (EKS, GKE, AKS, on-premises)
+**Azure-First Approach**: 
+1. Understand microservices in the cloud context
+2. Build services designed for Azure
+3. Deploy directly to Azure Container Apps
+4. Use Azure services for communication and data
 
 ## 🏗️ What Are Microservices?
 
@@ -79,59 +78,54 @@ Microservices architecture is a design approach where applications are built as 
 
 ## 🏋️ Hands-on Exercises
 
-### **Exercise 1: Service Decomposition**
-- Analyze a monolithic e-commerce application
-- Identify service boundaries using DDD
-- Design the microservices architecture
+### **Exercise 1: Azure Setup and Microservices Overview** (30 min)
+- Set up Azure Resource Group
+- Create Azure Container Registry
+- Understand Azure Container Apps architecture
+- Plan your microservices deployment
 
-### **Exercise 2: Building Core Services**
-- Create Product Catalog service
-- Build Order Management service
-- Implement User Management service
-- Set up an API Gateway
+### **Exercise 2: Building Azure-Ready Services** (45 min)
+- Create Product Service with Azure SQL
+- Create Order Service with Azure integration
+- Configure for Azure deployment
+- Use Azure Key Vault for secrets
 
-### **Exercise 3: Communication Patterns**
-- Implement synchronous communication between services
-- Add asynchronous messaging with RabbitMQ
-- Handle distributed data consistency
+### **Exercise 3: Deploy to Azure Container Apps** (45 min)
+- Push images to Azure Container Registry
+- Deploy services to Container Apps
+- Configure environment variables and scaling
+- Set up Application Insights monitoring
 
-### **Exercise 4: Production-Ready Deployment**
-- Containerize all services with Docker
-- Deploy using Docker Compose
-- Add monitoring with Application Insights
-- Implement circuit breaker patterns
+### **Exercise 4: Service Communication with Azure** (30 min)
+- Implement Azure Service Bus for messaging
+- Configure service discovery in Container Apps
+- Handle failures with Azure's built-in features
 
-### **Exercise 5: Cloud Deployment Options**
-- **Option A**: Azure AKS deployment with Terraform (Azure-specific)
-- **Option B**: Docker Swarm deployment (Cloud-agnostic)
-- **Option C**: Generic Kubernetes deployment (Multi-cloud)
-- Production-grade monitoring and scaling
-- Choose the best option for your infrastructure
+### **Exercise 5: Production Features** (30 min)
+- Configure auto-scaling
+- Set up Azure Front Door
+- Implement health checks
+- Review costs and optimization
 
 ## 🛠️ Technologies Used
 
 ### **Core Technologies:**
 - ASP.NET Core 8.0 (Web APIs)
 - Entity Framework Core (Data Access)
-- Docker (Containerization)
-- RabbitMQ (Message Broker)
+- Azure Container Apps (Serverless containers)
+- Azure SQL Database (Managed database)
 
-### **Communication:**
-- HTTP/REST APIs
-- gRPC for high-performance communication
-- Message queues for async communication
+### **Azure Services:**
+- Azure Container Registry (Image storage)
+- Azure Service Bus (Messaging)
+- Azure Key Vault (Secrets management)
+- Application Insights (Monitoring)
+- Azure Front Door (Global load balancing)
 
-### **Infrastructure:**
-- API Gateway (Ocelot or YARP)
-- Service Discovery (Consul or built-in)
-- Distributed Caching (Redis)
-- Database per service pattern
-
-### **Monitoring & Observability:**
-- Application Insights
-- Serilog for structured logging
-- Health checks
-- Distributed tracing
+### **Development Tools:**
+- Visual Studio / VS Code
+- Azure CLI
+- Azure Portal
 
 ## 📁 Project Structure
 
@@ -139,58 +133,51 @@ Microservices architecture is a design approach where applications are built as 
 Module13-Building-Microservices/
 ├── README.md (this file)
 ├── Exercises/
-│   ├── Exercise01-Service-Decomposition.md
-│   ├── Exercise02-Building-Core-Services.md
-│   ├── Exercise03-Communication-Patterns.md
-│   ├── Exercise04-Production-Deployment.md
-│   └── Exercise05-Azure-Terraform-Deployment.md
+│   ├── Exercise01-Azure-Setup.md
+│   ├── Exercise02-Building-Azure-Services.md
+│   ├── Exercise03-Deploy-Container-Apps.md
+│   ├── Exercise04-Azure-Communication.md
+│   └── Exercise05-Production-Features.md
 ├── Resources/
-│   ├── microservices-design-patterns.md
-│   ├── service-discovery-guide.md
-│   ├── messaging-patterns.md
-│   ├── monitoring-best-practices.md
-│   └── deployment-strategies.md
+│   ├── azure-container-apps-guide.md
+│   ├── azure-services-overview.md
+│   ├── cost-optimization.md
+│   └── monitoring-guide.md
 ├── SourceCode/
-│   └── ECommerceMS/ (Complete microservices solution)
-│       ├── docker-compose.yml
-│       ├── ApiGateway/
-│       ├── ProductCatalog.Service/
-│       ├── OrderManagement.Service/
-│       ├── UserManagement.Service/
-│       ├── Notification.Service/
-│       └── SharedLibraries/
-├── terraform/ (Azure-specific IaC)
-│   ├── main.tf
-│   ├── kubernetes.tf
-│   ├── variables.tf
-│   ├── deploy.sh
-│   └── README.md
-├── kubernetes/ (Azure-optimized K8s)
-│   └── base/
-│       └── kustomization.yaml
-├── kubernetes-generic/ (Multi-cloud K8s)
-│   ├── kustomization.yaml
-│   ├── infrastructure/
-│   ├── services/
-│   ├── monitoring/
-│   └── README.md
-├── docker-compose-production.yml
-└── deploy-docker-swarm.sh
+│   └── AzureECommerce/
+│       ├── ProductService/
+│       ├── OrderService/
+│       ├── deploy-scripts/
+│       └── README.md
+└── Templates/
+    ├── azure-deploy.sh
+    ├── container-app-config.yaml
+    └── bicep-templates/
 ```
 
 ## 🎯 Real-World Scenario
 
-**E-Commerce Microservices Platform**
+**Cloud-Native E-Commerce on Azure**
 
-We'll build a realistic e-commerce platform consisting of:
+We'll build a cloud-native e-commerce system using Azure services:
 
-1. **Product Catalog Service**: Manages product information, categories, and inventory
-2. **Order Management Service**: Handles order processing, payments, and fulfillment
-3. **User Management Service**: Manages user accounts, authentication, and profiles
-4. **Notification Service**: Sends emails, SMS, and push notifications
-5. **API Gateway**: Single entry point for client applications
+1. **Product Service**: 
+   - Deployed to Azure Container Apps
+   - Uses Azure SQL Database
+   - Integrates with Application Insights
+   - Auto-scales based on demand
 
-Each service will demonstrate different microservices patterns and challenges.
+2. **Order Service**: 
+   - Deployed to Azure Container Apps
+   - Communicates via Azure Service Bus
+   - Uses Azure Key Vault for secrets
+   - Implements resilience with Container Apps features
+
+3. **Azure Infrastructure**:
+   - Azure Front Door for global distribution
+   - Azure Monitor for observability
+   - Managed identities for security
+   - Built-in load balancing and scaling
 
 ## 🔧 Development Environment Setup
 
@@ -199,54 +186,78 @@ Each service will demonstrate different microservices patterns and challenges.
 # .NET 8.0 SDK
 dotnet --version # Should be 8.0+
 
-# Docker Desktop
-docker --version # For containerization
+# Azure CLI
+az --version # Should be 2.50+
 
-# Optional: Visual Studio 2022 or VS Code
+# Visual Studio 2022 or VS Code with Azure extensions
 ```
 
-### Getting Started:
-1. Navigate to the SourceCode folder
-2. Follow the setup instructions in each service
-3. Use Docker Compose to run the complete system
+### Azure Setup:
+1. **Create a free Azure account** if you don't have one
+2. **Install Azure tools**:
+   ```bash
+   # Windows (PowerShell)
+   Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi
+   Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'
+   
+   # macOS
+   brew install azure-cli
+   
+   # Linux
+   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+   ```
+
+3. **Configure Visual Studio for Azure**:
+   - Install Azure Development workload
+   - Sign in with your Azure account
 
 ## 📚 Key Learning Concepts
 
-### **Microservices Patterns:**
-- **Decomposition Patterns**: Database per service, Business capability
-- **Data Management**: Saga, Event sourcing, CQRS
-- **Communication Patterns**: API Gateway, Service mesh
-- **Reliability Patterns**: Circuit breaker, Bulkhead, Timeout
-- **Security Patterns**: Access token, Service-to-service security
+### **Azure Container Apps Features:**
+- **Automatic Scaling**: Scale to zero, scale based on HTTP traffic or queue length
+- **Revision Management**: Deploy new versions with traffic splitting
+- **Ingress Control**: Built-in load balancing and HTTPS
+- **Dapr Integration**: Simplified microservices building blocks
+- **Managed Identities**: Secure access to Azure services
 
-### **Best Practices:**
-- Service should be small enough to be maintained by a small team
-- Each service should have a single responsibility
-- Services should be loosely coupled and highly cohesive
-- Design for failure - expect services to fail
-- Automate everything - testing, deployment, monitoring
+### **Azure Best Practices:**
+- Use managed services to reduce operational overhead
+- Implement proper tagging for cost management
+- Use Azure Key Vault for all secrets
+- Enable Application Insights from day one
+- Design with Azure Well-Architected Framework in mind
 
 ## 🚀 Quick Start
 
-To get started immediately:
+### Prerequisites Check:
+```bash
+# Check Azure CLI
+az --version
 
-1. **Explore the exercises** to understand the concepts:
+# Login to Azure
+az login
+
+# Set your subscription
+az account set --subscription "YOUR_SUBSCRIPTION_ID"
+```
+
+### Quick Deploy:
+1. **Run the setup script**:
    ```bash
-   cd Exercises/
-   cat Exercise01-Service-Decomposition.md
+   cd Module13-Building-Microservices
+   ./setup-azure-resources.sh
    ```
 
-2. **Run the complete example**:
+2. **Deploy your first service**:
    ```bash
-   cd SourceCode/ECommerceMS/
-   docker-compose up -d
+   cd SourceCode/AzureECommerce
+   ./deploy-to-azure.sh
    ```
 
-3. **Access the services**:
-   - API Gateway: http://localhost:5000
-   - Product Service: http://localhost:5001
-   - Order Service: http://localhost:5002
-   - User Service: http://localhost:5003
+3. **Access your services**:
+   - Azure Portal: View your Container Apps
+   - Get URLs from deployment output
+   - Test with provided Postman collection
 
 ## 🎓 Assessment Criteria
 
@@ -270,12 +281,11 @@ To get started immediately:
 
 ## 💡 Pro Tips
 
-1. **Start Small**: Begin with a few services and grow gradually
-2. **Data First**: Design your data model and service boundaries carefully
-3. **Monitoring is Critical**: Implement comprehensive observability from day one
-4. **Embrace Failure**: Design services to handle failures gracefully
-5. **Team Conway's Law**: Organize teams around service boundaries
-6. **Version Everything**: API versioning is crucial for independent deployments
+1. **Use Azure's Managed Services**: Don't reinvent the wheel
+2. **Start with Container Apps**: Simpler than AKS for most scenarios
+3. **Monitor Costs**: Use cost analysis and set up alerts
+4. **Leverage Built-in Features**: Auto-scaling, health checks, and managed identities
+5. **Design for the Cloud**: Think serverless and event-driven
 
 ## 🔗 Additional Resources
 
