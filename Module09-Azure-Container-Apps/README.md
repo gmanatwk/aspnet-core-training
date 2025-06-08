@@ -1,20 +1,20 @@
-# Module 9: Azure Container Apps
+# Module 9: Deploying to Azure Container Apps (No Docker Required)
 
 ## 🎯 Learning Objectives
 By the end of this module, you will be able to:
-- Understand Azure Container Apps architecture and benefits
-- Containerize ASP.NET Core applications using Docker
-- Deploy applications to Azure Container Apps using multiple methods
-- Configure scaling, networking, and security for containerized applications
-- Implement CI/CD pipelines for automated container deployments
-- Monitor and troubleshoot applications running in Azure Container Apps
-- Manage environment variables, secrets, and configuration
+- Understand Azure Container Apps as a serverless platform
+- Deploy ASP.NET Core applications directly to Azure without Docker
+- Use Azure Container Registry build tasks to create containers in the cloud
+- Configure scaling, networking, and security for your applications
+- Implement CI/CD pipelines with GitHub Actions
+- Monitor applications using Application Insights
+- Manage environment variables and secrets with Azure Key Vault
 - Set up custom domains and SSL certificates
-- Implement blue-green and canary deployments
-- Integrate with Azure services like Azure SQL, Key Vault, and Application Insights
+- Implement deployment strategies without local containers
+- Integrate with Azure services seamlessly
 
 ## 📚 Module Overview
-This module covers containerization and deployment of ASP.NET Core applications using Azure Container Apps. You'll learn how to package your applications as containers, deploy them to Azure's serverless container platform, and manage them in production.
+This module covers deployment of ASP.NET Core applications to Azure Container Apps without requiring Docker Desktop or local containerization. You'll learn how to use Azure's build services to create containers in the cloud, deploy them to the serverless platform, and manage them in production.
 
 ## 🕒 Estimated Duration: 2 hours
 
@@ -29,12 +29,12 @@ This module covers containerization and deployment of ASP.NET Core applications 
 - Pricing and scaling models
 - When to use Azure Container Apps
 
-### 2. Containerizing ASP.NET Core Applications
-- Docker fundamentals for .NET developers
-- Creating Dockerfile for ASP.NET Core
-- Multi-stage Docker builds
-- Optimizing container images
-- Best practices for .NET containers
+### 2. Cloud-Native ASP.NET Core Applications
+- Preparing applications for Azure deployment
+- Understanding container concepts without Docker
+- Azure Container Registry build tasks
+- Cloud-based image building
+- Best practices for cloud-native .NET apps
 
 ### 3. Deployment Strategies
 - Azure CLI deployment
@@ -75,29 +75,32 @@ This module covers containerization and deployment of ASP.NET Core applications 
 
 ## 🛠️ Prerequisites
 - Completion of Modules 1-8
-- Basic understanding of containerization concepts
 - Azure subscription (free tier is sufficient)
-- Docker Desktop installed
-- Azure CLI installed
-- Visual Studio Code with Docker extension
+- Azure CLI installed (version 2.50+)
+- Visual Studio or Visual Studio Code
+- .NET 8 SDK
+- Git for version control
 
 ## 📦 Required Tools and Extensions
 ```bash
 # Azure CLI
 az --version
 
-# Docker Desktop
-docker --version
+# .NET SDK
+dotnet --version
+
+# Git
+git --version
 
 # GitHub CLI (optional)
 gh --version
 ```
 
 ### VS Code Extensions
-- Docker
 - Azure Account
 - Azure Container Apps
 - Azure Resources
+- C# Dev Kit
 
 ---
 
@@ -166,10 +169,10 @@ Module09-Azure-Container-Apps/
 
 ## 🎯 Learning Path
 
-### Phase 1: Container Fundamentals (30 minutes)
-1. **Docker Basics** - Understanding containerization concepts
-2. **Dockerfile Creation** - Building your first container image
-3. **Local Testing** - Running containers locally
+### Phase 1: Azure Container Apps Fundamentals (30 minutes)
+1. **Container Concepts** - Understanding containers without Docker
+2. **Azure Setup** - Creating necessary Azure resources
+3. **Cloud Builds** - Using Azure to build container images
 
 ### Phase 2: Azure Container Apps Setup (30 minutes)
 1. **Azure Resources** - Creating container app environments
@@ -190,15 +193,15 @@ Module09-Azure-Container-Apps/
 
 ## 📋 Hands-On Exercises
 
-### Exercise 1: Basic Containerization (30 minutes)
-**Objective**: Containerize an ASP.NET Core application and run it locally
+### Exercise 1: Preparing for Azure Deployment (30 minutes)
+**Objective**: Prepare an ASP.NET Core application for Azure Container Apps
 
 **Tasks**:
-- Create a Dockerfile for an existing ASP.NET Core API
-- Build the container image with optimizations
-- Run the container locally and test functionality
-- Implement health checks and graceful shutdown
-- Optimize image size using multi-stage builds
+- Create a cloud-ready ASP.NET Core API
+- Configure for Azure deployment settings
+- Set up Azure Container Registry
+- Use ACR build tasks to create images
+- Configure health checks for Azure
 
 **Key Learning Points**:
 - Dockerfile best practices for .NET applications
@@ -270,37 +273,34 @@ Module09-Azure-Container-Apps/
 
 ## 📝 Quick Reference Code Examples
 
-### Basic Dockerfile
+### Dockerfile (Created by Azure)
 ```dockerfile
-# Multi-stage build for ASP.NET Core
+# Azure Container Registry will generate this for you
+# You don't need to create or manage Dockerfiles locally
+# ACR Tasks automatically detect .NET projects and create optimal images
+
+# Example of what ACR creates:
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy project files and restore dependencies
-COPY ["MyApi/MyApi.csproj", "MyApi/"]
-RUN dotnet restore "MyApi/MyApi.csproj"
-
-# Copy source code and build
 COPY . .
-WORKDIR "/src/MyApi"
-RUN dotnet build "MyApi.csproj" -c Release -o /app/build
+RUN dotnet publish -c Release -o /app
 
-# Publish the application
-FROM build AS publish
-RUN dotnet publish "MyApi.csproj" -c Release -o /app/publish
-
-# Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-EXPOSE 8080
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "MyApi.dll"]
+COPY --from=build /app .
+EXPOINT ["dotnet", "YourApp.dll"]
 ```
 
-### Azure CLI Deployment
+### Azure CLI Deployment (No Docker Required)
 ```bash
 # Create resource group
 az group create --name myResourceGroup --location eastus
+
+# Create Azure Container Registry
+az acr create --name myregistry --resource-group myResourceGroup --sku Basic
+
+# Build image in Azure (no local Docker needed!)
+az acr build --registry myregistry --image myapi:v1 .
 
 # Create container app environment
 az containerapp env create \
@@ -308,13 +308,14 @@ az containerapp env create \
   --resource-group myResourceGroup \
   --location eastus
 
-# Deploy container app
+# Deploy container app from ACR
 az containerapp create \
   --name myapi \
   --resource-group myResourceGroup \
   --environment myEnvironment \
-  --image myregistry.azurecr.io/myapi:latest \
-  --target-port 8080 \
+  --image myregistry.azurecr.io/myapi:v1 \
+  --registry-server myregistry.azurecr.io \
+  --target-port 80 \
   --ingress external \
   --cpu 0.25 \
   --memory 0.5Gi

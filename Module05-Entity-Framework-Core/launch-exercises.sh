@@ -411,6 +411,9 @@ builder.Services.AddDbContext<BookStoreContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Register services for Exercise 2 (BookQueryService will be added in Exercise 2)
+// builder.Services.AddScoped<EFCoreDemo.Services.BookQueryService>();
+
 // Add CORS for development
 builder.Services.AddCors(options =>
 {
@@ -1498,6 +1501,124 @@ public class BookQueryService
 }' \
 "BookQueryService with advanced LINQ query implementations"
 
+    # Create QueryTestController to expose LINQ queries as API endpoints
+    create_file_interactive "Controllers/QueryTestController.cs" \
+'using EFCoreDemo.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace EFCoreDemo.Controllers;
+
+/// <summary>
+/// Query Test Controller from Exercise 02 - Advanced LINQ Queries
+/// Demonstrates all required query methods from the exercise
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class QueryTestController : ControllerBase
+{
+    private readonly BookQueryService _queryService;
+    private readonly ILogger<QueryTestController> _logger;
+
+    public QueryTestController(BookQueryService queryService, ILogger<QueryTestController> logger)
+    {
+        _queryService = queryService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get books with publishers - Basic Query #1
+    /// </summary>
+    [HttpGet("books-with-publishers")]
+    public async Task<IActionResult> GetBooksWithPublishers()
+    {
+        try
+        {
+            var result = await _queryService.GetBooksWithPublishersAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting books with publishers");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get books by author - Basic Query #2
+    /// </summary>
+    [HttpGet("books-by-author/{authorId}")]
+    public async Task<IActionResult> GetBooksByAuthor(int authorId)
+    {
+        try
+        {
+            var result = await _queryService.GetBooksByAuthorAsync(authorId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting books by author {AuthorId}", authorId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get authors with book count - Basic Query #3
+    /// </summary>
+    [HttpGet("authors-with-book-count")]
+    public async Task<IActionResult> GetAuthorsWithBookCount()
+    {
+        try
+        {
+            var result = await _queryService.GetAuthorsWithBookCountAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting authors with book count");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Search books across multiple fields - Advanced Query #5 (Search)
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchBooks([FromQuery] string term)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return BadRequest("Search term is required");
+            }
+
+            var result = await _queryService.SearchBooksAsync(term);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching books with term: {Term}", term);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+}' \
+"QueryTestController to expose BookQueryService methods as API endpoints"
+
+    # Update Program.cs to register BookQueryService
+    echo -e "${CYAN}Updating Program.cs to register BookQueryService...${NC}"
+    if [ -f "Program.cs" ]; then
+        # Uncomment the BookQueryService registration using a more robust approach
+        sed -i.bak 's|^// builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>();|builder.Services.AddScoped<EFCoreDemo.Services.BookQueryService>();|g' Program.cs
+        # Verify the change was made
+        if grep -q "^builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>();" Program.cs; then
+            echo -e "${GREEN}✅ Updated Program.cs with BookQueryService registration${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Manual registration may be needed - check Program.cs${NC}"
+        fi
+    else
+        echo -e "${RED}❌ Program.cs not found - please register BookQueryService manually${NC}"
+    fi
+
     # Create Exercise Guide for Exercise 2
     create_file_interactive "EXERCISE_02_GUIDE.md" \
 '# Exercise 2: Advanced LINQ Queries and Navigation Properties
@@ -1513,12 +1634,8 @@ Master advanced LINQ queries with Entity Framework Core, including joins, naviga
 
 ## 🚀 Getting Started
 
-### Step 1: Register BookQueryService
-Add to Program.cs:
-
-```csharp
-builder.Services.AddScoped<BookQueryService>();
-```
+### Step 1: Service Registration (Automatic)
+The BookQueryService has been automatically registered in Program.cs.
 
 ### Step 2: Create Migration
 ```bash
@@ -1536,7 +1653,11 @@ dotnet ef database update
 ## 🧪 Testing Your Implementation
 1. Run: `dotnet run`
 2. Navigate to: http://localhost:5000/swagger
-3. Test query methods through API endpoints
+3. Test the new QueryTest endpoints:
+   - GET /api/querytest/books-with-publishers
+   - GET /api/querytest/books-by-author/{authorId}
+   - GET /api/querytest/authors-with-book-count
+   - GET /api/querytest/search?term=...
 4. Verify complex relationships are loaded correctly
 
 ## 🎯 Learning Outcomes
@@ -1552,11 +1673,11 @@ After completing this exercise, you should understand:
     echo -e "${GREEN}🎉 Exercise 2 template created successfully!${NC}"
     echo ""
     echo -e "${YELLOW}📋 Next steps:${NC}"
-    echo "1. Register BookQueryService in Program.cs"
+    echo "1. BookQueryService automatically registered ✅"
     echo "2. Run: ${CYAN}dotnet ef migrations add AddAuthorPublisherRelationships${NC}"
     echo "3. Run: ${CYAN}dotnet ef database update${NC}"
     echo "4. Run: ${CYAN}dotnet run${NC}"
-    echo "5. Test advanced LINQ queries through API endpoints"
+    echo "5. Test QueryTest endpoints in Swagger: /api/querytest/books-with-publishers"
     echo "6. Follow the EXERCISE_02_GUIDE.md for implementation steps"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then

@@ -390,6 +390,9 @@ builder.Services.AddDbContext<BookStoreContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Register services for Exercise 2 (BookQueryService will be added in Exercise 2)
+// builder.Services.AddScoped<EFCoreDemo.Services.BookQueryService>();
+
 // Add CORS for development
 builder.Services.AddCors(options =>
 {
@@ -1319,19 +1322,168 @@ public class BookQueryService
             .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<object>> GetAuthorsWithBookCountAsync()
+    {
+        return await _context.Authors
+            .Select(a => new
+            {
+                Id = a.Id,
+                Name = $"{a.FirstName} {a.LastName}",
+                BookCount = a.BookAuthors.Count()
+            })
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+            .ThenInclude(ba => ba.Author)
+            .Where(b => b.Title.Contains(searchTerm) ||
+                       b.Author.Contains(searchTerm) ||
+                       b.ISBN.Contains(searchTerm) ||
+                       (b.Publisher != null && b.Publisher.Name.Contains(searchTerm)))
+            .ToListAsync();
+    }
 }
 '@
 
     New-FileInteractive -FilePath "Services\BookQueryService.cs" -Content $BookQueryServiceContent -Description "BookQueryService with advanced LINQ query implementations"
 
+    # Create QueryTestController to expose LINQ queries as API endpoints
+    $QueryTestControllerContent = @'
+using EFCoreDemo.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace EFCoreDemo.Controllers;
+
+/// <summary>
+/// Query Test Controller from Exercise 02 - Advanced LINQ Queries
+/// Demonstrates all required query methods from the exercise
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class QueryTestController : ControllerBase
+{
+    private readonly BookQueryService _queryService;
+    private readonly ILogger<QueryTestController> _logger;
+
+    public QueryTestController(BookQueryService queryService, ILogger<QueryTestController> logger)
+    {
+        _queryService = queryService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get books with publishers - Basic Query #1
+    /// </summary>
+    [HttpGet("books-with-publishers")]
+    public async Task<IActionResult> GetBooksWithPublishers()
+    {
+        try
+        {
+            var result = await _queryService.GetBooksWithPublisherAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting books with publishers");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get books by author - Basic Query #2
+    /// </summary>
+    [HttpGet("books-by-author/{authorId}")]
+    public async Task<IActionResult> GetBooksByAuthor(int authorId)
+    {
+        try
+        {
+            var result = await _queryService.GetBooksByAuthorAsync(authorId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting books by author {AuthorId}", authorId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get authors with book count - Basic Query #3
+    /// </summary>
+    [HttpGet("authors-with-book-count")]
+    public async Task<IActionResult> GetAuthorsWithBookCount()
+    {
+        try
+        {
+            var result = await _queryService.GetAuthorsWithBookCountAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting authors with book count");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Search books across multiple fields - Advanced Query #5 (Search)
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchBooks([FromQuery] string term)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace($term))
+            {
+                return BadRequest("Search term is required");
+            }
+
+            var result = await _queryService.SearchBooksAsync($term);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching books with term: {Term}", $term);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Controllers\QueryTestController.cs" -Content $QueryTestControllerContent -Description "QueryTestController to expose BookQueryService methods as API endpoints"
+
+    # Update Program.cs to register BookQueryService
+    Write-Host "Updating Program.cs to register BookQueryService..." -ForegroundColor Cyan
+    if (Test-Path -Path "Program.cs") {
+        # Uncomment the BookQueryService registration using PowerShell
+        $ProgramContent = Get-Content -Path "Program.cs" -Raw
+        $UpdatedContent = $ProgramContent -replace '// builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>\(\);', 'builder.Services.AddScoped<EFCoreDemo.Services.BookQueryService>();'
+        $UpdatedContent | Out-File -FilePath "Program.cs" -Encoding UTF8
+
+        # Verify the change was made
+        if (Select-String -Path "Program.cs" -Pattern "^builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>\(\);" -Quiet) {
+            Write-Host "✅ Updated Program.cs with BookQueryService registration" -ForegroundColor Green
+        } else {
+            Write-Host "⚠️  Manual registration may be needed - check Program.cs" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "❌ Program.cs not found - please register BookQueryService manually" -ForegroundColor Red
+    }
+
     Write-Host "🎉 Exercise 2 template created successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
-    Write-Host "1. Register BookQueryService in Program.cs" -ForegroundColor White
+    Write-Host "1. BookQueryService automatically registered ✅" -ForegroundColor White
     Write-Host "2. Run: dotnet ef migrations add AddAuthorPublisherRelationships" -ForegroundColor Cyan
     Write-Host "3. Run: dotnet ef database update" -ForegroundColor Cyan
     Write-Host "4. Run: dotnet run" -ForegroundColor Cyan
-    Write-Host "5. Test advanced LINQ queries through API endpoints" -ForegroundColor White
+    Write-Host "5. Test QueryTest endpoints in Swagger: /api/querytest/books-with-publishers" -ForegroundColor White
+    Write-Host "6. Follow the EXERCISE_02_GUIDE.md for implementation steps" -ForegroundColor White
 
 } elseif ($ExerciseName -eq "exercise03") {
     Write-Host "[TIP] Great choice! Use the SourceCode version for the best experience." -ForegroundColor Cyan
