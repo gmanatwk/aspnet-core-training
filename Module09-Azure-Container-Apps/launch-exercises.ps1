@@ -47,30 +47,30 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($Exercise)
-    
-    Write-Host "🎯 Learning Objectives for $Exercise:" -ForegroundColor Blue
-    
-    switch ($Exercise) {
-        "Exercise 1" {
+    param($ExerciseName)
+
+    Write-Host "🎯 Learning Objectives for $ExerciseName:" -ForegroundColor Blue
+
+    switch ($ExerciseName) {
+        "exercise01" {
             Write-Host "• Understand Docker containerization for ASP.NET Core"
             Write-Host "• Create optimized Dockerfile with multi-stage builds"
             Write-Host "• Implement health checks and graceful shutdown"
             Write-Host "• Run and test containers locally"
         }
-        "Exercise 2" {
+        "exercise02" {
             Write-Host "• Deploy applications to Azure Container Apps"
             Write-Host "• Configure Azure Container Registry"
             Write-Host "• Set up environment variables and secrets"
             Write-Host "• Configure scaling and ingress"
         }
-        "Exercise 3" {
+        "exercise03" {
             Write-Host "• Implement CI/CD with GitHub Actions"
             Write-Host "• Automate container building and deployment"
             Write-Host "• Configure environment-specific deployments"
             Write-Host "• Set up deployment approvals"
         }
-        "Exercise 4" {
+        "exercise04" {
             Write-Host "• Configure Application Insights monitoring"
             Write-Host "• Set up custom domains and SSL"
             Write-Host "• Implement service-to-service communication"
@@ -156,12 +156,7 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host ""
 
 # Show learning objectives
-switch ($ExerciseName) {
-    "exercise01" { Show-LearningObjectives "Exercise 1" }
-    "exercise02" { Show-LearningObjectives "Exercise 2" }
-    "exercise03" { Show-LearningObjectives "Exercise 3" }
-    "exercise04" { Show-LearningObjectives "Exercise 4" }
-}
+Show-LearningObjectives $ExerciseName
 
 if ($Preview) {
     Write-Info "Preview mode - no files will be created"

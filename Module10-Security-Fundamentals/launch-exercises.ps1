@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($Exercise)
-    
-    Write-Host "🎯 Security Learning Objectives for $Exercise:" -ForegroundColor Blue
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "🎯 Security Learning Objectives for $ExerciseName:" -ForegroundColor Blue
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "Security Headers Implementation:" -ForegroundColor Cyan
             Write-Host "  🛡️  1. Configure comprehensive HTTP security headers"
@@ -123,11 +123,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($Exercise)
-    
-    Write-Host "📋 Security Components for $Exercise:" -ForegroundColor Cyan
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "📋 Security Components for $ExerciseName:" -ForegroundColor Cyan
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "• Security headers middleware"
             Write-Host "• Content Security Policy configuration"
