@@ -483,7 +483,6 @@ Core Microservices Implementation:
         Set-Location "src\SharedLibraries"
         dotnet new classlib -n ECommerceMS.Shared --framework net8.0
         dotnet add ECommerceMS.Shared package Microsoft.Extensions.Logging
-        dotnet add ECommerceMS.Shared package System.ComponentModel.DataAnnotations
         Set-Location "..\..\"
         
         # Add shared library to solution

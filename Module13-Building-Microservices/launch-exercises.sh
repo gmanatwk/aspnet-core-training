@@ -479,7 +479,6 @@ elif [[ $EXERCISE_NAME == "exercise02" ]]; then
     cd src/SharedLibraries
     dotnet new classlib -n ECommerceMS.Shared --framework net8.0
     dotnet add ECommerceMS.Shared package Microsoft.Extensions.Logging
-    dotnet add ECommerceMS.Shared package System.ComponentModel.DataAnnotations
     cd ../..
 
     # Add shared library to solution
