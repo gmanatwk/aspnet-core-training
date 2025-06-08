@@ -1075,6 +1075,39 @@ builder.Services.AddAuthentication(options =>
                 context.Response.Headers.Add("Token-Expired", "true");
             }
             return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            // Override default challenge response for better error messages
+            context.HandleResponse();
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Unauthorized",
+                message = "Authentication required. Please provide a valid JWT token.",
+                statusCode = 401,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+        },
+        OnForbidden = context =>
+        {
+            // Override default forbidden response for better error messages
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource. Required role or policy not met.",
+                statusCode = 403,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
         }
     };
 });
@@ -1734,6 +1767,39 @@ builder.Services.AddAuthentication(options =>
                 context.Response.Headers.Add("Token-Expired", "true");
             }
             return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            // Override default challenge response for better error messages
+            context.HandleResponse();
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Unauthorized",
+                message = "Authentication required. Please provide a valid JWT token.",
+                statusCode = 401,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+        },
+        OnForbidden = context =>
+        {
+            // Override default forbidden response for better error messages
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource. Required role or policy not met.",
+                statusCode = 403,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
         }
     };
 });
@@ -2187,6 +2253,39 @@ builder.Services.AddAuthentication(options =>
                 context.Response.Headers.Add("Token-Expired", "true");
             }
             return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            // Override default challenge response for better error messages
+            context.HandleResponse();
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Unauthorized",
+                message = "Authentication required. Please provide a valid JWT token.",
+                statusCode = 401,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+        },
+        OnForbidden = context =>
+        {
+            // Override default forbidden response for better error messages
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource. Required role or policy not met.",
+                statusCode = 403,
+                timestamp = DateTime.UtcNow
+            };
+
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
         }
     };
 });

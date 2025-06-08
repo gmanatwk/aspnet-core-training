@@ -15,7 +15,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_NAME="ECommerceMS"
+PROJECT_NAME="AzureECommerce"
 INTERACTIVE_MODE=true
 SKIP_PROJECT_CREATION=false
 
@@ -56,69 +56,69 @@ show_learning_objectives() {
     
     case $exercise in
         "exercise01")
-            echo -e "${CYAN}Service Decomposition & Domain-Driven Design:${NC}"
-            echo "  🏗️  1. Analyze monolithic applications for service boundaries"
-            echo "  🏗️  2. Apply Domain-Driven Design (DDD) principles"
-            echo "  🏗️  3. Identify bounded contexts and aggregates"
-            echo "  🏗️  4. Design data consistency strategies"
+            echo -e "${CYAN}Azure Setup and Microservices Overview:${NC}"
+            echo "  ☁️  1. Set up Azure Resource Group and services"
+            echo "  ☁️  2. Create Azure Container Registry"
+            echo "  ☁️  3. Understand Azure Container Apps architecture"
+            echo "  ☁️  4. Plan cloud-native microservices deployment"
             echo ""
-            echo -e "${YELLOW}Microservices concepts:${NC}"
-            echo "  • Service decomposition strategies"
-            echo "  • Bounded context identification"
-            echo "  • Data ownership patterns"
-            echo "  • Saga pattern design"
+            echo -e "${YELLOW}Azure concepts:${NC}"
+            echo "  • Azure Container Apps fundamentals"
+            echo "  • Managed services overview"
+            echo "  • Cost optimization strategies"
+            echo "  • Cloud-native design principles"
             ;;
         "exercise02")
-            echo -e "${CYAN}Building Core Microservices:${NC}"
-            echo "  🏗️  1. Create independent ASP.NET Core services"
-            echo "  🏗️  2. Implement service-specific databases"
-            echo "  🏗️  3. Design RESTful APIs for inter-service communication"
-            echo "  🏗️  4. Set up shared libraries and common patterns"
+            echo -e "${CYAN}Building Azure-Ready Services:${NC}"
+            echo "  ☁️  1. Create cloud-native ASP.NET Core services"
+            echo "  ☁️  2. Configure for Azure SQL Database"
+            echo "  ☁️  3. Integrate Application Insights"
+            echo "  ☁️  4. Prepare for container deployment"
             echo ""
-            echo -e "${YELLOW}Microservices concepts:${NC}"
-            echo "  • Service independence and autonomy"
-            echo "  • Database per service pattern"
-            echo "  • API contract design"
-            echo "  • Shared library management"
+            echo -e "${YELLOW}Azure integration concepts:${NC}"
+            echo "  • Azure SQL Database configuration"
+            echo "  • Application Insights telemetry"
+            echo "  • Environment-based configuration"
+            echo "  • Container-ready applications"
             ;;
         "exercise03")
-            echo -e "${CYAN}Inter-Service Communication Patterns:${NC}"
-            echo "  🏗️  1. Implement synchronous HTTP communication"
-            echo "  🏗️  2. Add asynchronous messaging with RabbitMQ"
-            echo "  🏗️  3. Handle distributed data consistency"
-            echo "  🏗️  4. Implement event-driven architecture"
+            echo -e "${CYAN}Deploy to Azure Container Apps:${NC}"
+            echo "  ☁️  1. Build and push images to Azure Container Registry"
+            echo "  ☁️  2. Deploy services to Container Apps"
+            echo "  ☁️  3. Configure environment variables and secrets"
+            echo "  ☁️  4. Set up Application Insights monitoring"
             echo ""
-            echo -e "${YELLOW}Microservices concepts:${NC}"
-            echo "  • Synchronous vs asynchronous communication"
-            echo "  • Message broker integration"
-            echo "  • Event sourcing patterns"
-            echo "  • Distributed transaction management"
+            echo -e "${YELLOW}Deployment concepts:${NC}"
+            echo "  • Container Apps deployment"
+            echo "  • Environment configuration"
+            echo "  • Service discovery in Container Apps"
+            echo "  • Azure monitoring setup"
             ;;
         "exercise04")
-            echo -e "${CYAN}Production-Ready Deployment:${NC}"
-            echo "  🏗️  1. Containerize microservices with Docker"
-            echo "  🏗️  2. Orchestrate services with Docker Compose"
-            echo "  🏗️  3. Implement monitoring and observability"
-            echo "  🏗️  4. Add resilience patterns (Circuit Breaker, Retry)"
+            echo -e "${CYAN}Azure Service Communication:${NC}"
+            echo "  ☁️  1. Implement Azure Service Bus messaging"
+            echo "  ☁️  2. Configure service-to-service communication"
+            echo "  ☁️  3. Add resilience with Polly"
+            echo "  ☁️  4. Handle failures gracefully"
             echo ""
-            echo -e "${YELLOW}Microservices concepts:${NC}"
-            echo "  • Container orchestration"
-            echo "  • Service discovery and load balancing"
-            echo "  • Distributed tracing and monitoring"
-            echo "  • Fault tolerance and resilience"
+            echo -e "${YELLOW}Communication concepts:${NC}"
+            echo "  • Azure Service Bus integration"
+            echo "  • Resilient HTTP communication"
+            echo "  • Circuit breaker patterns"
+            echo "  • Message-based architecture"
             ;;
         "exercise05")
-            echo -e "${CYAN}Cloud Deployment Options:${NC}"
-            echo "  🏗️  1. Deploy to Azure Kubernetes Service (AKS)"
-            echo "  🏗️  2. Use Terraform for Infrastructure as Code"
-            echo "  🏗️  3. Configure production monitoring and scaling"
-            echo "  🏗️  4. Implement CI/CD pipelines"
+            echo -e "${CYAN}Production Features:${NC}"
+            echo "  ☁️  1. Configure auto-scaling rules"
+            echo "  ☁️  2. Set up Azure Front Door"
+            echo "  ☁️  3. Implement comprehensive health checks"
+            echo "  ☁️  4. Review costs and optimize"
             echo ""
-            echo -e "${YELLOW}Microservices concepts:${NC}"
-            echo "  • Cloud-native deployment strategies"
-            echo "  • Infrastructure as Code (IaC)"
-            echo "  • Auto-scaling and load management"
-            echo "  • Production monitoring and alerting"
+            echo -e "${YELLOW}Production concepts:${NC}"
+            echo "  • Container Apps scaling strategies"
+            echo "  • Global load balancing"
+            echo "  • Cost optimization techniques"
+            echo "  • Production monitoring"
             ;;
     esac
     echo ""
@@ -132,39 +132,39 @@ show_creation_overview() {
     
     case $exercise in
         "exercise01")
-            echo "• Domain analysis templates and worksheets"
-            echo "• Service boundary design documents"
-            echo "• Data consistency strategy guides"
-            echo "• Technology stack decision templates"
-            echo "• Service architecture diagrams"
+            echo "• Azure resource setup script"
+            echo "• Cost estimation documentation"
+            echo "• Azure CLI configuration"
+            echo "• Resource group and services setup"
+            echo "• Container Registry creation"
             ;;
         "exercise02")
-            echo "• Product Catalog microservice"
-            echo "• Order Management microservice"
-            echo "• User Management microservice"
-            echo "• Shared libraries and common models"
-            echo "• API Gateway foundation"
+            echo "• Product Service (Azure-ready)"
+            echo "• Order Service (Azure-ready)"
+            echo "• Dockerfile configurations"
+            echo "• Application Insights integration"
+            echo "• Azure SQL Database setup"
             ;;
         "exercise03")
-            echo "• HTTP client communication patterns"
-            echo "• RabbitMQ message broker integration"
-            echo "• Event-driven communication examples"
-            echo "• Distributed transaction handling"
-            echo "• Saga pattern implementations"
+            echo "• Container Registry deployment scripts"
+            echo "• Container Apps deployment configuration"
+            echo "• Environment variable setup"
+            echo "• Service-to-service communication"
+            echo "• Monitoring configuration"
             ;;
         "exercise04")
-            echo "• Docker containerization for all services"
-            echo "• Docker Compose orchestration"
-            echo "• Application Insights monitoring"
-            echo "• Health checks and diagnostics"
-            echo "• Circuit breaker and retry patterns"
+            echo "• Azure Service Bus setup"
+            echo "• Resilient HTTP communication"
+            echo "• Circuit breaker implementation"
+            echo "• Message-based architecture"
+            echo "• Health check endpoints"
             ;;
         "exercise05")
-            echo "• Azure AKS deployment with Terraform"
-            echo "• Generic Kubernetes manifests"
-            echo "• Docker Swarm deployment option"
-            echo "• Production monitoring dashboards"
-            echo "• CI/CD pipeline configurations"
+            echo "• Auto-scaling configuration"
+            echo "• Azure Front Door setup"
+            echo "• Cost monitoring dashboard"
+            echo "• Production health checks"
+            echo "• Security best practices"
             ;;
     esac
     echo ""
@@ -200,14 +200,14 @@ create_file_interactive() {
 
 # Function to show available exercises
 show_exercises() {
-    echo -e "${CYAN}Module 13 - Building Microservices${NC}"
+    echo -e "${CYAN}Module 13 - Building Microservices with Azure${NC}"
     echo -e "${CYAN}Available Exercises:${NC}"
     echo ""
-    echo "  - exercise01: Service Decomposition & Domain-Driven Design"
-    echo "  - exercise02: Building Core Microservices"
-    echo "  - exercise03: Inter-Service Communication Patterns"
-    echo "  - exercise04: Production-Ready Deployment"
-    echo "  - exercise05: Cloud Deployment Options"
+    echo "  - exercise01: Azure Setup and Microservices Overview"
+    echo "  - exercise02: Building Azure-Ready Services"
+    echo "  - exercise03: Deploy to Azure Container Apps"
+    echo "  - exercise04: Azure Service Communication"
+    echo "  - exercise05: Production Features"
     echo ""
     echo "Usage:"
     echo "  ./launch-exercises.sh <exercise-name> [options]"
@@ -266,7 +266,7 @@ case $EXERCISE_NAME in
 esac
 
 # Welcome message
-echo -e "${MAGENTA}🏗️ Module 13: Building Microservices${NC}"
+echo -e "${MAGENTA}☁️ Module 13: Building Microservices with Azure${NC}"
 echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
@@ -290,9 +290,11 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
-# Check Docker
-if ! command -v docker &> /dev/null; then
-    echo_warning "Docker is not installed. Some exercises may require it."
+# Check Azure CLI
+if ! command -v az &> /dev/null; then
+    echo_error "Azure CLI is not installed. Please install Azure CLI to continue."
+    echo_info "Visit: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+    exit 1
 fi
 
 echo_success "Prerequisites check completed"
@@ -321,147 +323,125 @@ fi
 
 # Exercise implementations
 if [[ $EXERCISE_NAME == "exercise01" ]]; then
-    # Exercise 1: Service Decomposition & Domain-Driven Design
+    # Exercise 1: Azure Setup and Microservices Overview
 
-    explain_concept "Domain-Driven Design for Microservices" \
-"Domain-Driven Design (DDD) for Microservices:
-• Bounded Contexts: Define clear boundaries around business domains
-• Ubiquitous Language: Shared vocabulary within each context
-• Aggregates: Consistency boundaries for data operations
-• Domain Events: Communication between bounded contexts
-• Service Boundaries: Each microservice owns a bounded context"
+    explain_concept "Azure Container Apps for Microservices" \
+"Azure Container Apps - Serverless Microservices:
+• No Infrastructure Management: Focus on code, not servers
+• Auto-scaling: Scale to zero, scale based on demand
+• Built-in Features: Load balancing, HTTPS, service discovery
+• Cost-Effective: Pay only for what you use
+• Integrated Services: Azure SQL, Service Bus, Key Vault"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
-        echo_info "Creating microservices design workspace..."
+        echo_info "Setting up Azure resources..."
         mkdir -p "$PROJECT_NAME"
         cd "$PROJECT_NAME"
-        mkdir -p docs analysis design
     fi
 
-    # Create domain analysis template
-    create_file_interactive "docs/domain-analysis.md" \
-'# E-Commerce Domain Analysis
+    # Create Azure setup script
+    create_file_interactive "setup-azure.sh" \
+'#!/bin/bash
+# Azure Microservices Setup Script
 
-## Business Capabilities Analysis
+echo "Setting up Azure resources for microservices..."
 
-### 1. User Management
-- **Purpose**: Manage user accounts, authentication, and personal data
-- **Key Entities**: User, Profile, Authentication, Preferences, Role
-- **Business Rules**:
-  - Unique email addresses required
-  - Password complexity requirements
-  - Data privacy compliance (GDPR)
-  - Role-based access control
-- **External Dependencies**: Email service, OAuth providers, identity verification
+# Variables
+RESOURCE_GROUP="rg-microservices-demo"
+LOCATION="eastus"
+RANDOM_SUFFIX=$((RANDOM % 9000 + 1000))
+ACR_NAME="acrmicroservices${RANDOM_SUFFIX}"
+ENVIRONMENT="microservices-env"
+SQL_SERVER="sql-microservices-${RANDOM_SUFFIX}"
+SQL_ADMIN="sqladmin"
+SQL_PASSWORD="P@ssw0rd${RANDOM_SUFFIX}!"
+APP_INSIGHTS="appi-microservices"
 
-### 2. Product Catalog
-- **Purpose**: Manage product information, categories, and inventory
-- **Key Entities**: Product, Category, Inventory, SKU, Pricing
-- **Business Rules**:
-  - Unique SKU per product
-  - Category hierarchy management
-  - Inventory tracking and alerts
-  - Price history and promotions
-- **External Dependencies**: Image storage, search indexing, supplier systems
+# Check Azure CLI
+if ! command -v az &> /dev/null; then
+    echo "Azure CLI is not installed. Please install it first."
+    exit 1
+fi
 
-### 3. Shopping Cart
-- **Purpose**: Manage customer shopping sessions and cart items
-- **Key Entities**: Cart, CartItem, Session, WishList
-- **Business Rules**:
-  - Cart expiration policies
-  - Inventory reservation during checkout
-  - Guest vs authenticated cart handling
-  - Cart merging on login
-- **External Dependencies**: Product catalog, user management
+# Login check
+if ! az account show &> /dev/null; then
+    echo "Please login to Azure..."
+    az login
+fi
 
-### 4. Order Processing
-- **Purpose**: Handle order creation, payment, and fulfillment
-- **Key Entities**: Order, OrderItem, Payment, Invoice, Fulfillment
-- **Business Rules**:
-  - Order state transitions
-  - Payment processing workflows
-  - Inventory allocation and reservation
-  - Order cancellation policies
-- **External Dependencies**: Payment gateways, shipping providers, inventory
+echo "Creating resource group..."
+az group create --name $RESOURCE_GROUP --location $LOCATION
 
-### 5. Inventory Management
-- **Purpose**: Track stock levels, reservations, and replenishment
-- **Key Entities**: Stock, Reservation, Replenishment, Warehouse
-- **Business Rules**:
-  - Real-time stock tracking
-  - Reservation timeout handling
-  - Low stock alerts
-  - Multi-warehouse support
-- **External Dependencies**: Supplier systems, warehouse management
+echo "Creating Container Registry..."
+az acr create \
+  --resource-group $RESOURCE_GROUP \
+  --name $ACR_NAME \
+  --sku Basic \
+  --admin-enabled true
 
-### 6. Notifications
-- **Purpose**: Send communications to users and administrators
-- **Key Entities**: Notification, Template, Channel, Subscription
-- **Business Rules**:
-  - Multi-channel delivery (email, SMS, push)
-  - User preference management
-  - Delivery confirmation tracking
-  - Template versioning
-- **External Dependencies**: Email providers, SMS gateways, push notification services
+echo "Creating Container Apps Environment..."
+az containerapp env create \
+  --name $ENVIRONMENT \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION
 
-## Bounded Contexts Identification
+echo "Creating SQL Server..."
+az sql server create \
+  --name $SQL_SERVER \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --admin-user $SQL_ADMIN \
+  --admin-password $SQL_PASSWORD
 
-### Context 1: Identity & Access Management
-- **Ubiquitous Language**: User, Account, Authentication, Authorization, Profile, Role, Permission
-- **Entities**: User, Role, Permission, Session, Profile
-- **Value Objects**: Email, Password, ProfilePicture, Address
-- **Aggregates**: User (with Profile, Preferences, Roles)
-- **Services**: AuthenticationService, AuthorizationService, ProfileService
-- **Boundaries**: Includes user data and access control, excludes order history and preferences
+az sql server firewall-rule create \
+  --resource-group $RESOURCE_GROUP \
+  --server $SQL_SERVER \
+  --name AllowAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
 
-### Context 2: Product Catalog Management
-- **Ubiquitous Language**: Product, Category, SKU, Inventory, Price, Catalog
-- **Entities**: Product, Category, InventoryItem, PriceHistory
-- **Value Objects**: SKU, Price, ProductImage, ProductAttributes
-- **Aggregates**: Product (with Inventory, Pricing), Category (with Products)
-- **Services**: CatalogService, InventoryService, PricingService
-- **Boundaries**: Includes product data and inventory, excludes order processing
+echo "Creating databases..."
+az sql db create --resource-group $RESOURCE_GROUP --server $SQL_SERVER --name ProductDb --edition Basic
+az sql db create --resource-group $RESOURCE_GROUP --server $SQL_SERVER --name OrderDb --edition Basic
 
-### Context 3: Order Management
-- **Ubiquitous Language**: Order, OrderItem, Payment, Fulfillment, Invoice, Shipping
-- **Entities**: Order, OrderItem, Payment, Shipment, Invoice
-- **Value Objects**: OrderNumber, PaymentMethod, ShippingAddress, OrderStatus
-- **Aggregates**: Order (with OrderItems, Payment, Shipment)
-- **Services**: OrderService, PaymentService, FulfillmentService
-- **Boundaries**: Includes order lifecycle, excludes product catalog and user management
+echo "Creating Application Insights..."
+az monitor app-insights component create \
+  --app $APP_INSIGHTS \
+  --location $LOCATION \
+  --resource-group $RESOURCE_GROUP \
+  --application-type web
 
-### Context 4: Communication & Notifications
-- **Ubiquitous Language**: Notification, Message, Template, Channel, Subscription
-- **Entities**: Notification, NotificationTemplate, Subscription
-- **Value Objects**: MessageContent, DeliveryChannel, NotificationStatus
-- **Aggregates**: Notification (with Template, Delivery)
-- **Services**: NotificationService, TemplateService, DeliveryService
-- **Boundaries**: Includes all communication, excludes business domain logic
+# Save configuration
+cat > azure-config.sh << EOF
+#!/bin/bash
+# Azure Configuration
+export RESOURCE_GROUP="$RESOURCE_GROUP"
+export ACR_NAME="$ACR_NAME"
+export ENVIRONMENT="$ENVIRONMENT"
+export SQL_SERVER="$SQL_SERVER"
+export SQL_ADMIN="$SQL_ADMIN"
+export SQL_PASSWORD="$SQL_PASSWORD"
+export APP_INSIGHTS="$APP_INSIGHTS"
+EOF
 
-## Service Boundary Recommendations
+chmod +x azure-config.sh
 
-Based on the bounded context analysis, we recommend the following microservices:
-
-1. **User Management Service** (Identity & Access Management context)
-2. **Product Catalog Service** (Product Catalog Management context)
-3. **Order Management Service** (Order Management context)
-4. **Notification Service** (Communication & Notifications context)
-5. **API Gateway** (Cross-cutting concern for routing and security)
-
-Each service will own its data and expose well-defined APIs for inter-service communication.
+echo "\nSetup complete!"
+echo "Configuration saved to azure-config.sh"
+echo "Estimated monthly cost: ~\$30 (minimal usage)"
 ' \
-"Comprehensive domain analysis for e-commerce microservices decomposition"
+"Azure resource setup script for microservices"
 
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
-    # Exercise 2: Building Core Microservices
+    # Exercise 2: Building Azure-Ready Services
 
-    explain_concept "Microservices Implementation Patterns" \
-"Core Microservices Implementation:
-• Service Independence: Each service has its own database and deployment
-• API-First Design: Well-defined contracts between services
-• Shared Libraries: Common models and utilities without tight coupling
-• Database per Service: Data ownership and independence
-• Service Registration: Discovery and health monitoring"
+    explain_concept "Cloud-Native Service Design" \
+"Azure-Ready Microservices:
+• 12-Factor App Principles: Configuration, logging, stateless
+• Azure Integration: SQL Database, Key Vault, App Insights
+• Container-Ready: Dockerfile optimization for Azure
+• Health Checks: Liveness and readiness probes
+• Resilience: Built-in retry and circuit breaker patterns"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
         echo_error "Exercise 2 requires Exercise 1 to be completed first!"
@@ -469,10 +449,12 @@ elif [[ $EXERCISE_NAME == "exercise02" ]]; then
         exit 1
     fi
 
-    echo_info "Setting up microservices solution structure..."
-
+    echo_info "Creating Azure-ready microservices..."
+    
     # Create solution structure
-    dotnet new sln -n ECommerceMS
+    mkdir -p SourceCode
+    cd SourceCode
+    dotnet new sln -n AzureECommerce
 
     # Create shared library
     mkdir -p src/SharedLibraries
@@ -506,15 +488,15 @@ public abstract class BaseEntity
 "Base entity class for all microservices"
 
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
-    # Exercise 3: Inter-Service Communication Patterns
+    # Exercise 3: Deploy to Azure Container Apps
 
-    explain_concept "Inter-Service Communication" \
-"Microservices Communication Patterns:
-• Synchronous Communication: HTTP/REST for immediate responses
-• Asynchronous Messaging: Event-driven communication via message brokers
-• Service Discovery: Dynamic service location and health checking
-• Circuit Breaker: Fault tolerance for service dependencies
-• Event Sourcing: Capturing state changes as events"
+    explain_concept "Azure Container Apps Deployment" \
+"Deploying to Azure Container Apps:
+• Container Registry: Push images to Azure Container Registry
+• Container Apps: Deploy without managing infrastructure
+• Environment Variables: Configure services for Azure
+• Service Discovery: Built-in service-to-service communication
+• Monitoring: Application Insights integration"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
         echo_error "Exercise 3 requires Exercises 1 and 2 to be completed first!"
@@ -522,30 +504,79 @@ elif [[ $EXERCISE_NAME == "exercise03" ]]; then
         exit 1
     fi
 
-    # Add RabbitMQ and HTTP client packages
-    echo_info "Adding communication packages to services..."
+    # Load Azure configuration
+    echo_info "Loading Azure configuration..."
+    if [ -f "azure-config.sh" ]; then
+        source ./azure-config.sh
+    else
+        echo_error "Azure configuration not found. Please run exercise01 first!"
+        exit 1
+    fi
+    
+    # Create deployment script
+    create_file_interactive "deploy-services.sh" \
+'#!/bin/bash
+# Deploy Services to Azure Container Apps
 
-    # Add to each service
-    for service in "ProductCatalog.Service" "OrderManagement.Service" "UserManagement.Service"; do
-        if [ -d "src/$service" ]; then
-            cd "src/$service"
-            dotnet add package RabbitMQ.Client
-            dotnet add package Microsoft.Extensions.Http
-            dotnet add package Polly.Extensions.Http
-            cd ../..
-        fi
-    done
+echo "Deploying services to Azure Container Apps..."
+
+# Load configuration
+source ./azure-config.sh
+
+# Login to ACR
+echo "Logging into Azure Container Registry..."
+az acr login --name $ACR_NAME
+
+# Build and push Product Service
+echo "Building Product Service..."
+cd SourceCode/ProductService
+az acr build --registry $ACR_NAME --image product-service:v1 .
+
+# Build and push Order Service
+echo "Building Order Service..."
+cd ../OrderService
+az acr build --registry $ACR_NAME --image order-service:v1 .
+
+cd ../..
+
+# Deploy Product Service
+echo "Deploying Product Service..."
+az containerapp create \
+  --name product-service \
+  --resource-group $RESOURCE_GROUP \
+  --environment $ENVIRONMENT \
+  --image "${ACR_NAME}.azurecr.io/product-service:v1" \
+  --target-port 80 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 3
+
+# Deploy Order Service
+echo "Deploying Order Service..."
+az containerapp create \
+  --name order-service \
+  --resource-group $RESOURCE_GROUP \
+  --environment $ENVIRONMENT \
+  --image "${ACR_NAME}.azurecr.io/order-service:v1" \
+  --target-port 80 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 3
+
+echo "Deployment complete!"
+' \
+"Azure deployment script"
 
 elif [[ $EXERCISE_NAME == "exercise04" ]]; then
-    # Exercise 4: Production-Ready Deployment
+    # Exercise 4: Azure Service Communication
 
-    explain_concept "Production Deployment Patterns" \
-"Production-Ready Microservices:
-• Containerization: Docker containers for consistent deployment
-• Orchestration: Docker Compose for local development
-• Health Checks: Service health monitoring and readiness probes
-• Monitoring: Application Insights and distributed tracing
-• Resilience: Circuit breakers, retries, and timeout patterns"
+    explain_concept "Azure Service Bus & Resilience" \
+"Azure Service Communication:
+• Service Bus: Reliable message delivery
+• HTTP Communication: Service-to-service calls
+• Polly Resilience: Retry, circuit breaker, timeout
+• Health Checks: Monitor service availability
+• Distributed Tracing: Application Insights correlation"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
         echo_error "Exercise 4 requires Exercises 1, 2, and 3 to be completed first!"
@@ -553,138 +584,56 @@ elif [[ $EXERCISE_NAME == "exercise04" ]]; then
         exit 1
     fi
 
-    # Create Docker Compose configuration
-    create_file_interactive "docker-compose.yml" \
-'version: "3.8"
+    # Create Service Bus configuration
+    create_file_interactive "configure-servicebus.sh" \
+'#!/bin/bash
+# Azure Service Bus Configuration
 
-services:
-  # Product Catalog Service
-  product-catalog:
-    build:
-      context: ./src/ProductCatalog.Service
-      dockerfile: Dockerfile
-    ports:
-      - "5001:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ProductCatalogDB;User Id=sa;Password=YourPassword123!;TrustServerCertificate=true
-      - RabbitMQ__ConnectionString=amqp://guest:guest@rabbitmq:5672/
-    depends_on:
-      - sqlserver
-      - rabbitmq
-    networks:
-      - ecommerce-network
+echo "Configuring Azure Service Bus..."
 
-  # Order Management Service
-  order-management:
-    build:
-      context: ./src/OrderManagement.Service
-      dockerfile: Dockerfile
-    ports:
-      - "5002:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=OrderManagementDB;User Id=sa;Password=YourPassword123!;TrustServerCertificate=true
-      - RabbitMQ__ConnectionString=amqp://guest:guest@rabbitmq:5672/
-      - Services__ProductCatalog=http://product-catalog:80
-    depends_on:
-      - sqlserver
-      - rabbitmq
-      - product-catalog
-    networks:
-      - ecommerce-network
+# Load Azure config
+source ./azure-config.sh
 
-  # User Management Service
-  user-management:
-    build:
-      context: ./src/UserManagement.Service
-      dockerfile: Dockerfile
-    ports:
-      - "5003:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserManagementDB;User Id=sa;Password=YourPassword123!;TrustServerCertificate=true
-    depends_on:
-      - sqlserver
-    networks:
-      - ecommerce-network
+# Create Service Bus namespace
+SERVICE_BUS="sb-microservices-${RANDOM}"
 
-  # API Gateway
-  api-gateway:
-    build:
-      context: ./src/ApiGateway
-      dockerfile: Dockerfile
-    ports:
-      - "5000:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - Services__ProductCatalog=http://product-catalog:80
-      - Services__OrderManagement=http://order-management:80
-      - Services__UserManagement=http://user-management:80
-    depends_on:
-      - product-catalog
-      - order-management
-      - user-management
-    networks:
-      - ecommerce-network
+az servicebus namespace create \
+  --resource-group $RESOURCE_GROUP \
+  --name $SERVICE_BUS \
+  --location $LOCATION \
+  --sku Basic
 
-  # SQL Server Database
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourPassword123!
-    ports:
-      - "1433:1433"
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-    networks:
-      - ecommerce-network
+# Create queue for order events
+az servicebus queue create \
+  --resource-group $RESOURCE_GROUP \
+  --namespace-name $SERVICE_BUS \
+  --name order-events
 
-  # RabbitMQ Message Broker
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - ecommerce-network
+# Get connection string
+SB_CONNECTION=$(az servicebus namespace authorization-rule keys list \
+  --resource-group $RESOURCE_GROUP \
+  --namespace-name $SERVICE_BUS \
+  --name RootManageSharedAccessKey \
+  --query primaryConnectionString -o tsv)
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - ecommerce-network
+echo "Service Bus created: $SERVICE_BUS"
+echo "Connection string saved."
 
-volumes:
-  sqlserver-data:
-  rabbitmq-data:
-  redis-data:
-
-networks:
-  ecommerce-network:
-    driver: bridge' \
-"Complete Docker Compose configuration for microservices deployment"
+# Update services with Service Bus connection
+echo "Updating services with Service Bus connection..."
+' \
+"Azure Service Bus configuration script"
 
 elif [[ $EXERCISE_NAME == "exercise05" ]]; then
-    # Exercise 5: Cloud Deployment Options
+    # Exercise 5: Production Features
 
-    explain_concept "Cloud-Native Deployment" \
-"Cloud Deployment Strategies:
-• Azure Kubernetes Service (AKS): Managed Kubernetes for Azure
-• Infrastructure as Code: Terraform for reproducible deployments
-• Generic Kubernetes: Multi-cloud deployment flexibility
-• Docker Swarm: Simpler orchestration for smaller deployments
-• CI/CD Integration: Automated deployment pipelines"
+    explain_concept "Production-Ready Features" \
+"Production Features for Azure:
+• Auto-scaling: CPU and HTTP-based scaling rules
+• Azure Front Door: Global load balancing and CDN
+• Health Monitoring: Comprehensive health checks
+• Cost Management: Monitoring and optimization
+• Security: Managed identities and Key Vault"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
         echo_error "Exercise 5 requires all previous exercises to be completed first!"
@@ -692,73 +641,44 @@ elif [[ $EXERCISE_NAME == "exercise05" ]]; then
         exit 1
     fi
 
-    echo_info "Setting up cloud deployment configurations..."
+    echo_info "Configuring production features..."
 
-    # Create Kubernetes deployment manifests
-    mkdir -p k8s
-    create_file_interactive "k8s/product-catalog-deployment.yaml" \
-'apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: product-catalog
-  labels:
-    app: product-catalog
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: product-catalog
-  template:
-    metadata:
-      labels:
-        app: product-catalog
-    spec:
-      containers:
-      - name: product-catalog
-        image: ecommercems/product-catalog:latest
-        ports:
-        - containerPort: 80
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Production"
-        - name: ConnectionStrings__DefaultConnection
-          valueFrom:
-            secretKeyRef:
-              name: database-secret
-              key: connection-string
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 5
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: product-catalog-service
-spec:
-  selector:
-    app: product-catalog
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
-  type: ClusterIP' \
-"Kubernetes deployment manifest for Product Catalog service"
+    # Create scaling configuration
+    create_file_interactive "configure-scaling.sh" \
+'#!/bin/bash
+# Configure Auto-scaling for Container Apps
+
+echo "Configuring auto-scaling..."
+
+# Load Azure config
+source ./azure-config.sh
+
+# Configure Product Service scaling
+echo "Setting up Product Service auto-scaling..."
+az containerapp update \
+  --name product-service \
+  --resource-group $RESOURCE_GROUP \
+  --min-replicas 1 \
+  --max-replicas 10 \
+  --scale-rule-name cpu-scaling \
+  --scale-rule-type cpu \
+  --scale-rule-metadata type=utilization value=70
+
+# Configure Order Service scaling
+echo "Setting up Order Service auto-scaling..."
+az containerapp update \
+  --name order-service \
+  --resource-group $RESOURCE_GROUP \
+  --min-replicas 1 \
+  --max-replicas 5 \
+  --scale-rule-name http-scaling \
+  --scale-rule-type http \
+  --scale-rule-metadata concurrentRequests=50
+
+echo "Auto-scaling configured!"
+echo "Services will now scale based on load."
+' \
+"Auto-scaling configuration for Container Apps"
 
 fi
 
@@ -770,34 +690,34 @@ echo_info "📋 Next steps:"
 
 case $EXERCISE_NAME in
     "exercise01")
-        echo "1. Complete the domain analysis in: ${CYAN}docs/domain-analysis.md${NC}"
-        echo "2. Design service boundaries and data consistency strategies"
-        echo "3. Create service architecture diagrams"
-        echo "4. Review with team or instructor before proceeding"
+        echo "1. Run the setup script: ${CYAN}chmod +x setup-azure.sh && ./setup-azure.sh${NC}"
+        echo "2. Verify resources in Azure Portal"
+        echo "3. Review the cost estimation"
+        echo "4. Save the azure-config.sh file for next exercises"
         ;;
     "exercise02")
-        echo "1. Build and test each microservice independently"
-        echo "2. Run: ${CYAN}dotnet build${NC} in each service directory"
-        echo "3. Test APIs using Swagger UI for each service"
-        echo "4. Verify database independence and data ownership"
+        echo "1. Navigate to SourceCode directory"
+        echo "2. Build services: ${CYAN}dotnet build${NC}"
+        echo "3. Test locally (optional): ${CYAN}dotnet run${NC}"
+        echo "4. Review Dockerfile configurations"
         ;;
     "exercise03")
-        echo "1. Implement HTTP client communication between services"
-        echo "2. Set up RabbitMQ message broker"
-        echo "3. Test synchronous and asynchronous communication"
-        echo "4. Implement event-driven patterns"
+        echo "1. Build and push images to ACR"
+        echo "2. Deploy to Container Apps: ${CYAN}./deploy-services.sh${NC}"
+        echo "3. Test deployed services in Azure"
+        echo "4. Check Application Insights for telemetry"
         ;;
     "exercise04")
-        echo "1. Build Docker images: ${CYAN}docker-compose build${NC}"
-        echo "2. Run the complete system: ${CYAN}docker-compose up -d${NC}"
-        echo "3. Access services via API Gateway: ${CYAN}http://localhost:5000${NC}"
-        echo "4. Monitor health and performance metrics"
+        echo "1. Configure Service Bus: ${CYAN}./configure-servicebus.sh${NC}"
+        echo "2. Update services with messaging code"
+        echo "3. Test service-to-service communication"
+        echo "4. Verify resilience patterns are working"
         ;;
     "exercise05")
-        echo "1. Choose deployment option: Azure AKS, Generic K8s, or Docker Swarm"
-        echo "2. Configure cloud infrastructure with Terraform (if using Azure)"
-        echo "3. Deploy to chosen platform: ${CYAN}kubectl apply -f k8s/${NC}"
-        echo "4. Set up monitoring and scaling policies"
+        echo "1. Configure auto-scaling: ${CYAN}./configure-scaling.sh${NC}"
+        echo "2. Set up Azure Front Door (optional)"
+        echo "3. Review costs in Azure Cost Management"
+        echo "4. Implement production monitoring"
         ;;
 esac
 

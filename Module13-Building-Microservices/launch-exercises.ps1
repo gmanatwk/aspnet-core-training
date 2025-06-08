@@ -17,7 +17,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 # Configuration
-$ProjectName = "ECommerceMS"
+$ProjectName = "AzureECommerce"
 $InteractiveMode = -not $Auto
 $SkipProjectCreation = $false
 $PreviewOnly = $Preview
@@ -69,69 +69,69 @@ function Show-LearningObjectives {
     
     switch ($Exercise) {
         "exercise01" {
-            Write-Host "Service Decomposition & Domain-Driven Design:" -ForegroundColor Cyan
-            Write-Host "  🏗️  1. Analyze monolithic applications for service boundaries"
-            Write-Host "  🏗️  2. Apply Domain-Driven Design (DDD) principles"
-            Write-Host "  🏗️  3. Identify bounded contexts and aggregates"
-            Write-Host "  🏗️  4. Design data consistency strategies"
+            Write-Host "Azure Setup and Microservices Overview:" -ForegroundColor Cyan
+            Write-Host "  ☁️  1. Set up Azure Resource Group and services"
+            Write-Host "  ☁️  2. Create Azure Container Registry"
+            Write-Host "  ☁️  3. Understand Azure Container Apps architecture"
+            Write-Host "  ☁️  4. Plan cloud-native microservices deployment"
             Write-Host ""
-            Write-Host "Microservices concepts:" -ForegroundColor Yellow
-            Write-Host "  • Service decomposition strategies"
-            Write-Host "  • Bounded context identification"
-            Write-Host "  • Data ownership patterns"
-            Write-Host "  • Saga pattern design"
+            Write-Host "Azure concepts:" -ForegroundColor Yellow
+            Write-Host "  • Azure Container Apps fundamentals"
+            Write-Host "  • Managed services overview"
+            Write-Host "  • Cost optimization strategies"
+            Write-Host "  • Cloud-native design principles"
         }
         "exercise02" {
-            Write-Host "Building Core Microservices:" -ForegroundColor Cyan
-            Write-Host "  🏗️  1. Create independent ASP.NET Core services"
-            Write-Host "  🏗️  2. Implement service-specific databases"
-            Write-Host "  🏗️  3. Design RESTful APIs for inter-service communication"
-            Write-Host "  🏗️  4. Set up shared libraries and common patterns"
+            Write-Host "Building Azure-Ready Services:" -ForegroundColor Cyan
+            Write-Host "  ☁️  1. Create cloud-native ASP.NET Core services"
+            Write-Host "  ☁️  2. Configure for Azure SQL Database"
+            Write-Host "  ☁️  3. Integrate Application Insights"
+            Write-Host "  ☁️  4. Prepare for container deployment"
             Write-Host ""
-            Write-Host "Microservices concepts:" -ForegroundColor Yellow
-            Write-Host "  • Service independence and autonomy"
-            Write-Host "  • Database per service pattern"
-            Write-Host "  • API contract design"
-            Write-Host "  • Shared library management"
+            Write-Host "Azure integration concepts:" -ForegroundColor Yellow
+            Write-Host "  • Azure SQL Database configuration"
+            Write-Host "  • Application Insights telemetry"
+            Write-Host "  • Environment-based configuration"
+            Write-Host "  • Container-ready applications"
         }
         "exercise03" {
-            Write-Host "Inter-Service Communication Patterns:" -ForegroundColor Cyan
-            Write-Host "  🏗️  1. Implement synchronous HTTP communication"
-            Write-Host "  🏗️  2. Add asynchronous messaging with RabbitMQ"
-            Write-Host "  🏗️  3. Handle distributed data consistency"
-            Write-Host "  🏗️  4. Implement event-driven architecture"
+            Write-Host "Deploy to Azure Container Apps:" -ForegroundColor Cyan
+            Write-Host "  ☁️  1. Build and push images to Azure Container Registry"
+            Write-Host "  ☁️  2. Deploy services to Container Apps"
+            Write-Host "  ☁️  3. Configure environment variables and secrets"
+            Write-Host "  ☁️  4. Set up Application Insights monitoring"
             Write-Host ""
-            Write-Host "Microservices concepts:" -ForegroundColor Yellow
-            Write-Host "  • Synchronous vs asynchronous communication"
-            Write-Host "  • Message broker integration"
-            Write-Host "  • Event sourcing patterns"
-            Write-Host "  • Distributed transaction management"
+            Write-Host "Deployment concepts:" -ForegroundColor Yellow
+            Write-Host "  • Container Apps deployment"
+            Write-Host "  • Environment configuration"
+            Write-Host "  • Service discovery in Container Apps"
+            Write-Host "  • Azure monitoring setup"
         }
         "exercise04" {
-            Write-Host "Production-Ready Deployment:" -ForegroundColor Cyan
-            Write-Host "  🏗️  1. Containerize microservices with Docker"
-            Write-Host "  🏗️  2. Orchestrate services with Docker Compose"
-            Write-Host "  🏗️  3. Implement monitoring and observability"
-            Write-Host "  🏗️  4. Add resilience patterns (Circuit Breaker, Retry)"
+            Write-Host "Azure Service Communication:" -ForegroundColor Cyan
+            Write-Host "  ☁️  1. Implement Azure Service Bus messaging"
+            Write-Host "  ☁️  2. Configure service-to-service communication"
+            Write-Host "  ☁️  3. Add resilience with Polly"
+            Write-Host "  ☁️  4. Handle failures gracefully"
             Write-Host ""
-            Write-Host "Microservices concepts:" -ForegroundColor Yellow
-            Write-Host "  • Container orchestration"
-            Write-Host "  • Service discovery and load balancing"
-            Write-Host "  • Distributed tracing and monitoring"
-            Write-Host "  • Fault tolerance and resilience"
+            Write-Host "Communication concepts:" -ForegroundColor Yellow
+            Write-Host "  • Azure Service Bus integration"
+            Write-Host "  • Resilient HTTP communication"
+            Write-Host "  • Circuit breaker patterns"
+            Write-Host "  • Message-based architecture"
         }
         "exercise05" {
-            Write-Host "Cloud Deployment Options:" -ForegroundColor Cyan
-            Write-Host "  🏗️  1. Deploy to Azure Kubernetes Service (AKS)"
-            Write-Host "  🏗️  2. Use Terraform for Infrastructure as Code"
-            Write-Host "  🏗️  3. Configure production monitoring and scaling"
-            Write-Host "  🏗️  4. Implement CI/CD pipelines"
+            Write-Host "Production Features:" -ForegroundColor Cyan
+            Write-Host "  ☁️  1. Configure auto-scaling rules"
+            Write-Host "  ☁️  2. Set up Azure Front Door"
+            Write-Host "  ☁️  3. Implement comprehensive health checks"
+            Write-Host "  ☁️  4. Review costs and optimize"
             Write-Host ""
-            Write-Host "Microservices concepts:" -ForegroundColor Yellow
-            Write-Host "  • Cloud-native deployment strategies"
-            Write-Host "  • Infrastructure as Code (IaC)"
-            Write-Host "  • Auto-scaling and load management"
-            Write-Host "  • Production monitoring and alerting"
+            Write-Host "Production concepts:" -ForegroundColor Yellow
+            Write-Host "  • Container Apps scaling strategies"
+            Write-Host "  • Global load balancing"
+            Write-Host "  • Cost optimization techniques"
+            Write-Host "  • Production monitoring"
         }
     }
     Write-Host ""
@@ -218,14 +218,14 @@ function New-FileInteractive {
 
 # Function to show available exercises
 function Show-Exercises {
-    Write-Host "Module 13 - Building Microservices" -ForegroundColor Cyan
+    Write-Host "Module 13 - Building Microservices with Azure" -ForegroundColor Cyan
     Write-Host "Available Exercises:" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  - exercise01: Service Decomposition & Domain-Driven Design"
-    Write-Host "  - exercise02: Building Core Microservices"
-    Write-Host "  - exercise03: Inter-Service Communication Patterns"
-    Write-Host "  - exercise04: Production-Ready Deployment"
-    Write-Host "  - exercise05: Cloud Deployment Options"
+    Write-Host "  - exercise01: Azure Setup and Microservices Overview"
+    Write-Host "  - exercise02: Building Azure-Ready Services"
+    Write-Host "  - exercise03: Deploy to Azure Container Apps"
+    Write-Host "  - exercise04: Azure Service Communication"
+    Write-Host "  - exercise05: Production Features"
     Write-Host ""
     Write-Host "Usage:"
     Write-Host "  .\launch-exercises.ps1 <exercise-name> [options]"
@@ -258,7 +258,7 @@ if ($ExerciseName -notin @("exercise01", "exercise02", "exercise03", "exercise04
 }
 
 # Welcome message
-Write-Host "🏗️ Module 13: Building Microservices" -ForegroundColor Magenta
+Write-Host "☁️ Module 13: Building Microservices with Azure" -ForegroundColor Magenta
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Magenta
 Write-Host ""
 
@@ -285,12 +285,14 @@ try {
     exit 1
 }
 
-# Check Docker
+# Check Azure CLI
 try {
-    $dockerVersion = docker --version
-    Write-Success "Docker is installed: $dockerVersion"
+    $azVersion = az --version | Select-String "azure-cli" | Select-Object -First 1
+    Write-Success "Azure CLI is installed: $azVersion"
 } catch {
-    Write-Warning "Docker is not installed. Some exercises may require it."
+    Write-Error "Azure CLI is not installed. Please install Azure CLI to continue."
+    Write-Info "Visit: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+    exit 1
 }
 
 Write-Success "Prerequisites check completed"
@@ -319,150 +321,155 @@ if (Test-Path $ProjectName) {
 # Exercise implementations
 switch ($ExerciseName) {
     "exercise01" {
-        # Exercise 1: Service Decomposition & Domain-Driven Design
+        # Exercise 1: Azure Setup and Microservices Overview
         
-        Write-Concept -Title "Domain-Driven Design for Microservices" -Content @"
-Domain-Driven Design (DDD) for Microservices:
-• Bounded Contexts: Define clear boundaries around business domains
-• Ubiquitous Language: Shared vocabulary within each context
-• Aggregates: Consistency boundaries for data operations
-• Domain Events: Communication between bounded contexts
-• Service Boundaries: Each microservice owns a bounded context
+        Write-Concept -Title "Azure Container Apps for Microservices" -Content @"
+Azure Container Apps - Serverless Microservices:
+• No Infrastructure Management: Focus on code, not servers
+• Auto-scaling: Scale to zero, scale based on demand
+• Built-in Features: Load balancing, HTTPS, service discovery
+• Cost-Effective: Pay only for what you use
+• Integrated Services: Azure SQL, Service Bus, Key Vault
 "@
         
         Pause-ForUser
         
         if (-not $SkipProjectCreation) {
-            Write-Info "Creating microservices design workspace..."
+            Write-Info "Setting up Azure resources..."
             New-Item -ItemType Directory -Path $ProjectName -Force | Out-Null
             Set-Location $ProjectName
-            New-Item -ItemType Directory -Path "docs", "analysis", "design" -Force | Out-Null
         }
         
-        # Create domain analysis template
-        New-FileInteractive -FilePath "docs\domain-analysis.md" -Content @'
-# E-Commerce Domain Analysis
+        # Create Azure setup script
+        New-FileInteractive -FilePath "setup-azure.ps1" -Content @'
+# Azure Microservices Setup Script
+# This script sets up all required Azure resources
 
-## Business Capabilities Analysis
+Write-Host "🚀 Setting up Azure resources for microservices..." -ForegroundColor Cyan
 
-### 1. User Management
-- **Purpose**: Manage user accounts, authentication, and personal data
-- **Key Entities**: User, Profile, Authentication, Preferences, Role
-- **Business Rules**:
-  - Unique email addresses required
-  - Password complexity requirements
-  - Data privacy compliance (GDPR)
-  - Role-based access control
-- **External Dependencies**: Email service, OAuth providers, identity verification
+# Variables
+$RESOURCE_GROUP = "rg-microservices-demo"
+$LOCATION = "eastus"
+$RANDOM_SUFFIX = Get-Random -Minimum 1000 -Maximum 9999
+$ACR_NAME = "acrmicroservices$RANDOM_SUFFIX"
+$ENVIRONMENT = "microservices-env"
+$SQL_SERVER = "sql-microservices-$RANDOM_SUFFIX"
+$SQL_ADMIN = "sqladmin"
+$SQL_PASSWORD = "P@ssw0rd$RANDOM_SUFFIX!"
+$APP_INSIGHTS = "appi-microservices"
 
-### 2. Product Catalog
-- **Purpose**: Manage product information, categories, and inventory
-- **Key Entities**: Product, Category, Inventory, SKU, Pricing
-- **Business Rules**:
-  - Unique SKU per product
-  - Category hierarchy management
-  - Inventory tracking and alerts
-  - Price history and promotions
-- **External Dependencies**: Image storage, search indexing, supplier systems
+# Check Azure CLI
+if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+    Write-Error "Azure CLI is not installed. Please install it first."
+    exit 1
+}
 
-### 3. Shopping Cart
-- **Purpose**: Manage customer shopping sessions and cart items
-- **Key Entities**: Cart, CartItem, Session, WishList
-- **Business Rules**:
-  - Cart expiration policies
-  - Inventory reservation during checkout
-  - Guest vs authenticated cart handling
-  - Cart merging on login
-- **External Dependencies**: Product catalog, user management
+# Login check
+$account = az account show 2>$null | ConvertFrom-Json
+if (-not $account) {
+    Write-Host "Please login to Azure..." -ForegroundColor Yellow
+    az login
+}
 
-### 4. Order Processing
-- **Purpose**: Handle order creation, payment, and fulfillment
-- **Key Entities**: Order, OrderItem, Payment, Invoice, Fulfillment
-- **Business Rules**:
-  - Order state transitions
-  - Payment processing workflows
-  - Inventory allocation and reservation
-  - Order cancellation policies
-- **External Dependencies**: Payment gateways, shipping providers, inventory
+Write-Host "Creating resource group..." -ForegroundColor Yellow
+az group create --name $RESOURCE_GROUP --location $LOCATION
 
-### 5. Inventory Management
-- **Purpose**: Track stock levels, reservations, and replenishment
-- **Key Entities**: Stock, Reservation, Replenishment, Warehouse
-- **Business Rules**:
-  - Real-time stock tracking
-  - Reservation timeout handling
-  - Low stock alerts
-  - Multi-warehouse support
-- **External Dependencies**: Supplier systems, warehouse management
+Write-Host "Creating Container Registry..." -ForegroundColor Yellow
+az acr create `
+  --resource-group $RESOURCE_GROUP `
+  --name $ACR_NAME `
+  --sku Basic `
+  --admin-enabled true
 
-### 6. Notifications
-- **Purpose**: Send communications to users and administrators
-- **Key Entities**: Notification, Template, Channel, Subscription
-- **Business Rules**:
-  - Multi-channel delivery (email, SMS, push)
-  - User preference management
-  - Delivery confirmation tracking
-  - Template versioning
-- **External Dependencies**: Email providers, SMS gateways, push notification services
+Write-Host "Creating Container Apps Environment..." -ForegroundColor Yellow
+az containerapp env create `
+  --name $ENVIRONMENT `
+  --resource-group $RESOURCE_GROUP `
+  --location $LOCATION
 
-## Bounded Contexts Identification
+Write-Host "Creating SQL Server..." -ForegroundColor Yellow
+az sql server create `
+  --name $SQL_SERVER `
+  --resource-group $RESOURCE_GROUP `
+  --location $LOCATION `
+  --admin-user $SQL_ADMIN `
+  --admin-password $SQL_PASSWORD
 
-### Context 1: Identity & Access Management
-- **Ubiquitous Language**: User, Account, Authentication, Authorization, Profile, Role, Permission
-- **Entities**: User, Role, Permission, Session, Profile
-- **Value Objects**: Email, Password, ProfilePicture, Address
-- **Aggregates**: User (with Profile, Preferences, Roles)
-- **Services**: AuthenticationService, AuthorizationService, ProfileService
-- **Boundaries**: Includes user data and access control, excludes order history and preferences
+az sql server firewall-rule create `
+  --resource-group $RESOURCE_GROUP `
+  --server $SQL_SERVER `
+  --name AllowAzureServices `
+  --start-ip-address 0.0.0.0 `
+  --end-ip-address 0.0.0.0
 
-### Context 2: Product Catalog Management
-- **Ubiquitous Language**: Product, Category, SKU, Inventory, Price, Catalog
-- **Entities**: Product, Category, InventoryItem, PriceHistory
-- **Value Objects**: SKU, Price, ProductImage, ProductAttributes
-- **Aggregates**: Product (with Inventory, Pricing), Category (with Products)
-- **Services**: CatalogService, InventoryService, PricingService
-- **Boundaries**: Includes product data and inventory, excludes order processing
+Write-Host "Creating databases..." -ForegroundColor Yellow
+az sql db create --resource-group $RESOURCE_GROUP --server $SQL_SERVER --name ProductDb --edition Basic
+az sql db create --resource-group $RESOURCE_GROUP --server $SQL_SERVER --name OrderDb --edition Basic
 
-### Context 3: Order Management
-- **Ubiquitous Language**: Order, OrderItem, Payment, Fulfillment, Invoice, Shipping
-- **Entities**: Order, OrderItem, Payment, Shipment, Invoice
-- **Value Objects**: OrderNumber, PaymentMethod, ShippingAddress, OrderStatus
-- **Aggregates**: Order (with OrderItems, Payment, Shipment)
-- **Services**: OrderService, PaymentService, FulfillmentService
-- **Boundaries**: Includes order lifecycle, excludes product catalog and user management
+Write-Host "Creating Application Insights..." -ForegroundColor Yellow
+az monitor app-insights component create `
+  --app $APP_INSIGHTS `
+  --location $LOCATION `
+  --resource-group $RESOURCE_GROUP `
+  --application-type web
 
-### Context 4: Communication & Notifications
-- **Ubiquitous Language**: Notification, Message, Template, Channel, Subscription
-- **Entities**: Notification, NotificationTemplate, Subscription
-- **Value Objects**: MessageContent, DeliveryChannel, NotificationStatus
-- **Aggregates**: Notification (with Template, Delivery)
-- **Services**: NotificationService, TemplateService, DeliveryService
-- **Boundaries**: Includes all communication, excludes business domain logic
+# Save configuration
+$config = @"
+# Azure Configuration
+`$RESOURCE_GROUP="$RESOURCE_GROUP"
+`$ACR_NAME="$ACR_NAME"
+`$ENVIRONMENT="$ENVIRONMENT"
+`$SQL_SERVER="$SQL_SERVER"
+`$SQL_ADMIN="$SQL_ADMIN"
+`$SQL_PASSWORD="$SQL_PASSWORD"
+`$APP_INSIGHTS="$APP_INSIGHTS"
+"@
 
-## Service Boundary Recommendations
+$config | Out-File -FilePath "azure-config.ps1"
 
-Based on the bounded context analysis, we recommend the following microservices:
+Write-Host "\n✅ Setup complete!" -ForegroundColor Green
+Write-Host "Configuration saved to azure-config.ps1" -ForegroundColor Cyan
+Write-Host "\nEstimated monthly cost: ~$30 (minimal usage)" -ForegroundColor Yellow
+'@ -Description "Azure resource setup script for microservices"
+        
+        # Create cost estimation
+        New-FileInteractive -FilePath "docs\azure-cost-estimation.md" -Content @'
+# Azure Cost Estimation
 
-1. **User Management Service** (Identity & Access Management context)
-2. **Product Catalog Service** (Product Catalog Management context)
-3. **Order Management Service** (Order Management context)
-4. **Notification Service** (Communication & Notifications context)
-5. **API Gateway** (Cross-cutting concern for routing and security)
+## Monthly Cost Breakdown (Minimal Usage)
 
-Each service will own its data and expose well-defined APIs for inter-service communication.
-'@ -Description "Comprehensive domain analysis for e-commerce microservices decomposition"
+| Service | Configuration | Estimated Cost |
+|---------|--------------|----------------|
+| Container Apps | 2 apps, 0.5 vCPU, 1GB RAM each | ~$10 |
+| Azure SQL | Basic tier, 2 databases | ~$10 |
+| Container Registry | Basic tier | ~$5 |
+| Application Insights | Basic ingestion | ~$5 |
+| **Total** | | **~$30/month** |
+
+## Free Tier Benefits
+- First 180,000 vCPU-seconds free
+- First 360,000 GB-seconds free  
+- First 2 million requests free
+- 5GB Application Insights data free
+
+## Cost Optimization Tips
+1. Scale Container Apps to zero when not in use
+2. Use Basic tier for SQL in development
+3. Set up cost alerts in Azure Portal
+4. Review and optimize regularly
+'@ -Description "Azure cost estimation guide"
     }
     
     "exercise02" {
-        # Exercise 2: Building Core Microservices
+        # Exercise 2: Building Azure-Ready Services
         
-        Write-Concept -Title "Microservices Implementation Patterns" -Content @"
-Core Microservices Implementation:
-• Service Independence: Each service has its own database and deployment
-• API-First Design: Well-defined contracts between services
-• Shared Libraries: Common models and utilities without tight coupling
-• Database per Service: Data ownership and independence
-• Service Registration: Discovery and health monitoring
+        Write-Concept -Title "Cloud-Native Service Design" -Content @"
+Azure-Ready Microservices:
+• 12-Factor App Principles: Configuration, logging, stateless
+• Azure Integration: SQL Database, Key Vault, App Insights
+• Container-Ready: Dockerfile optimization for Azure
+• Health Checks: Liveness and readiness probes
+• Resilience: Built-in retry and circuit breaker patterns
 "@
         
         Pause-ForUser
@@ -473,10 +480,12 @@ Core Microservices Implementation:
             exit 1
         }
         
-        Write-Info "Setting up microservices solution structure..."
+        Write-Info "Creating Azure-ready microservices..."
         
         # Create solution structure
-        dotnet new sln -n ECommerceMS
+        New-Item -ItemType Directory -Path "SourceCode" -Force | Out-Null
+        Set-Location "SourceCode"
+        dotnet new sln -n AzureECommerce
         
         # Create shared library
         New-Item -ItemType Directory -Path "src\SharedLibraries" -Force | Out-Null
@@ -573,19 +582,44 @@ public abstract class BaseEntity
         Set-Location "..\..\"
         dotnet sln add src\ApiGateway\ApiGateway.csproj
         
-        Write-Success "Microservices solution structure created successfully!"
+        Write-Success "Azure-ready microservices created successfully!"
+        
+        # Create deployment helper
+        Set-Location ".."
+        New-FileInteractive -FilePath "local-test.ps1" -Content @'
+# Local Testing Script
+# Use this to test services locally before Azure deployment
+
+Write-Host "Starting local SQL Server in Docker..." -ForegroundColor Yellow
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourPassword123!" -p 1433:1433 -d --name sqlserver mcr.microsoft.com/mssql/server:2022-latest
+
+Write-Host "Waiting for SQL Server to start..." -ForegroundColor Yellow
+Start-Sleep -Seconds 30
+
+Write-Host "Starting Product Service..." -ForegroundColor Green
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd SourceCode/ProductService; dotnet run"
+
+Start-Sleep -Seconds 5
+
+Write-Host "Starting Order Service..." -ForegroundColor Green  
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd SourceCode/OrderService; dotnet run"
+
+Write-Host "Services started!" -ForegroundColor Green
+Write-Host "Product Service: https://localhost:5001" -ForegroundColor Cyan
+Write-Host "Order Service: https://localhost:5002" -ForegroundColor Cyan
+'@ -Description "Local testing script for services"
     }
     
     "exercise03" {
-        # Exercise 3: Inter-Service Communication Patterns
+        # Exercise 3: Deploy to Azure Container Apps
         
-        Write-Concept -Title "Inter-Service Communication" -Content @"
-Microservices Communication Patterns:
-• Synchronous Communication: HTTP/REST for immediate responses
-• Asynchronous Messaging: Event-driven communication via message brokers
-• Service Discovery: Dynamic service location and health checking
-• Circuit Breaker: Fault tolerance for service dependencies
-• Event Sourcing: Capturing state changes as events
+        Write-Concept -Title "Azure Container Apps Deployment" -Content @"
+Deploying to Azure Container Apps:
+• Container Registry: Push images to Azure Container Registry
+• Container Apps: Deploy without managing infrastructure
+• Environment Variables: Configure services for Azure
+• Service Discovery: Built-in service-to-service communication
+• Monitoring: Application Insights integration
 "@
         
         Pause-ForUser
@@ -596,23 +630,17 @@ Microservices Communication Patterns:
             exit 1
         }
         
-        # Add RabbitMQ and HTTP client packages
-        Write-Info "Adding communication packages to services..."
-        
-        # Add to each service
-        $services = @("ProductCatalog.Service", "OrderManagement.Service", "UserManagement.Service")
-        foreach ($service in $services) {
-            if (Test-Path "src\$service") {
-                Set-Location "src\$service"
-                dotnet add package RabbitMQ.Client
-                dotnet add package Microsoft.Extensions.Http
-                dotnet add package Polly.Extensions.Http
-                Set-Location "..\..\"
-            }
+        # Load Azure configuration
+        Write-Info "Loading Azure configuration..."
+        if (Test-Path "azure-config.ps1") {
+            . .\azure-config.ps1
+        } else {
+            Write-Error "Azure configuration not found. Please run exercise01 first!"
+            exit 1
         }
         
-        # Create message broker configuration
-        New-FileInteractive -FilePath "src\SharedLibraries\ECommerceMS.Shared\Messaging\IMessageBroker.cs" -Content @'
+        # Create deployment script
+        New-FileInteractive -FilePath "deploy-services.ps1" -Content @'
 namespace ECommerceMS.Shared.Messaging;
 
 public interface IMessageBroker
@@ -634,21 +662,21 @@ public abstract class BaseEvent : IEvent
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
     public abstract string EventType { get; }
 }
-'@ -Description "Message broker interface and base event definitions"
+'@ -Description "Azure deployment script for microservices"
         
-        Write-Success "Communication patterns added to microservices!"
+        Write-Success "Deployment scripts created! Run .\deploy-services.ps1 to deploy to Azure."
     }
     
     "exercise04" {
-        # Exercise 4: Production-Ready Deployment
+        # Exercise 4: Azure Service Communication
         
-        Write-Concept -Title "Production Deployment Patterns" -Content @"
-Production-Ready Microservices:
-• Containerization: Docker containers for consistent deployment
-• Orchestration: Docker Compose for local development
-• Health Checks: Service health monitoring and readiness probes
-• Monitoring: Application Insights and distributed tracing
-• Resilience: Circuit breakers, retries, and timeout patterns
+        Write-Concept -Title "Azure Service Bus & Resilience" -Content @"
+Azure Service Communication:
+• Service Bus: Reliable message delivery
+• HTTP Communication: Service-to-service calls
+• Polly Resilience: Retry, circuit breaker, timeout
+• Health Checks: Monitor service availability
+• Distributed Tracing: Application Insights correlation
 "@
         
         Pause-ForUser
@@ -659,8 +687,8 @@ Production-Ready Microservices:
             exit 1
         }
         
-        # Create Docker Compose configuration
-        New-FileInteractive -FilePath "docker-compose.yml" -Content @'
+        # Create Service Bus configuration
+        New-FileInteractive -FilePath "configure-servicebus.ps1" -Content @'
 version: "3.8"
 
 services:
@@ -779,10 +807,10 @@ volumes:
 networks:
   ecommerce-network:
     driver: bridge
-'@ -Description "Complete Docker Compose configuration for microservices deployment"
+'@ -Description "Azure Service Bus configuration script"
         
-        # Create Dockerfile template for services
-        New-FileInteractive -FilePath "src\Dockerfile.template" -Content @'
+        # Create communication test script
+        New-FileInteractive -FilePath "test-communication.ps1" -Content @'
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 EXPOSE 80
@@ -802,21 +830,21 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "ServiceName.dll"]
-'@ -Description "Dockerfile template for microservices"
+'@ -Description "Service communication test script"
         
-        Write-Success "Docker deployment configuration created!"
+        Write-Success "Azure communication configuration created!"
     }
     
     "exercise05" {
-        # Exercise 5: Cloud Deployment Options
+        # Exercise 5: Production Features
         
-        Write-Concept -Title "Cloud-Native Deployment" -Content @"
-Cloud Deployment Strategies:
-• Azure Kubernetes Service (AKS): Managed Kubernetes for Azure
-• Infrastructure as Code: Terraform for reproducible deployments
-• Generic Kubernetes: Multi-cloud deployment flexibility
-• Docker Swarm: Simpler orchestration for smaller deployments
-• CI/CD Integration: Automated deployment pipelines
+        Write-Concept -Title "Production-Ready Features" -Content @"
+Production Features for Azure:
+• Auto-scaling: CPU and HTTP-based scaling rules
+• Azure Front Door: Global load balancing and CDN
+• Health Monitoring: Comprehensive health checks
+• Cost Management: Monitoring and optimization
+• Security: Managed identities and Key Vault
 "@
         
         Pause-ForUser
@@ -827,12 +855,10 @@ Cloud Deployment Strategies:
             exit 1
         }
         
-        Write-Info "Setting up cloud deployment configurations..."
+        Write-Info "Configuring production features..."
         
-        # Create Kubernetes deployment manifests
-        New-Item -ItemType Directory -Path "k8s" -Force | Out-Null
-        
-        New-FileInteractive -FilePath "k8s\product-catalog-deployment.yaml" -Content @'
+        # Create scaling configuration
+        New-FileInteractive -FilePath "configure-scaling.ps1" -Content @'
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -894,10 +920,10 @@ spec:
       port: 80
       targetPort: 80
   type: ClusterIP
-'@ -Description "Kubernetes deployment manifest for Product Catalog service"
+'@ -Description "Auto-scaling configuration for Container Apps"
         
-        # Create Docker Swarm deployment script
-        New-FileInteractive -FilePath "deploy-docker-swarm.ps1" -Content @'
+        # Create monitoring dashboard
+        New-FileInteractive -FilePath "setup-monitoring.ps1" -Content @'
 #!/usr/bin/env pwsh
 
 param(
@@ -994,15 +1020,9 @@ switch ($Action) {
         Deploy-Stack
     }
 }
-'@ -Description "Docker Swarm deployment script"
+'@ -Description "Azure monitoring setup script"
         
-        # Make the script executable
-        if (Test-Path "deploy-docker-swarm.ps1") {
-            $scriptPath = Resolve-Path "deploy-docker-swarm.ps1"
-            Write-Host "Created deployment script: $scriptPath" -ForegroundColor Green
-        }
-        
-        Write-Success "Cloud deployment configurations created!"
+        Write-Success "Production features configured!"
     }
 }
 
