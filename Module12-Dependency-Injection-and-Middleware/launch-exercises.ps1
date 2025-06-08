@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($Exercise)
-    
-    Write-Host "🎯 DI/Middleware Objectives for $Exercise:" -ForegroundColor Blue
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "🎯 DI/Middleware Objectives for $ExerciseName:" -ForegroundColor Blue
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "Service Lifetime Exploration:" -ForegroundColor Cyan
             Write-Host "  🔧 1. Understanding service lifetimes (Singleton, Scoped, Transient)"
@@ -110,11 +110,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($Exercise)
-    
-    Write-Host "📋 DI/Middleware Components for $Exercise:" -ForegroundColor Cyan
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "📋 DI/Middleware Components for $ExerciseName:" -ForegroundColor Cyan
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "• Service lifetime demonstration classes"
             Write-Host "• Interface and implementation examples"

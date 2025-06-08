@@ -47,11 +47,11 @@ function Explain-Concept {
 
 # Function to show learning objectives
 function Show-LearningObjectives {
-    param($Exercise)
-    
-    Write-Host "🎯 Async Programming Objectives for $Exercise:" -ForegroundColor Blue
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "🎯 Async Programming Objectives for $ExerciseName:" -ForegroundColor Blue
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "Basic Async/Await Fundamentals:" -ForegroundColor Cyan
             Write-Host "  ⚡ 1. Understanding async/await patterns"
@@ -97,11 +97,11 @@ function Show-LearningObjectives {
 
 # Function to show what will be created
 function Show-CreationOverview {
-    param($Exercise)
-    
-    Write-Host "📋 Async Components for $Exercise:" -ForegroundColor Cyan
-    
-    switch ($Exercise) {
+    param($ExerciseName)
+
+    Write-Host "📋 Async Components for $ExerciseName:" -ForegroundColor Cyan
+
+    switch ($ExerciseName) {
         "exercise01" {
             Write-Host "• Basic async service implementations"
             Write-Host "• Task-based method examples"
