@@ -1438,17 +1438,17 @@ public class QueryTestController : ControllerBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace($term))
+            if (string.IsNullOrWhiteSpace(term))
             {
                 return BadRequest("Search term is required");
             }
 
-            var result = await _queryService.SearchBooksAsync($term);
+            var result = await _queryService.SearchBooksAsync(term);
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching books with term: {Term}", $term);
+            _logger.LogError(ex, "Error searching books with term: {Term}", term);
             return StatusCode(500, "Internal server error");
         }
     }
