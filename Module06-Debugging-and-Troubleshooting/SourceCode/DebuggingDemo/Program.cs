@@ -30,7 +30,14 @@ builder.Host.UseSerilog();
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() {
+        Title = "Debugging Demo API",
+        Version = "v1",
+        Description = "ASP.NET Core API for debugging and troubleshooting demonstrations"
+    });
+});
 
 // Add Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
@@ -64,10 +71,17 @@ builder.Services.AddHealthChecksUI()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// Always enable Swagger for debugging/teaching purposes
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Debugging Demo API v1");
+    c.RoutePrefix = "swagger";
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
 }
 else
 {
@@ -86,6 +100,9 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Add root redirect to Swagger for easy access
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 // Map Health Checks
 app.MapHealthChecks("/health", new HealthCheckOptions()
