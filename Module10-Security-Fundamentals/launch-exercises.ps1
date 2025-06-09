@@ -484,6 +484,29 @@ public class SecurityTestController : ControllerBase
 }
 '@ "Security-focused test controller for demonstrating security headers"
 
+        # Create updated .http file with correct security endpoints
+        Create-FileInteractive "SecurityDemo.http" @'
+@SecurityDemo_HostAddress = https://localhost:5001
+
+### Test Security Headers
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/headers
+Accept: application/json
+
+### Test XSS Prevention
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/xss-test?input=<script>alert('xss')</script>
+Accept: application/json
+
+### Test HTTPS Enforcement
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/https-test
+Accept: application/json
+
+### Test Secure Cookie
+POST {{SecurityDemo_HostAddress}}/api/SecurityTest/cookie-test
+Accept: application/json
+
+###
+'@ "HTTP test file with security-focused endpoints"
+
         # Update Program.cs to remove WeatherForecast and add security middleware
         Create-FileInteractive "Program.cs" @'
 using SecurityDemo.Middleware;
@@ -493,7 +516,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() {
+        Title = "Security Demo API",
+        Version = "v1",
+        Description = "ASP.NET Core Security Fundamentals Demo"
+    });
+});
 
 // Configure HTTPS
 builder.Services.AddHttpsRedirection(options =>
@@ -508,7 +538,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Security Demo API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
 // Security middleware - order matters!
@@ -519,8 +553,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Add root redirect to swagger
+app.MapGet("/", () => Results.Redirect("/swagger"));
+
 app.Run();
-'@ "Updated Program.cs with security middleware and no WeatherForecast"
+'@ "Updated Program.cs with security middleware and proper Swagger configuration"
 
         Write-Success "✅ Exercise 1: Security Headers Implementation completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
@@ -577,6 +614,121 @@ public class SecureUserModel
     public string? Website { get; set; }
 }
 '@ "Secure user model with comprehensive validation"
+
+        # Create Input Validation Controller for Exercise 2
+        Create-FileInteractive "Controllers/InputValidationController.cs" @'
+using Microsoft.AspNetCore.Mvc;
+using SecurityDemo.Models;
+using System.ComponentModel.DataAnnotations;
+
+namespace SecurityDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class InputValidationController : ControllerBase
+{
+    private readonly ILogger<InputValidationController> _logger;
+
+    public InputValidationController(ILogger<InputValidationController> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Test endpoint for secure user registration with validation
+    /// </summary>
+    [HttpPost("register")]
+    public IActionResult RegisterUser([FromBody] SecureUserModel user)
+    {
+        _logger.LogInformation("User registration attempt for: {Username}", user.Username);
+
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new
+            {
+                Message = "Validation failed",
+                Errors = ModelState.Where(x => x.Value?.Errors.Count > 0)
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
+                    ),
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        return Ok(new
+        {
+            Message = "User registration successful",
+            Username = user.Username,
+            Email = user.Email,
+            Age = user.Age,
+            Website = user.Website,
+            Timestamp = DateTime.UtcNow,
+            SecurityNote = "All inputs validated successfully"
+        });
+    }
+
+    /// <summary>
+    /// Test endpoint for SQL injection prevention
+    /// </summary>
+    [HttpGet("search")]
+    public IActionResult SearchUsers([FromQuery] string query = "")
+    {
+        _logger.LogInformation("User search requested with query: {Query}", query);
+
+        // Simulate safe search (in real app, use parameterized queries)
+        var safeQuery = query.Replace("'", "''"); // Basic SQL injection prevention
+
+        return Ok(new
+        {
+            Message = "Search completed safely",
+            Query = query,
+            SafeQuery = safeQuery,
+            Results = new[]
+            {
+                new { Id = 1, Username = "john_doe", Email = "john@example.com" },
+                new { Id = 2, Username = "jane_smith", Email = "jane@example.com" }
+            },
+            Timestamp = DateTime.UtcNow,
+            SecurityNote = "Query parameters are safely handled"
+        });
+    }
+
+    /// <summary>
+    /// Test endpoint for XSS prevention in comments
+    /// </summary>
+    [HttpPost("comment")]
+    public IActionResult AddComment([FromBody] CommentModel comment)
+    {
+        _logger.LogInformation("Comment submission from: {Author}", comment.Author);
+
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        return Ok(new
+        {
+            Message = "Comment added successfully",
+            Author = comment.Author,
+            Content = comment.Content, // ASP.NET Core automatically encodes this
+            Timestamp = DateTime.UtcNow,
+            SecurityNote = "Content is automatically encoded to prevent XSS"
+        });
+    }
+}
+
+public class CommentModel
+{
+    [Required]
+    [StringLength(100)]
+    public string Author { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(1000)]
+    public string Content { get; set; } = string.Empty;
+}
+'@ "Input validation controller with security-focused endpoints"
 
         Write-Success "✅ Exercise 2: Input Validation & Data Protection completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
@@ -704,6 +856,215 @@ public class EncryptionService : IEncryptionService
     }
 }
 '@ "Encryption service with AES and PBKDF2 password hashing"
+
+        # Create Encryption Controller for Exercise 3
+        Create-FileInteractive "Controllers/EncryptionController.cs" @'
+using Microsoft.AspNetCore.Mvc;
+using SecurityDemo.Services;
+
+namespace SecurityDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class EncryptionController : ControllerBase
+{
+    private readonly IEncryptionService _encryptionService;
+    private readonly ILogger<EncryptionController> _logger;
+
+    public EncryptionController(IEncryptionService encryptionService, ILogger<EncryptionController> logger)
+    {
+        _encryptionService = encryptionService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Encrypt sensitive data
+    /// </summary>
+    [HttpPost("encrypt")]
+    public IActionResult EncryptData([FromBody] EncryptionRequest request)
+    {
+        _logger.LogInformation("Encryption requested for data");
+
+        try
+        {
+            var encryptedData = _encryptionService.Encrypt(request.PlainText, request.Key);
+
+            return Ok(new
+            {
+                Message = "Data encrypted successfully",
+                EncryptedData = encryptedData,
+                Timestamp = DateTime.UtcNow,
+                SecurityNote = "Data encrypted using AES-256"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Encryption failed");
+            return BadRequest(new { Message = "Encryption failed", Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Decrypt sensitive data
+    /// </summary>
+    [HttpPost("decrypt")]
+    public IActionResult DecryptData([FromBody] DecryptionRequest request)
+    {
+        _logger.LogInformation("Decryption requested");
+
+        try
+        {
+            var decryptedData = _encryptionService.Decrypt(request.CipherText, request.Key);
+
+            return Ok(new
+            {
+                Message = "Data decrypted successfully",
+                DecryptedData = decryptedData,
+                Timestamp = DateTime.UtcNow,
+                SecurityNote = "Data decrypted using AES-256"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Decryption failed");
+            return BadRequest(new { Message = "Decryption failed", Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Hash password securely
+    /// </summary>
+    [HttpPost("hash-password")]
+    public IActionResult HashPassword([FromBody] PasswordRequest request)
+    {
+        _logger.LogInformation("Password hashing requested");
+
+        try
+        {
+            var hashedPassword = _encryptionService.HashPassword(request.Password);
+
+            return Ok(new
+            {
+                Message = "Password hashed successfully",
+                HashedPassword = hashedPassword,
+                Timestamp = DateTime.UtcNow,
+                SecurityNote = "Password hashed using PBKDF2 with SHA-256"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Password hashing failed");
+            return BadRequest(new { Message = "Password hashing failed", Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Verify password against hash
+    /// </summary>
+    [HttpPost("verify-password")]
+    public IActionResult VerifyPassword([FromBody] PasswordVerificationRequest request)
+    {
+        _logger.LogInformation("Password verification requested");
+
+        try
+        {
+            var isValid = _encryptionService.VerifyPassword(request.Password, request.Hash);
+
+            return Ok(new
+            {
+                Message = "Password verification completed",
+                IsValid = isValid,
+                Timestamp = DateTime.UtcNow,
+                SecurityNote = "Password verified using secure comparison"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Password verification failed");
+            return BadRequest(new { Message = "Password verification failed", Error = ex.Message });
+        }
+    }
+}
+
+public class EncryptionRequest
+{
+    public string PlainText { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+}
+
+public class DecryptionRequest
+{
+    public string CipherText { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+}
+
+public class PasswordRequest
+{
+    public string Password { get; set; } = string.Empty;
+}
+
+public class PasswordVerificationRequest
+{
+    public string Password { get; set; } = string.Empty;
+    public string Hash { get; set; } = string.Empty;
+}
+'@ "Encryption controller with secure data handling endpoints"
+
+        # Update Program.cs to register the encryption service
+        Create-FileInteractive "Program.cs" @'
+using SecurityDemo.Middleware;
+using SecurityDemo.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() {
+        Title = "Security Demo API",
+        Version = "v1",
+        Description = "ASP.NET Core Security Fundamentals Demo with Encryption"
+    });
+});
+
+// Register encryption service
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+
+// Configure HTTPS
+builder.Services.AddHttpsRedirection(options =>
+{
+    options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+    options.HttpsPort = 5001;
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Security Demo API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
+
+// Security middleware - order matters!
+app.UseSecurityHeaders(); // Custom security headers middleware
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Add root redirect to swagger
+app.MapGet("/", () => Results.Redirect("/swagger"));
+
+app.Run();
+'@ "Updated Program.cs with encryption service registration"
 
         Write-Success "✅ Exercise 3: Encryption & Key Management completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
