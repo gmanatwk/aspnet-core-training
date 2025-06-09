@@ -849,7 +849,7 @@ Integration tests verify that different parts of the application work together:
         Write-Info "Adding Entity Framework Core packages to API project..."
         Set-Location ProductCatalog.API
         dotnet add package Microsoft.EntityFrameworkCore.InMemory
-        dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+        dotnet add package Microsoft.EntityFrameworkCore.Sqlite
         dotnet add package Microsoft.EntityFrameworkCore.Design
         dotnet add package Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore
         Set-Location ..

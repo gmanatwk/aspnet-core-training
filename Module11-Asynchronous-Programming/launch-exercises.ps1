@@ -548,127 +548,424 @@ class Program
         Write-Host "• Retry patterns with exponential backoff" -ForegroundColor White
     }
 
-    /// <summary>
-    /// 📊 Get thread pool information to see the impact of blocking vs non-blocking
-    /// </summary>
-    [HttpGet("thread-info")]
-    public IActionResult GetThreadInfo()
-    {
-        ThreadPool.GetAvailableThreads(out int availableWorkerThreads, out int availableCompletionPortThreads);
-        ThreadPool.GetMaxThreads(out int maxWorkerThreads, out int maxCompletionPortThreads);
+    "exercise02" {
+        # Exercise 2: Advanced Async Patterns
 
-        var info = new
+        Explain-Concept "🚨 THE PROBLEM: Complex Async Scenarios" @"
+You need to handle more complex async scenarios in your console application:
+
+CURRENT CHALLENGE:
+• Managing multiple async operations with different completion times
+• Handling cancellation and timeouts properly
+• Working with async streams and IAsyncEnumerable
+• Implementing proper error handling across async boundaries
+
+YOUR MISSION:
+• Build async data streaming functionality
+• Implement cancellation token support
+• Create timeout handling mechanisms
+• Work with async LINQ operations
+"@
+
+        if (-not $SkipProjectCreation) {
+            Write-Error "Exercise 2 requires Exercise 1 to be completed first!"
+            Write-Info "Please run: .\launch-exercises.ps1 exercise01"
+            exit 1
+        }
+
+        # Add the advanced async functionality to the existing console app
+        Create-FileInteractive "Services/AsyncStreamService.cs" @'
+using System.Runtime.CompilerServices;
+
+namespace AsyncExercise01.Services;
+
+public class AsyncStreamService
+{
+    /// <summary>
+    /// Demonstrates async enumerable for streaming data
+    /// </summary>
+    public static async IAsyncEnumerable<string> GetDataStreamAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        for (int i = 1; i <= 10; i++)
         {
-            AvailableWorkerThreads = availableWorkerThreads,
-            AvailableCompletionPortThreads = availableCompletionPortThreads,
-            MaxWorkerThreads = maxWorkerThreads,
-            MaxCompletionPortThreads = maxCompletionPortThreads,
-            UsedWorkerThreads = maxWorkerThreads - availableWorkerThreads,
-            UsedCompletionPortThreads = maxCompletionPortThreads - availableCompletionPortThreads,
-            CurrentManagedThreadId = Thread.CurrentThread.ManagedThreadId
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await Task.Delay(500, cancellationToken);
+            yield return $"Stream item {i} at {DateTime.Now:HH:mm:ss.fff}";
+        }
+    }
+
+    /// <summary>
+    /// Demonstrates timeout handling with cancellation tokens
+    /// </summary>
+    public static async Task<string> GetDataWithTimeoutAsync(int timeoutMs)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+
+        try
+        {
+            // Simulate work that might take longer than timeout
+            await Task.Delay(timeoutMs + 1000, cts.Token);
+            return "Operation completed successfully";
+        }
+        catch (OperationCanceledException)
+        {
+            return $"Operation timed out after {timeoutMs}ms";
+        }
+    }
+}
+'@ "Advanced async patterns service"
+
+        # Update Program.cs to add Exercise 2 functionality
+        Create-FileInteractive "Program.cs" @'
+using System.Diagnostics;
+using AsyncExercise01.Models;
+using AsyncExercise01.Services;
+
+namespace AsyncExercise01;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        Console.WriteLine("=== Module 11: Asynchronous Programming ===\n");
+
+        // Exercise 1: Basic async patterns
+        await RunExercise1();
+
+        Console.WriteLine("\n" + new string('=', 50) + "\n");
+
+        // Exercise 2: Advanced async patterns
+        await RunExercise2();
+
+        Console.WriteLine("\nPress any key to exit...");
+        Console.ReadKey();
+    }
+
+    static async Task RunExercise1()
+    {
+        Console.WriteLine("=== Exercise 1: Basic Async Programming ===\n");
+
+        // Test URLs with different delays (as specified in exercise)
+        var urls = new List<string>
+        {
+            "https://api1.example.com", // 1000ms delay
+            "https://api2.example.com", // 1500ms delay
+            "https://api3.example.com"  // 800ms delay
         };
 
-        return Ok(info);
+        Console.WriteLine("🚀 Testing Sequential vs Concurrent Processing\n");
+
+        // Part 1: Sequential Processing
+        await TestSequentialProcessing(urls);
+
+        Console.WriteLine();
+
+        // Part 2: Concurrent Processing
+        await TestConcurrentProcessing(urls);
+
+        Console.WriteLine();
+
+        // Part 3: Retry Logic Test
+        await TestRetryLogic();
     }
-}
-'@ "BROKEN file processing controller that demonstrates blocking I/O problems"
 
-        # Create a load testing script to demonstrate the problem
-        Create-FileInteractive "test-load.ps1" @'
-# Load Testing Script - Demonstrates Sync vs Async Performance
-# Run this after starting the API to see the difference!
+    static async Task RunExercise2()
+    {
+        Console.WriteLine("=== Exercise 2: Advanced Async Patterns ===\n");
 
-Write-Host "🧪 Load Testing: Sync vs Async Performance" -ForegroundColor Cyan
-Write-Host "Make sure your API is running on https://localhost:7000 (or update the URL below)"
-Write-Host ""
+        // Part 1: Async Streams
+        Console.WriteLine("🌊 Testing Async Streams:");
+        await TestAsyncStreams();
 
-$baseUrl = "https://localhost:7000/api/FileProcessing"
+        Console.WriteLine();
 
-# Test 1: Single request (both should work fine)
-Write-Host "📊 Test 1: Single Request Performance" -ForegroundColor Yellow
-Write-Host "Testing sync endpoint..."
-$syncTime = Measure-Command {
-    try {
-        Invoke-RestMethod "$baseUrl/process-sync/large-file-1.txt"
-        Write-Host "✅ Sync request completed" -ForegroundColor Green
-    } catch {
-        Write-Host "❌ Sync request failed: $_" -ForegroundColor Red
+        // Part 2: Cancellation and Timeouts
+        Console.WriteLine("⏰ Testing Cancellation and Timeouts:");
+        await TestCancellationAndTimeouts();
     }
-}
 
-Write-Host "Testing async endpoint..."
-$asyncTime = Measure-Command {
-    try {
-        Invoke-RestMethod "$baseUrl/process-async/large-file-1.txt"
-        Write-Host "✅ Async request completed" -ForegroundColor Green
-    } catch {
-        Write-Host "❌ Async request failed: $_" -ForegroundColor Red
-    }
-}
+    static async Task TestAsyncStreams()
+    {
+        Console.WriteLine("Processing async stream...");
 
-Write-Host "Single request results:"
-Write-Host "  Sync:  $($syncTime.TotalMilliseconds)ms"
-Write-Host "  Async: $($asyncTime.TotalMilliseconds)ms"
-Write-Host ""
-
-# Test 2: Concurrent requests (this will show the difference!)
-Write-Host "📊 Test 2: Concurrent Requests (This is where async shines!)" -ForegroundColor Yellow
-
-Write-Host "Testing 10 concurrent SYNC requests..."
-$syncJobs = 1..10 | ForEach-Object {
-    Start-Job -ScriptBlock {
-        param($url)
-        try {
-            $result = Invoke-RestMethod $url
-            return @{ Success = $true; Time = $result.ProcessingTimeMs }
-        } catch {
-            return @{ Success = $false; Error = $_.Exception.Message }
+        await foreach (var item in AsyncStreamService.GetDataStreamAsync())
+        {
+            Console.WriteLine($"Received: {item}");
         }
-    } -ArgumentList "$baseUrl/process-sync/large-file-1.txt"
-}
 
-$syncResults = $syncJobs | Wait-Job | Receive-Job
-$syncJobs | Remove-Job
+        Console.WriteLine("Async stream processing completed!");
+    }
 
-Write-Host "Testing 10 concurrent ASYNC requests..."
-$asyncJobs = 1..10 | ForEach-Object {
-    Start-Job -ScriptBlock {
-        param($url)
-        try {
-            $result = Invoke-RestMethod $url
-            return @{ Success = $true; Time = $result.ProcessingTimeMs }
-        } catch {
-            return @{ Success = $false; Error = $_.Exception.Message }
+    static async Task TestCancellationAndTimeouts()
+    {
+        // Test timeout scenarios
+        Console.WriteLine("Testing timeout with 2000ms limit:");
+        var result1 = await AsyncStreamService.GetDataWithTimeoutAsync(2000);
+        Console.WriteLine($"Result: {result1}");
+
+        Console.WriteLine("\nTesting timeout with 500ms limit:");
+        var result2 = await AsyncStreamService.GetDataWithTimeoutAsync(500);
+        Console.WriteLine($"Result: {result2}");
+    }
+
+    // Exercise 1 methods (from previous implementation)
+    static async Task TestSequentialProcessing(List<string> urls)
+    {
+        Console.WriteLine("=== Sequential Processing ===");
+        var stopwatch = Stopwatch.StartNew();
+
+        foreach (var url in urls)
+        {
+            var delay = GetDelayForUrl(url);
+            var rawData = await DownloadDataAsync(url, delay);
+            var processedData = await ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await SaveDataAsync(processedData, fileName);
         }
-    } -ArgumentList "$baseUrl/process-async/large-file-1.txt"
+
+        stopwatch.Stop();
+        Console.WriteLine($"Sequential processing completed in {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    static async Task TestConcurrentProcessing(List<string> urls)
+    {
+        Console.WriteLine("=== Concurrent Processing ===");
+        var stopwatch = Stopwatch.StartNew();
+
+        var tasks = urls.Select(async url =>
+        {
+            var delay = GetDelayForUrl(url);
+            var rawData = await DownloadDataAsync(url, delay);
+            var processedData = await ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await SaveDataAsync(processedData, fileName);
+            return processedData;
+        });
+
+        var results = await Task.WhenAll(tasks);
+
+        stopwatch.Stop();
+        Console.WriteLine($"Concurrent processing completed in {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    static async Task TestRetryLogic()
+    {
+        Console.WriteLine("=== Retry Logic Test ===");
+
+        try
+        {
+            var result = await DownloadWithRetryAsync("https://unreliable-api.example.com");
+            Console.WriteLine($"Download successful: {result}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Download failed after all retries: {ex.Message}");
+        }
+    }
+
+    static async Task<string> DownloadDataAsync(string url, int delayMs)
+    {
+        Console.WriteLine($"Downloading from {url}...");
+        await Task.Delay(delayMs);
+        return $"Data from {url} (simulated {delayMs}ms download)";
+    }
+
+    static async Task<ProcessedData> ProcessDataAsync(string rawData)
+    {
+        Console.WriteLine($"Processing data from {ExtractUrlFromData(rawData)}...");
+        await Task.Delay(500);
+
+        return new ProcessedData
+        {
+            Summary = $"Processed: {ExtractUrlFromData(rawData)}",
+            CharacterCount = rawData.Length,
+            ProcessedAt = DateTime.Now
+        };
+    }
+
+    static async Task SaveDataAsync(ProcessedData data, string fileName)
+    {
+        Console.WriteLine($"Saving data to {fileName}...");
+        await Task.Delay(300);
+        Console.WriteLine($"Data saved to {fileName}");
+    }
+
+    static async Task<string> DownloadWithRetryAsync(string url)
+    {
+        const int maxRetries = 3;
+        var random = new Random();
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting download (try {attempt}/{maxRetries})...");
+
+                if (random.NextDouble() < 0.5)
+                {
+                    throw new HttpRequestException($"Simulated network failure for {url}");
+                }
+
+                await Task.Delay(500);
+                Console.WriteLine("Download successful!");
+                return $"Data from {url}";
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                var delayMs = (int)Math.Pow(2, attempt - 1) * 1000;
+                Console.WriteLine($"Download failed, retrying in {delayMs}ms...");
+                await Task.Delay(delayMs);
+            }
+        }
+
+        throw new Exception($"Failed to download from {url} after {maxRetries} attempts");
+    }
+
+    static int GetDelayForUrl(string url)
+    {
+        return url switch
+        {
+            "https://api1.example.com" => 1000,
+            "https://api2.example.com" => 1500,
+            "https://api3.example.com" => 800,
+            _ => 1000
+        };
+    }
+
+    static string ExtractUrlFromData(string data)
+    {
+        var parts = data.Split(' ');
+        return parts.Length > 2 ? parts[2] : "unknown";
+    }
+
+    static string ExtractApiName(string url)
+    {
+        return url switch
+        {
+            "https://api1.example.com" => "api1",
+            "https://api2.example.com" => "api2",
+            "https://api3.example.com" => "api3",
+            _ => "unknown"
+        };
+    }
 }
+'@ "Updated Program.cs with both Exercise 1 and Exercise 2 functionality"
 
-$asyncResults = $asyncJobs | Wait-Job | Receive-Job
-$asyncJobs | Remove-Job
+        Write-Success "✅ Exercise 2: Advanced Async Patterns - COMPLETE!"
+        Write-Host ""
+        Write-Host "🧪 NOW TEST ADVANCED ASYNC:" -ForegroundColor Green
+        Write-Host "1. Build and run: dotnet run" -ForegroundColor Cyan
+        Write-Host "2. Watch async streams in action" -ForegroundColor Yellow
+        Write-Host "3. See cancellation and timeout handling" -ForegroundColor Green
+        Write-Host "4. Compare with Exercise 1 basic patterns" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "🎯 LEARNING OBJECTIVES ACHIEVED:" -ForegroundColor Yellow
+        Write-Host "• ✅ Implemented async streams with IAsyncEnumerable" -ForegroundColor White
+        Write-Host "• ✅ Added cancellation token support" -ForegroundColor White
+        Write-Host "• ✅ Built timeout handling mechanisms" -ForegroundColor White
+        Write-Host "• ✅ Combined basic and advanced async patterns" -ForegroundColor White
+    }
 
-# Analyze results
-$syncSuccessful = ($syncResults | Where-Object { $_.Success }).Count
-$asyncSuccessful = ($asyncResults | Where-Object { $_.Success }).Count
+    "exercise03" {
+        # Exercise 3: Background Services and Tasks
 
-Write-Host ""
-Write-Host "🎯 RESULTS - This shows why async matters!" -ForegroundColor Cyan
-Write-Host "Sync requests successful:  $syncSuccessful/10"
-Write-Host "Async requests successful: $asyncSuccessful/10"
+        Explain-Concept "🚨 THE PROBLEM: Long-Running Background Work" @"
+Your console application needs to handle background processing:
 
-if ($syncSuccessful -lt $asyncSuccessful) {
-    Write-Host ""
-    Write-Host "🎉 ASYNC WINS! Here's why:" -ForegroundColor Green
-    Write-Host "• Sync requests block threads, causing thread pool starvation"
-    Write-Host "• Async requests free threads during I/O, allowing more concurrency"
-    Write-Host "• This is why async is crucial for scalable web applications!"
+CURRENT CHALLENGE:
+• Running background tasks alongside main application logic
+• Managing task lifecycles and cleanup
+• Handling background task failures gracefully
+• Coordinating between foreground and background work
+
+YOUR MISSION:
+• Implement background task processing
+• Add proper task cancellation and cleanup
+• Create task coordination mechanisms
+• Handle background task exceptions
+"@
+
+        if (-not $SkipProjectCreation) {
+            Write-Error "Exercise 3 requires Exercises 1 and 2 to be completed first!"
+            Write-Info "Please run exercises in order: exercise01, exercise02, exercise03"
+            exit 1
+        }
+
+        # Add background service functionality
+        Create-FileInteractive "Services/BackgroundTaskService.cs" @'
+namespace AsyncExercise01.Services;
+
+public class BackgroundTaskService
+{
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+
+    public async Task StartBackgroundWorkAsync()
+    {
+        Console.WriteLine("🔄 Starting background tasks...");
+
+        // Start multiple background tasks
+        var tasks = new[]
+        {
+            Task.Run(() => BackgroundTask1(_cancellationTokenSource.Token)),
+            Task.Run(() => BackgroundTask2(_cancellationTokenSource.Token)),
+            Task.Run(() => BackgroundTask3(_cancellationTokenSource.Token))
+        };
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Background tasks were cancelled");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Background task error: {ex.Message}");
+        }
+    }
+
+    public void StopBackgroundWork()
+    {
+        Console.WriteLine("🛑 Stopping background tasks...");
+        _cancellationTokenSource.Cancel();
+    }
+
+    private async Task BackgroundTask1(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            Console.WriteLine($"Background Task 1 running at {DateTime.Now:HH:mm:ss}");
+            await Task.Delay(2000, cancellationToken);
+        }
+    }
+
+    private async Task BackgroundTask2(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            Console.WriteLine($"Background Task 2 processing at {DateTime.Now:HH:mm:ss}");
+            await Task.Delay(3000, cancellationToken);
+        }
+    }
+
+    private async Task BackgroundTask3(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            Console.WriteLine($"Background Task 3 monitoring at {DateTime.Now:HH:mm:ss}");
+            await Task.Delay(5000, cancellationToken);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Dispose();
+    }
 }
-
-Write-Host ""
-Write-Host "💡 Try increasing the concurrent requests to 20, 50, or 100 to see even bigger differences!"
-Write-Host "💡 Check thread usage: GET $baseUrl/thread-info"
-'@ "PowerShell script to demonstrate sync vs async performance under load"
-
-        # Create async data service interface
+'@ "Background task service for Exercise 3"
         Create-FileInteractive "Data/IAsyncDataService.cs" @'
 using AsyncDemo.Models;
 
