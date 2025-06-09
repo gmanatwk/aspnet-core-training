@@ -13,95 +13,60 @@ public class SecurityTestController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Test endpoint to verify security headers
-    /// </summary>
     [HttpGet("headers")]
-    public IActionResult TestHeaders()
+    public IActionResult GetSecurityHeaders()
     {
-        _logger.LogInformation("Security headers test requested");
+        _logger.LogInformation("Security headers test endpoint called");
 
         return Ok(new
         {
-            Message = "Check the response headers to verify security configuration",
+            Message = "Check the response headers to see security headers in action",
             Timestamp = DateTime.UtcNow,
             Headers = new
             {
-                ContentSecurityPolicy = "Configured",
-                XFrameOptions = "DENY",
-                XContentTypeOptions = "nosniff",
-                StrictTransportSecurity = Request.IsHttps ? "Configured" : "HTTPS Required",
-                ReferrerPolicy = "strict-origin-when-cross-origin"
+                ContentSecurityPolicy = "Prevents XSS attacks",
+                XFrameOptions = "Prevents clickjacking",
+                XContentTypeOptions = "Prevents MIME sniffing",
+                StrictTransportSecurity = "Enforces HTTPS",
+                ReferrerPolicy = "Controls referrer information"
             }
         });
     }
 
-    /// <summary>
-    /// Test endpoint for XSS prevention
-    /// </summary>
-    [HttpGet("xss-test")]
-    public IActionResult XssTest([FromQuery] string input = "")
+    [HttpGet("test-csp")]
+    public IActionResult TestContentSecurityPolicy()
     {
-        _logger.LogInformation("XSS test requested with input: {Input}", input);
-
-        // This demonstrates proper output encoding
-        return Ok(new
-        {
-            Message = "Input received and properly encoded",
-            SafeInput = input, // ASP.NET Core automatically encodes this
-            Timestamp = DateTime.UtcNow,
-            SecurityNote = "Input is automatically encoded by ASP.NET Core JSON serializer"
-        });
+        return Content(@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSP Test</title>
+</head>
+<body>
+    <h1>Content Security Policy Test</h1>
+    <p>This page tests CSP headers. Check browser console for CSP violations.</p>
+    <script>
+        console.log('This inline script should be blocked by CSP if configured properly');
+    </script>
+</body>
+</html>", "text/html");
     }
 
-    /// <summary>
-    /// Test endpoint for HTTPS enforcement
-    /// </summary>
-    [HttpGet("https-test")]
-    public IActionResult HttpsTest()
+    [HttpGet("secure-info")]
+    public IActionResult GetSecureInformation()
     {
-        _logger.LogInformation("HTTPS test requested");
-
         return Ok(new
         {
-            IsHttps = Request.IsHttps,
-            Scheme = Request.Scheme,
-            Host = Request.Host.Value,
-            SecurityStatus = Request.IsHttps ? "Secure" : "Insecure - HTTPS Required",
-            Timestamp = DateTime.UtcNow
-        });
-    }
-
-    /// <summary>
-    /// Test endpoint for cookie security
-    /// </summary>
-    [HttpPost("cookie-test")]
-    public IActionResult CookieTest()
-    {
-        _logger.LogInformation("Cookie security test requested");
-
-        // Set a secure cookie
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTime.UtcNow.AddHours(1)
-        };
-
-        Response.Cookies.Append("SecureTestCookie", "SecureValue", cookieOptions);
-
-        return Ok(new
-        {
-            Message = "Secure cookie set",
-            CookieOptions = new
+            ApplicationName = "Security Demo API",
+            SecurityFeatures = new[]
             {
-                HttpOnly = cookieOptions.HttpOnly,
-                Secure = cookieOptions.Secure,
-                SameSite = cookieOptions.SameSite.ToString(),
-                Expires = cookieOptions.Expires
+                "Security Headers Middleware",
+                "HTTPS Enforcement",
+                "Input Validation",
+                "CSRF Protection",
+                "Data Encryption"
             },
-            Timestamp = DateTime.UtcNow
+            SecurityTip = "Always validate input, encode output, and use HTTPS in production"
         });
     }
 }

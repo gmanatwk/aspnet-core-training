@@ -322,7 +322,7 @@ HTTP Security Headers provide defense-in-depth protection:
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "http://localhost:5000",
+      "applicationUrl": "http://localhost:5050",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -332,7 +332,7 @@ HTTP Security Headers provide defense-in-depth protection:
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://localhost:5001;http://localhost:5000",
+      "applicationUrl": "https://localhost:5051;http://localhost:5050",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -517,7 +517,7 @@ public class SecurityTestController : ControllerBase
 
         # Create updated .http file with correct security endpoints
         Create-FileInteractive "SecurityDemo.http" @'
-@SecurityDemo_HostAddress = https://localhost:5001
+@SecurityDemo_HostAddress = https://localhost:5051
 
 ### Test Security Headers
 GET {{SecurityDemo_HostAddress}}/api/SecurityTest/headers
@@ -560,7 +560,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 5001;
+    options.HttpsPort = 5051;
 });
 
 // Add controllers for API endpoints
@@ -1070,7 +1070,7 @@ builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 5001;
+    options.HttpsPort = 5051;
 });
 
 var app = builder.Build();

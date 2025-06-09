@@ -1,6 +1,19 @@
-@SecurityDemo_HostAddress = http://localhost:5296
+@SecurityDemo_HostAddress = https://localhost:5051
 
-GET {{SecurityDemo_HostAddress}}/weatherforecast/
+### Test Security Headers
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/headers
+Accept: application/json
+
+### Test XSS Prevention
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/xss-test?input=<script>alert('xss')</script>
+Accept: application/json
+
+### Test HTTPS Enforcement
+GET {{SecurityDemo_HostAddress}}/api/SecurityTest/https-test
+Accept: application/json
+
+### Test Secure Cookie
+POST {{SecurityDemo_HostAddress}}/api/SecurityTest/cookie-test
 Accept: application/json
 
 ###
