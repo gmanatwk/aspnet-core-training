@@ -1,4 +1,4 @@
-@SecurityDemo_HostAddress = https://localhost:5051
+@SecurityDemo_HostAddress = https://localhost:7081
 
 ### Test Security Headers
 GET {{SecurityDemo_HostAddress}}/api/SecurityTest/headers

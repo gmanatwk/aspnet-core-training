@@ -1,4 +1,5 @@
 using SecurityDemo.Middleware;
+using SecurityDemo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,19 +11,19 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() {
         Title = "Security Demo API",
         Version = "v1",
-        Description = "ASP.NET Core Security Fundamentals Demo"
+        Description = "ASP.NET Core Security Fundamentals Demo with Encryption"
     });
 });
 
-// Configure HTTPS redirection properly
+// Register encryption service
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+
+// Configure HTTPS
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 5051;
+    options.HttpsPort = 7081;
 });
-
-// Add controllers for API endpoints
-builder.Services.AddControllers();
 
 var app = builder.Build();
 
