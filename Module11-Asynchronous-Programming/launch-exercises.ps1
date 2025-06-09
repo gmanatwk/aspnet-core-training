@@ -1818,20 +1818,22 @@ public class WeatherData
     "exercise03" {
         # Exercise 3: Background Tasks & Services
 
-        Explain-Concept "🚨 THE PROBLEM: Inefficient Sequential Processing" @"
-You've inherited a data processing system that's painfully slow!
+        Explain-Concept "🚨 THE PROBLEM: Manual Background Processing" @"
+You're building a document processing system that needs background processing!
 
 CURRENT ISSUES:
-• Processing 1000 records takes 10+ minutes
-• Each record processed one at a time (sequential)
-• CPU cores sitting idle while waiting for I/O
-• Users complaining about slow reports
+• Files uploaded but processing blocks the API response
+• No way to monitor long-running file processing
+• Manual folder monitoring is error-prone
+• Reports need to be generated on a schedule
+• Old files pile up without cleanup
 
 YOUR MISSION:
-• Convert sequential processing to concurrent
-• Use Task.WhenAll for parallel operations
-• Control concurrency to avoid overwhelming resources
-• Measure the dramatic performance improvement
+• Implement background task queue system
+• Create hosted services for file monitoring
+• Build scheduled tasks for reports
+• Add progress tracking for long operations
+• Create automatic cleanup service
 "@
 
         if (-not $SkipProjectCreation) {
@@ -1840,35 +1842,44 @@ YOUR MISSION:
             exit 1
         }
 
-        # Create sample data for processing
-        Create-FileInteractive "Models/DataRecord.cs" @'
+        # Create models for background processing
+        Create-FileInteractive "Models/ProcessingJob.cs" @'
 namespace AsyncDemo.Models;
 
-public class DataRecord
+public class ProcessingJob
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Data { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public bool IsProcessed { get; set; }
-    public DateTime? ProcessedAt { get; set; }
-    public int ProcessingTimeMs { get; set; }
+    public string JobType { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public JobStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? ResultData { get; set; }
+    public int Progress { get; set; } // 0-100
+}
+
+public enum JobStatus
+{
+    Queued,
+    Processing,
+    Completed,
+    Failed,
+    Cancelled
 }
 
 public class ProcessingResult
 {
-    public int TotalRecords { get; set; }
-    public int ProcessedRecords { get; set; }
-    public int FailedRecords { get; set; }
-    public long TotalProcessingTimeMs { get; set; }
-    public string Method { get; set; } = string.Empty;
-    public double RecordsPerSecond { get; set; }
-    public List<string> Errors { get; set; } = new();
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
-'@ "Data models for the slow processing demonstration"
+'@ "Models for background task processing system"
 
-        # Create the SLOW data processing service
-        Create-FileInteractive "Services/DataProcessingService.cs" @'
+        # Create background task queue interface and implementation
+        Create-FileInteractive "Services/BackgroundTaskQueue.cs" @'
 using AsyncDemo.Models;
 using System.Diagnostics;
 
