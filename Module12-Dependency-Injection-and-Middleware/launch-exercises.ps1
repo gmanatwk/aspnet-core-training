@@ -283,76 +283,267 @@ Service lifetimes control how long service instances live:
             Write-Info "Creating new ASP.NET Core Web API project..."
             dotnet new webapi -n $ProjectName --framework net8.0
             Set-Location $ProjectName
+
+            # Remove default WeatherForecast files
+            Remove-Item -Path "WeatherForecast.cs" -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "Controllers/WeatherForecastController.cs" -Force -ErrorAction SilentlyContinue
         }
 
         # Create service interfaces and implementations
-        Create-FileInteractive "Services/ILifetimeService.cs" @'
+        Create-FileInteractive "Services/ICounterService.cs" @'
 namespace DIMiddlewareDemo.Services;
 
-public interface ITransientService
+public interface ICounterService
 {
-    Guid Id { get; }
+    int GetCurrentCount();
+    void Increment();
+    string ServiceId { get; }
     DateTime CreatedAt { get; }
-    string GetInfo();
 }
+'@ "Counter service interface for demonstrating different lifetimes"
 
-public interface IScopedService
-{
-    Guid Id { get; }
-    DateTime CreatedAt { get; }
-    string GetInfo();
-}
-
-public interface ISingletonService
-{
-    Guid Id { get; }
-    DateTime CreatedAt { get; }
-    string GetInfo();
-}
-'@ "Service interfaces for demonstrating different lifetimes"
-
-        Create-FileInteractive "Services/LifetimeServices.cs" @'
+        Create-FileInteractive "Services/CounterServices.cs" @'
 namespace DIMiddlewareDemo.Services;
 
-public class TransientService : ITransientService
+public class SingletonCounterService : ICounterService, IDisposable
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    private int _count = 0;
+    public string ServiceId { get; } = Guid.NewGuid().ToString("N")[..8];
     public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
-    public string GetInfo()
+    public int GetCurrentCount() => _count;
+
+    public void Increment() => Interlocked.Increment(ref _count);
+
+    public void Dispose()
     {
-        return $"Transient Service - ID: {Id}, Created: {CreatedAt:HH:mm:ss.fff}";
+        Console.WriteLine($"SingletonCounterService {ServiceId} disposed at {DateTime.UtcNow}");
     }
 }
 
-public class ScopedService : IScopedService
+public class ScopedCounterService : ICounterService, IDisposable
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    private int _count = 0;
+    public string ServiceId { get; } = Guid.NewGuid().ToString("N")[..8];
     public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
-    public string GetInfo()
+    public int GetCurrentCount() => _count;
+
+    public void Increment() => _count++;
+
+    public void Dispose()
     {
-        return $"Scoped Service - ID: {Id}, Created: {CreatedAt:HH:mm:ss.fff}";
+        Console.WriteLine($"ScopedCounterService {ServiceId} disposed at {DateTime.UtcNow}");
     }
 }
 
-public class SingletonService : ISingletonService
+public class TransientCounterService : ICounterService, IDisposable
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    private int _count = 0;
+    public string ServiceId { get; } = Guid.NewGuid().ToString("N")[..8];
     public DateTime CreatedAt { get; } = DateTime.UtcNow;
 
-    public string GetInfo()
+    public int GetCurrentCount() => _count;
+
+    public void Increment() => _count++;
+
+    public void Dispose()
     {
-        return $"Singleton Service - ID: {Id}, Created: {CreatedAt:HH:mm:ss.fff}";
+        Console.WriteLine($"TransientCounterService {ServiceId} disposed at {DateTime.UtcNow}");
     }
 }
-'@ "Service implementations demonstrating different lifetime behaviors"
+'@ "Counter service implementations demonstrating different lifetime behaviors with disposal"
+
+        # Create lifetime comparison service
+        Create-FileInteractive "Services/ILifetimeComparisonService.cs" @'
+namespace DIMiddlewareDemo.Services;
+
+public interface ILifetimeComparisonService
+{
+    object GetLifetimeComparison();
+}
+
+public class LifetimeComparisonService : ILifetimeComparisonService
+{
+    private readonly SingletonCounterService _singleton;
+    private readonly ScopedCounterService _scoped;
+    private readonly TransientCounterService _transient;
+
+    public LifetimeComparisonService(
+        SingletonCounterService singleton,
+        ScopedCounterService scoped,
+        TransientCounterService transient)
+    {
+        _singleton = singleton;
+        _scoped = scoped;
+        _transient = transient;
+    }
+
+    public object GetLifetimeComparison()
+    {
+        _singleton.Increment();
+        _scoped.Increment();
+        _transient.Increment();
+
+        return new
+        {
+            ServiceCreatedAt = DateTime.UtcNow,
+            Singleton = new
+            {
+                _singleton.ServiceId,
+                Count = _singleton.GetCurrentCount(),
+                _singleton.CreatedAt
+            },
+            Scoped = new
+            {
+                _scoped.ServiceId,
+                Count = _scoped.GetCurrentCount(),
+                _scoped.CreatedAt
+            },
+            Transient = new
+            {
+                _transient.ServiceId,
+                Count = _transient.GetCurrentCount(),
+                _transient.CreatedAt
+            }
+        };
+    }
+}
+'@ "Lifetime comparison service for advanced testing"
+
+        # Create lifetime testing controller
+        Create-FileInteractive "Controllers/LifetimeController.cs" @'
+using Microsoft.AspNetCore.Mvc;
+using DIMiddlewareDemo.Services;
+
+namespace DIMiddlewareDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class LifetimeController : ControllerBase
+{
+    private readonly SingletonCounterService _singleton1;
+    private readonly SingletonCounterService _singleton2;
+    private readonly ScopedCounterService _scoped1;
+    private readonly ScopedCounterService _scoped2;
+    private readonly TransientCounterService _transient1;
+    private readonly TransientCounterService _transient2;
+    private readonly ILifetimeComparisonService _comparisonService;
+
+    public LifetimeController(
+        SingletonCounterService singleton1,
+        SingletonCounterService singleton2,
+        ScopedCounterService scoped1,
+        ScopedCounterService scoped2,
+        TransientCounterService transient1,
+        TransientCounterService transient2,
+        ILifetimeComparisonService comparisonService)
+    {
+        _singleton1 = singleton1;
+        _singleton2 = singleton2;
+        _scoped1 = scoped1;
+        _scoped2 = scoped2;
+        _transient1 = transient1;
+        _transient2 = transient2;
+        _comparisonService = comparisonService;
+    }
+
+    [HttpGet("test-lifetimes")]
+    public IActionResult TestLifetimes()
+    {
+        // Increment all counters
+        _singleton1.Increment();
+        _scoped1.Increment();
+        _transient1.Increment();
+
+        var result = new
+        {
+            RequestId = HttpContext.TraceIdentifier,
+            Timestamp = DateTime.UtcNow,
+            Singleton = new
+            {
+                Instance1_Id = _singleton1.ServiceId,
+                Instance1_Count = _singleton1.GetCurrentCount(),
+                Instance1_Created = _singleton1.CreatedAt,
+                Instance2_Id = _singleton2.ServiceId,
+                Instance2_Count = _singleton2.GetCurrentCount(),
+                Instance2_Created = _singleton2.CreatedAt,
+                AreSameInstance = ReferenceEquals(_singleton1, _singleton2)
+            },
+            Scoped = new
+            {
+                Instance1_Id = _scoped1.ServiceId,
+                Instance1_Count = _scoped1.GetCurrentCount(),
+                Instance1_Created = _scoped1.CreatedAt,
+                Instance2_Id = _scoped2.ServiceId,
+                Instance2_Count = _scoped2.GetCurrentCount(),
+                Instance2_Created = _scoped2.CreatedAt,
+                AreSameInstance = ReferenceEquals(_scoped1, _scoped2)
+            },
+            Transient = new
+            {
+                Instance1_Id = _transient1.ServiceId,
+                Instance1_Count = _transient1.GetCurrentCount(),
+                Instance1_Created = _transient1.CreatedAt,
+                Instance2_Id = _transient2.ServiceId,
+                Instance2_Count = _transient2.GetCurrentCount(),
+                Instance2_Created = _transient2.CreatedAt,
+                AreSameInstance = ReferenceEquals(_transient1, _transient2)
+            }
+        };
+
+        return Ok(result);
+    }
+
+    [HttpGet("comparison")]
+    public IActionResult GetComparison()
+    {
+        return Ok(_comparisonService.GetLifetimeComparison());
+    }
+}
+'@ "Comprehensive lifetime testing controller with multiple service injections"
+
+        # Create Program.cs with service registrations
+        Create-FileInteractive "Program.cs" @'
+using DIMiddlewareDemo.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Register services with different lifetimes
+builder.Services.AddSingleton<SingletonCounterService>();
+builder.Services.AddScoped<ScopedCounterService>();
+builder.Services.AddTransient<TransientCounterService>();
+
+// Register composite service
+builder.Services.AddScoped<ILifetimeComparisonService, LifetimeComparisonService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+'@ "Program.cs with proper service lifetime registrations"
 
         Write-Success "✅ Exercise 1: Service Lifetime Exploration completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Register services with different lifetimes in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Create controller to test lifetime behaviors" -ForegroundColor Cyan
-        Write-Host "3. Compare service instances across requests" -ForegroundColor Cyan
+        Write-Host "1. Build and run: dotnet run" -ForegroundColor Cyan
+        Write-Host "2. Test lifetimes: GET /api/lifetime/test-lifetimes" -ForegroundColor Cyan
+        Write-Host "3. Compare services: GET /api/lifetime/comparison" -ForegroundColor Cyan
+        Write-Host "4. Make multiple requests to observe lifetime behaviors" -ForegroundColor Cyan
     }
 
     "exercise02" {
@@ -372,7 +563,7 @@ Middleware components form a pipeline that processes HTTP requests:
             exit 1
         }
 
-        # Create custom middleware
+        # Create request logging middleware
         Create-FileInteractive "Middleware/RequestLoggingMiddleware.cs" @'
 namespace DIMiddlewareDemo.Middleware;
 
@@ -389,21 +580,35 @@ public class RequestLoggingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var requestId = Guid.NewGuid().ToString("N")[..8];
+        var requestId = context.TraceIdentifier;
+        var startTime = DateTime.UtcNow;
 
-        _logger.LogInformation("Request {RequestId} started: {Method} {Path}",
-            requestId, context.Request.Method, context.Request.Path);
+        // Log request details
+        _logger.LogInformation("Request {RequestId} started: {Method} {Path} at {StartTime}",
+            requestId,
+            context.Request.Method,
+            context.Request.Path,
+            startTime);
+
+        // Create a stopwatch to measure request duration
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
+            // Call the next middleware in the pipeline
             await _next(context);
         }
         finally
         {
             stopwatch.Stop();
-            _logger.LogInformation("Request {RequestId} completed in {ElapsedMs}ms with status {StatusCode}",
-                requestId, stopwatch.ElapsedMilliseconds, context.Response.StatusCode);
+            var endTime = DateTime.UtcNow;
+
+            // Log response details
+            _logger.LogInformation("Request {RequestId} completed: {StatusCode} in {Duration}ms at {EndTime}",
+                requestId,
+                context.Response.StatusCode,
+                stopwatch.ElapsedMilliseconds,
+                endTime);
         }
     }
 }
@@ -415,13 +620,226 @@ public static class RequestLoggingMiddlewareExtensions
         return builder.UseMiddleware<RequestLoggingMiddleware>();
     }
 }
-'@ "Custom middleware for request logging with timing"
+'@ "Enhanced request logging middleware with detailed timing"
+
+        # Create rate limiting service and middleware
+        Create-FileInteractive "Services/IRateLimitService.cs" @'
+namespace DIMiddlewareDemo.Services;
+
+public interface IRateLimitService
+{
+    Task<bool> IsAllowedAsync(string clientId, string endpoint);
+    Task<RateLimitInfo> GetRateLimitInfoAsync(string clientId, string endpoint);
+}
+
+public class RateLimitInfo
+{
+    public bool IsAllowed { get; set; }
+    public int RequestsRemaining { get; set; }
+    public TimeSpan ResetTime { get; set; }
+    public int TotalRequests { get; set; }
+}
+
+public class InMemoryRateLimitService : IRateLimitService
+{
+    private readonly Dictionary<string, ClientRateLimit> _rateLimits = new();
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly int _maxRequests = 100; // per minute
+    private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(1);
+
+    public async Task<bool> IsAllowedAsync(string clientId, string endpoint)
+    {
+        var info = await GetRateLimitInfoAsync(clientId, endpoint);
+        return info.IsAllowed;
+    }
+
+    public async Task<RateLimitInfo> GetRateLimitInfoAsync(string clientId, string endpoint)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            var key = $"{clientId}:{endpoint}";
+            var now = DateTime.UtcNow;
+
+            if (!_rateLimits.TryGetValue(key, out var rateLimit))
+            {
+                rateLimit = new ClientRateLimit
+                {
+                    RequestCount = 0,
+                    WindowStart = now
+                };
+                _rateLimits[key] = rateLimit;
+            }
+
+            // Reset window if expired
+            if (now - rateLimit.WindowStart >= _timeWindow)
+            {
+                rateLimit.RequestCount = 0;
+                rateLimit.WindowStart = now;
+            }
+
+            var isAllowed = rateLimit.RequestCount < _maxRequests;
+
+            if (isAllowed)
+            {
+                rateLimit.RequestCount++;
+            }
+
+            var resetTime = _timeWindow - (now - rateLimit.WindowStart);
+
+            return new RateLimitInfo
+            {
+                IsAllowed = isAllowed,
+                RequestsRemaining = Math.Max(0, _maxRequests - rateLimit.RequestCount),
+                ResetTime = resetTime,
+                TotalRequests = rateLimit.RequestCount
+            };
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private class ClientRateLimit
+    {
+        public int RequestCount { get; set; }
+        public DateTime WindowStart { get; set; }
+    }
+}
+'@ "Rate limiting service with in-memory storage"
+
+        # Create rate limiting middleware
+        Create-FileInteractive "Middleware/RateLimitingMiddleware.cs" @'
+namespace DIMiddlewareDemo.Middleware;
+
+using DIMiddlewareDemo.Services;
+
+public class RateLimitingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly IRateLimitService _rateLimitService;
+    private readonly ILogger<RateLimitingMiddleware> _logger;
+
+    public RateLimitingMiddleware(
+        RequestDelegate next,
+        IRateLimitService rateLimitService,
+        ILogger<RateLimitingMiddleware> logger)
+    {
+        _next = next;
+        _rateLimitService = rateLimitService;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var clientId = GetClientId(context);
+        var endpoint = context.Request.Path.Value ?? "/";
+
+        var rateLimitInfo = await _rateLimitService.GetRateLimitInfoAsync(clientId, endpoint);
+
+        // Add rate limit headers
+        context.Response.Headers.Add("X-RateLimit-Limit", "100");
+        context.Response.Headers.Add("X-RateLimit-Remaining", rateLimitInfo.RequestsRemaining.ToString());
+        context.Response.Headers.Add("X-RateLimit-Reset", ((int)rateLimitInfo.ResetTime.TotalSeconds).ToString());
+
+        if (!rateLimitInfo.IsAllowed)
+        {
+            _logger.LogWarning("Rate limit exceeded for client {ClientId} on endpoint {Endpoint}", clientId, endpoint);
+
+            context.Response.StatusCode = 429; // Too Many Requests
+            await context.Response.WriteAsync("Rate limit exceeded. Please try again later.");
+            return; // Short-circuit the pipeline
+        }
+
+        await _next(context);
+    }
+
+    private string GetClientId(HttpContext context)
+    {
+        // Try to get client ID from various sources
+        if (context.Request.Headers.TryGetValue("X-Client-Id", out var clientId))
+        {
+            return clientId.ToString();
+        }
+
+        // Fallback to IP address
+        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+}
+
+public static class RateLimitingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRateLimiting(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RateLimitingMiddleware>();
+    }
+}
+'@ "Rate limiting middleware with configurable limits"
+
+        # Create correlation ID middleware
+        Create-FileInteractive "Middleware/CorrelationIdMiddleware.cs" @'
+namespace DIMiddlewareDemo.Middleware;
+
+public class CorrelationIdMiddleware
+{
+    private readonly RequestDelegate _next;
+    private const string CorrelationIdHeaderName = "X-Correlation-ID";
+
+    public CorrelationIdMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // Try to get correlation ID from header, otherwise generate new one
+        var correlationId = GetCorrelationId(context);
+
+        // Set correlation ID in HttpContext for use throughout the request
+        context.Items["CorrelationId"] = correlationId;
+
+        // Add correlation ID to response headers
+        context.Response.Headers.Add(CorrelationIdHeaderName, correlationId);
+
+        // Add correlation ID to logging scope
+        using var scope = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger<CorrelationIdMiddleware>()
+            .BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId });
+
+        await _next(context);
+    }
+
+    private string GetCorrelationId(HttpContext context)
+    {
+        // Check if correlation ID is provided in request header
+        if (context.Request.Headers.TryGetValue(CorrelationIdHeaderName, out var correlationId) &&
+            !string.IsNullOrEmpty(correlationId))
+        {
+            return correlationId.ToString();
+        }
+
+        // Generate new correlation ID
+        return Guid.NewGuid().ToString();
+    }
+}
+
+public static class CorrelationIdMiddlewareExtensions
+{
+    public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<CorrelationIdMiddleware>();
+    }
+}
+'@ "Correlation ID middleware for request tracking"
 
         Write-Success "✅ Exercise 2: Custom Middleware Development completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Add middleware to the pipeline in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Test middleware with different requests" -ForegroundColor Cyan
-        Write-Host "3. Create additional middleware for other concerns" -ForegroundColor Cyan
+        Write-Host "1. Add all middleware to the pipeline in Program.cs" -ForegroundColor Cyan
+        Write-Host "2. Test rate limiting with multiple requests" -ForegroundColor Cyan
+        Write-Host "3. Verify correlation IDs in logs and responses" -ForegroundColor Cyan
+        Write-Host "4. Test middleware ordering and pipeline flow" -ForegroundColor Cyan
     }
 
     "exercise03" {
@@ -441,8 +859,8 @@ Advanced DI patterns solve complex scenarios:
             exit 1
         }
 
-        # Create factory pattern example
-        Create-FileInteractive "Services/NotificationFactory.cs" @'
+        # Create notification services and factory pattern
+        Create-FileInteractive "Services/NotificationServices.cs" @'
 namespace DIMiddlewareDemo.Services;
 
 public interface INotificationService
@@ -508,11 +926,197 @@ public class NotificationFactory : INotificationFactory
 }
 '@ "Factory pattern implementation for creating notification services"
 
+        # Create decorator pattern example
+        Create-FileInteractive "Services/NotificationDecorators.cs" @'
+namespace DIMiddlewareDemo.Services;
+
+// Decorator for logging notification attempts
+public class LoggingNotificationDecorator : INotificationService
+{
+    private readonly INotificationService _inner;
+    private readonly ILogger<LoggingNotificationDecorator> _logger;
+
+    public LoggingNotificationDecorator(INotificationService inner, ILogger<LoggingNotificationDecorator> logger)
+    {
+        _inner = inner;
+        _logger = logger;
+    }
+
+    public async Task SendAsync(string message, string recipient)
+    {
+        _logger.LogInformation("Starting notification send to {Recipient}", recipient);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            await _inner.SendAsync(message, recipient);
+            stopwatch.Stop();
+            _logger.LogInformation("Notification sent successfully to {Recipient} in {ElapsedMs}ms",
+                recipient, stopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Failed to send notification to {Recipient} after {ElapsedMs}ms",
+                recipient, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+    }
+}
+
+// Decorator for retry logic
+public class RetryNotificationDecorator : INotificationService
+{
+    private readonly INotificationService _inner;
+    private readonly ILogger<RetryNotificationDecorator> _logger;
+    private readonly int _maxRetries;
+
+    public RetryNotificationDecorator(INotificationService inner, ILogger<RetryNotificationDecorator> logger, int maxRetries = 3)
+    {
+        _inner = inner;
+        _logger = logger;
+        _maxRetries = maxRetries;
+    }
+
+    public async Task SendAsync(string message, string recipient)
+    {
+        var attempt = 0;
+        while (attempt < _maxRetries)
+        {
+            try
+            {
+                await _inner.SendAsync(message, recipient);
+                return; // Success
+            }
+            catch (Exception ex) when (attempt < _maxRetries - 1)
+            {
+                attempt++;
+                _logger.LogWarning(ex, "Notification attempt {Attempt} failed for {Recipient}, retrying...",
+                    attempt, recipient);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
+            }
+        }
+    }
+}
+'@ "Decorator pattern implementations for cross-cutting concerns"
+
+        # Create generic repository pattern
+        Create-FileInteractive "Services/GenericRepository.cs" @'
+namespace DIMiddlewareDemo.Services;
+
+public interface IEntity
+{
+    int Id { get; set; }
+}
+
+public interface IRepository<T> where T : class, IEntity
+{
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+}
+
+public class InMemoryRepository<T> : IRepository<T> where T : class, IEntity
+{
+    private readonly List<T> _entities = new();
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private int _nextId = 1;
+
+    public async Task<T?> GetByIdAsync(int id)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            return _entities.FirstOrDefault(e => e.Id == id);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            return _entities.ToList();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task<T> AddAsync(T entity)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            entity.Id = _nextId++;
+            _entities.Add(entity);
+            return entity;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task UpdateAsync(T entity)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            var existing = _entities.FirstOrDefault(e => e.Id == entity.Id);
+            if (existing != null)
+            {
+                var index = _entities.IndexOf(existing);
+                _entities[index] = entity;
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            var entity = _entities.FirstOrDefault(e => e.Id == id);
+            if (entity != null)
+            {
+                _entities.Remove(entity);
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+}
+
+// Example entity
+public class User : IEntity
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+'@ "Generic repository pattern with in-memory implementation"
+
         Write-Success "✅ Exercise 3: Advanced DI Patterns completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Register factory and services in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Implement decorator pattern examples" -ForegroundColor Cyan
-        Write-Host "3. Test factory pattern with different service types" -ForegroundColor Cyan
+        Write-Host "1. Register factory, decorators, and generic services in Program.cs" -ForegroundColor Cyan
+        Write-Host "2. Test decorator pattern with notification services" -ForegroundColor Cyan
+        Write-Host "3. Use generic repository with different entity types" -ForegroundColor Cyan
+        Write-Host "4. Experiment with conditional service registration" -ForegroundColor Cyan
     }
 
     "exercise04" {
@@ -566,11 +1170,410 @@ public class DatabaseHealthCheck : IHealthCheck
 }
 '@ "Health check implementation for monitoring database connectivity"
 
+        # Create additional health checks
+        Create-FileInteractive "Services/ExternalApiHealthCheck.cs" @'
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace DIMiddlewareDemo.Services;
+
+public class ExternalApiHealthCheck : IHealthCheck
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<ExternalApiHealthCheck> _logger;
+
+    public ExternalApiHealthCheck(HttpClient httpClient, ILogger<ExternalApiHealthCheck> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Simulate external API health check
+            await Task.Delay(100, cancellationToken);
+
+            // In real scenario, you would make actual HTTP request
+            var isApiHealthy = true; // Simulate successful API response
+
+            if (isApiHealthy)
+            {
+                _logger.LogInformation("External API health check passed");
+                return HealthCheckResult.Healthy("External API is responding");
+            }
+            else
+            {
+                _logger.LogWarning("External API health check failed");
+                return HealthCheckResult.Degraded("External API is slow or partially available");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External API health check threw exception");
+            return HealthCheckResult.Unhealthy("External API health check failed", ex);
+        }
+    }
+}
+'@ "External API health check for monitoring third-party dependencies"
+
+        # Create metrics service
+        Create-FileInteractive "Services/MetricsService.cs" @'
+using System.Diagnostics.Metrics;
+
+namespace DIMiddlewareDemo.Services;
+
+public interface IMetricsService
+{
+    void IncrementRequestCount(string endpoint, string method);
+    void RecordRequestDuration(string endpoint, string method, double durationMs);
+    void IncrementErrorCount(string endpoint, string method, int statusCode);
+}
+
+public class MetricsService : IMetricsService, IDisposable
+{
+    private readonly Meter _meter;
+    private readonly Counter<long> _requestCounter;
+    private readonly Histogram<double> _requestDuration;
+    private readonly Counter<long> _errorCounter;
+
+    public MetricsService()
+    {
+        _meter = new Meter("DIMiddlewareDemo", "1.0.0");
+        _requestCounter = _meter.CreateCounter<long>("http_requests_total", "count", "Total number of HTTP requests");
+        _requestDuration = _meter.CreateHistogram<double>("http_request_duration_ms", "ms", "Duration of HTTP requests in milliseconds");
+        _errorCounter = _meter.CreateCounter<long>("http_errors_total", "count", "Total number of HTTP errors");
+    }
+
+    public void IncrementRequestCount(string endpoint, string method)
+    {
+        _requestCounter.Add(1, new KeyValuePair<string, object?>("endpoint", endpoint), new KeyValuePair<string, object?>("method", method));
+    }
+
+    public void RecordRequestDuration(string endpoint, string method, double durationMs)
+    {
+        _requestDuration.Record(durationMs, new KeyValuePair<string, object?>("endpoint", endpoint), new KeyValuePair<string, object?>("method", method));
+    }
+
+    public void IncrementErrorCount(string endpoint, string method, int statusCode)
+    {
+        _errorCounter.Add(1,
+            new KeyValuePair<string, object?>("endpoint", endpoint),
+            new KeyValuePair<string, object?>("method", method),
+            new KeyValuePair<string, object?>("status_code", statusCode));
+    }
+
+    public void Dispose()
+    {
+        _meter?.Dispose();
+    }
+}
+'@ "Metrics service for collecting application performance data"
+
+        # Create monitoring middleware
+        Create-FileInteractive "Middleware/MonitoringMiddleware.cs" @'
+namespace DIMiddlewareDemo.Middleware;
+
+using DIMiddlewareDemo.Services;
+
+public class MonitoringMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly IMetricsService _metricsService;
+    private readonly ILogger<MonitoringMiddleware> _logger;
+
+    public MonitoringMiddleware(RequestDelegate next, IMetricsService metricsService, ILogger<MonitoringMiddleware> logger)
+    {
+        _next = next;
+        _metricsService = metricsService;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var endpoint = context.Request.Path.Value ?? "/";
+        var method = context.Request.Method;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            _metricsService.IncrementRequestCount(endpoint, method);
+
+            await _next(context);
+
+            stopwatch.Stop();
+            _metricsService.RecordRequestDuration(endpoint, method, stopwatch.ElapsedMilliseconds);
+
+            // Log errors for non-success status codes
+            if (context.Response.StatusCode >= 400)
+            {
+                _metricsService.IncrementErrorCount(endpoint, method, context.Response.StatusCode);
+                _logger.LogWarning("Request {Method} {Endpoint} completed with error status {StatusCode}",
+                    method, endpoint, context.Response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _metricsService.IncrementErrorCount(endpoint, method, 500);
+            _logger.LogError(ex, "Request {Method} {Endpoint} failed with exception", method, endpoint);
+            throw;
+        }
+    }
+}
+
+public static class MonitoringMiddlewareExtensions
+{
+    public static IApplicationBuilder UseMonitoring(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<MonitoringMiddleware>();
+    }
+}
+'@ "Monitoring middleware for collecting request metrics"
+
+        # Create comprehensive Program.cs with all exercises integrated
+        Create-FileInteractive "Program.cs" @'
+using DIMiddlewareDemo.Services;
+using DIMiddlewareDemo.Middleware;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Exercise 1: Service Lifetime Registration
+builder.Services.AddSingleton<SingletonCounterService>();
+builder.Services.AddScoped<ScopedCounterService>();
+builder.Services.AddTransient<TransientCounterService>();
+builder.Services.AddScoped<ILifetimeComparisonService, LifetimeComparisonService>();
+
+// Exercise 2: Middleware Services
+builder.Services.AddSingleton<IRateLimitService, InMemoryRateLimitService>();
+
+// Exercise 3: Advanced DI Patterns
+// Factory pattern
+builder.Services.AddTransient<EmailNotificationService>();
+builder.Services.AddTransient<SmsNotificationService>();
+builder.Services.AddTransient<INotificationFactory, NotificationFactory>();
+
+// Decorator pattern - register base service and decorators
+builder.Services.AddTransient<INotificationService>(provider =>
+{
+    var emailService = provider.GetRequiredService<EmailNotificationService>();
+    var logger = provider.GetRequiredService<ILogger<LoggingNotificationDecorator>>();
+    var retryLogger = provider.GetRequiredService<ILogger<RetryNotificationDecorator>>();
+
+    // Chain decorators: Email -> Retry -> Logging
+    var withRetry = new RetryNotificationDecorator(emailService, retryLogger);
+    return new LoggingNotificationDecorator(withRetry, logger);
+});
+
+// Generic repository pattern
+builder.Services.AddScoped(typeof(IRepository<>), typeof(InMemoryRepository<>));
+
+// Exercise 4: Production Integration
+// Health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", HealthStatus.Unhealthy, tags: new[] { "db" })
+    .AddCheck<ExternalApiHealthCheck>("external_api", HealthStatus.Degraded, tags: new[] { "api" });
+
+// Metrics
+builder.Services.AddSingleton<IMetricsService, MetricsService>();
+
+// HTTP client for health checks
+builder.Services.AddHttpClient<ExternalApiHealthCheck>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Middleware pipeline - ORDER MATTERS!
+app.UseCorrelationId();           // First: Add correlation ID
+app.UseRequestLogging();          // Second: Log requests with correlation ID
+app.UseMonitoring();              // Third: Collect metrics
+app.UseRateLimiting();            // Fourth: Apply rate limiting
+app.UseHttpsRedirection();        // Fifth: Enforce HTTPS
+app.UseAuthorization();           // Sixth: Authorization
+
+// Health check endpoints
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                description = x.Value.Description,
+                duration = x.Value.Duration.TotalMilliseconds
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds
+        };
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+    }
+});
+
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false // Only basic liveness check
+});
+
+app.MapControllers();
+
+app.Run();
+'@ "Comprehensive Program.cs integrating all exercises with proper middleware pipeline"
+
+        # Create comprehensive demo controller
+        Create-FileInteractive "Controllers/DemoController.cs" @'
+using Microsoft.AspNetCore.Mvc;
+using DIMiddlewareDemo.Services;
+
+namespace DIMiddlewareDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class DemoController : ControllerBase
+{
+    private readonly INotificationFactory _notificationFactory;
+    private readonly INotificationService _decoratedNotificationService;
+    private readonly IRepository<User> _userRepository;
+    private readonly ILogger<DemoController> _logger;
+
+    public DemoController(
+        INotificationFactory notificationFactory,
+        INotificationService decoratedNotificationService,
+        IRepository<User> userRepository,
+        ILogger<DemoController> logger)
+    {
+        _notificationFactory = notificationFactory;
+        _decoratedNotificationService = decoratedNotificationService;
+        _userRepository = userRepository;
+        _logger = logger;
+    }
+
+    [HttpPost("send-notification/{type}")]
+    public async Task<IActionResult> SendNotification(string type, [FromBody] NotificationRequest request)
+    {
+        try
+        {
+            // Demonstrate factory pattern
+            var notificationService = _notificationFactory.CreateNotificationService(type);
+            await notificationService.SendAsync(request.Message, request.Recipient);
+
+            return Ok(new { Message = $"Notification sent via {type}", Timestamp = DateTime.UtcNow });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("send-decorated-notification")]
+    public async Task<IActionResult> SendDecoratedNotification([FromBody] NotificationRequest request)
+    {
+        try
+        {
+            // Demonstrate decorator pattern (with logging and retry)
+            await _decoratedNotificationService.SendAsync(request.Message, request.Recipient);
+
+            return Ok(new { Message = "Decorated notification sent", Timestamp = DateTime.UtcNow });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send decorated notification");
+            return StatusCode(500, new { Error = "Failed to send notification" });
+        }
+    }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        // Demonstrate generic repository pattern
+        var users = await _userRepository.GetAllAsync();
+        return Ok(users);
+    }
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    {
+        // Demonstrate generic repository pattern
+        var user = new User
+        {
+            Name = request.Name,
+            Email = request.Email
+        };
+
+        var createdUser = await _userRepository.AddAsync(user);
+        return CreatedAtAction(nameof(GetUser), new { id = createdUser.Id }, createdUser);
+    }
+
+    [HttpGet("users/{id}")]
+    public async Task<IActionResult> GetUser(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(user);
+    }
+
+    [HttpGet("correlation-id")]
+    public IActionResult GetCorrelationId()
+    {
+        // Demonstrate correlation ID middleware
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString();
+        return Ok(new { CorrelationId = correlationId, Timestamp = DateTime.UtcNow });
+    }
+
+    [HttpGet("test-rate-limit")]
+    public IActionResult TestRateLimit()
+    {
+        // This endpoint can be used to test rate limiting
+        return Ok(new { Message = "Rate limit test", Timestamp = DateTime.UtcNow });
+    }
+}
+
+public class NotificationRequest
+{
+    public string Message { get; set; } = string.Empty;
+    public string Recipient { get; set; } = string.Empty;
+}
+
+public class CreateUserRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+'@ "Comprehensive demo controller showcasing all DI patterns and middleware features"
+
         Write-Success "✅ Exercise 4: Production Integration completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Configure health checks in Program.cs" -ForegroundColor Cyan
-        Write-Host "2. Add monitoring and metrics middleware" -ForegroundColor Cyan
-        Write-Host "3. Test health check endpoints" -ForegroundColor Cyan
+        Write-Host "1. Build and run: dotnet run" -ForegroundColor Cyan
+        Write-Host "2. Test health checks: GET /health, /health/ready, /health/live" -ForegroundColor Cyan
+        Write-Host "3. Test rate limiting: GET /api/demo/test-rate-limit (make 100+ requests)" -ForegroundColor Cyan
+        Write-Host "4. Test factory pattern: POST /api/demo/send-notification/email" -ForegroundColor Cyan
+        Write-Host "5. Test decorator pattern: POST /api/demo/send-decorated-notification" -ForegroundColor Cyan
+        Write-Host "6. Test repository pattern: GET/POST /api/demo/users" -ForegroundColor Cyan
+        Write-Host "7. Monitor logs for correlation IDs and metrics" -ForegroundColor Cyan
     }
 }
 

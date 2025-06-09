@@ -10,49 +10,64 @@ Learn to use mocking frameworks effectively to isolate your tests from external 
 
 ## Exercise Description
 
-In this exercise, you'll create a weather forecast service that interacts with an external weather API, a database, and the file system. You'll then write unit tests for this service using mocking to isolate it from its dependencies.
+In this exercise, you'll create a product catalog service that interacts with an external pricing API, a database, and the file system. You'll then write unit tests for this service using mocking to isolate it from its dependencies. This aligns with the ProductCatalog source code in this module.
 
 ## Tasks
 
-### 1. Create the Weather Forecast Service
+### 1. Create the Product Catalog Service
 
 Create a simple console application with the following components:
 
-1. A `WeatherData` model:
+1. A `Product` model:
 ```csharp
-public class WeatherData
+public class Product
 {
-    public string City { get; set; }
-    public double Temperature { get; set; }
-    public string Condition { get; set; }
-    public int Humidity { get; set; }
-    public double WindSpeed { get; set; }
-    public DateTime Timestamp { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 ```
 
-2. An interface for the external weather API:
+2. A `PriceHistory` model:
 ```csharp
-public interface IWeatherApiClient
+public class PriceHistory
 {
-    Task<WeatherData> GetCurrentWeatherAsync(string city);
-    Task<IEnumerable<WeatherData>> GetForecastAsync(string city, int days);
+    public int ProductId { get; set; }
+    public decimal Price { get; set; }
+    public DateTime Date { get; set; }
+    public string Source { get; set; } = string.Empty;
 }
 ```
 
-3. An interface for the database repository:
+3. An interface for the external pricing API:
 ```csharp
-public interface IWeatherRepository
+public interface IPricingApiClient
 {
-    Task SaveWeatherDataAsync(WeatherData data);
-    Task<WeatherData> GetLatestWeatherDataAsync(string city);
-    Task<IEnumerable<WeatherData>> GetHistoricalDataAsync(string city, DateTime from, DateTime to);
+    Task<decimal> GetCurrentPriceAsync(int productId);
+    Task<IEnumerable<PriceHistory>> GetPriceHistoryAsync(int productId, int days);
+    Task<bool> IsProductOnSaleAsync(int productId);
 }
 ```
 
-4. An interface for the file system operations:
+4. An interface for the database repository:
 ```csharp
-public interface IFileService
+public interface IProductRepository
+{
+    Task SaveProductAsync(Product product);
+    Task<Product?> GetProductByIdAsync(int productId);
+    Task<IEnumerable<Product>> GetProductsByCategoryAsync(string category);
+    Task<IEnumerable<Product>> GetProductsAsync();
+}
+```
+
+5. An interface for the file system operations:
+```csharp
+public interface IReportService
 {
     Task WriteReportAsync(string filePath, string content);
     Task<string> ReadReportAsync(string filePath);
@@ -60,92 +75,101 @@ public interface IFileService
 }
 ```
 
-5. The weather forecast service:
+6. The product catalog service:
 ```csharp
-public class WeatherForecastService
+public class ProductCatalogService
 {
-    private readonly IWeatherApiClient _apiClient;
-    private readonly IWeatherRepository _repository;
-    private readonly IFileService _fileService;
-    private readonly ILogger<WeatherForecastService> _logger;
+    private readonly IPricingApiClient _pricingClient;
+    private readonly IProductRepository _repository;
+    private readonly IReportService _reportService;
+    private readonly ILogger<ProductCatalogService> _logger;
 
-    public WeatherForecastService(
-        IWeatherApiClient apiClient, 
-        IWeatherRepository repository, 
-        IFileService fileService,
-        ILogger<WeatherForecastService> logger)
+    public ProductCatalogService(
+        IPricingApiClient pricingClient,
+        IProductRepository repository,
+        IReportService reportService,
+        ILogger<ProductCatalogService> logger)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _pricingClient = pricingClient ?? throw new ArgumentNullException(nameof(pricingClient));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
+        _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<WeatherData> GetCurrentWeatherAsync(string city)
+    public async Task<Product> GetProductWithCurrentPriceAsync(int productId)
     {
-        if (string.IsNullOrWhiteSpace(city))
+        if (productId <= 0)
         {
-            throw new ArgumentException("City name cannot be empty", nameof(city));
+            throw new ArgumentException("Product ID must be positive", nameof(productId));
         }
 
         try
         {
-            _logger.LogInformation("Fetching current weather for {City}", city);
-            
-            // Try to get from the database first
-            var cachedData = await _repository.GetLatestWeatherDataAsync(city);
-            
-            // If data is less than 30 minutes old, return it
-            if (cachedData != null && (DateTime.UtcNow - cachedData.Timestamp).TotalMinutes < 30)
+            _logger.LogInformation("Fetching product {ProductId} with current price", productId);
+
+            // Get product from database
+            var product = await _repository.GetProductByIdAsync(productId);
+            if (product == null)
             {
-                _logger.LogInformation("Returning cached weather data for {City}", city);
-                return cachedData;
+                throw new InvalidOperationException($"Product with ID {productId} not found");
             }
-            
-            // Otherwise fetch from the API
-            var currentWeather = await _apiClient.GetCurrentWeatherAsync(city);
-            
-            // Save to database
-            await _repository.SaveWeatherDataAsync(currentWeather);
-            
-            return currentWeather;
+
+            // Get current price from external API
+            var currentPrice = await _pricingClient.GetCurrentPriceAsync(productId);
+
+            // Update product with current price
+            product.Price = currentPrice;
+            product.UpdatedAt = DateTime.UtcNow;
+
+            // Save updated product
+            await _repository.SaveProductAsync(product);
+
+            return product;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current weather for {City}", city);
+            _logger.LogError(ex, "Error getting product {ProductId} with current price", productId);
             throw;
         }
     }
 
-    public async Task<IEnumerable<WeatherData>> GetForecastAsync(string city, int days)
+    public async Task<IEnumerable<Product>> GetProductsOnSaleAsync(string category)
     {
-        if (string.IsNullOrWhiteSpace(city))
+        if (string.IsNullOrWhiteSpace(category))
         {
-            throw new ArgumentException("City name cannot be empty", nameof(city));
-        }
-
-        if (days <= 0 || days > 10)
-        {
-            throw new ArgumentOutOfRangeException(nameof(days), "Days must be between 1 and 10");
+            throw new ArgumentException("Category cannot be empty", nameof(category));
         }
 
         try
         {
-            _logger.LogInformation("Fetching {Days} day forecast for {City}", days, city);
-            return await _apiClient.GetForecastAsync(city, days);
+            _logger.LogInformation("Fetching products on sale for category {Category}", category);
+
+            var products = await _repository.GetProductsByCategoryAsync(category);
+            var productsOnSale = new List<Product>();
+
+            foreach (var product in products)
+            {
+                var isOnSale = await _pricingClient.IsProductOnSaleAsync(product.Id);
+                if (isOnSale)
+                {
+                    productsOnSale.Add(product);
+                }
+            }
+
+            return productsOnSale;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting forecast for {City}", city);
+            _logger.LogError(ex, "Error getting products on sale for category {Category}", category);
             throw;
         }
     }
 
-    public async Task<string> GenerateWeatherReportAsync(string city, string reportPath)
+    public async Task<string> GenerateProductReportAsync(string category, string reportPath)
     {
-        if (string.IsNullOrWhiteSpace(city))
+        if (string.IsNullOrWhiteSpace(category))
         {
-            throw new ArgumentException("City name cannot be empty", nameof(city));
+            throw new ArgumentException("Category cannot be empty", nameof(category));
         }
 
         if (string.IsNullOrWhiteSpace(reportPath))
@@ -155,75 +179,50 @@ public class WeatherForecastService
 
         try
         {
-            _logger.LogInformation("Generating weather report for {City}", city);
-            
-            // Get current weather
-            var currentWeather = await GetCurrentWeatherAsync(city);
-            
-            // Get 5-day forecast
-            var forecast = await GetForecastAsync(city, 5);
-            
+            _logger.LogInformation("Generating product report for category {Category}", category);
+
+            // Get products in category
+            var products = await _repository.GetProductsByCategoryAsync(category);
+
+            // Get products on sale
+            var productsOnSale = await GetProductsOnSaleAsync(category);
+
             // Generate report content
             var report = new StringBuilder();
-            report.AppendLine($"Weather Report for {city}");
+            report.AppendLine($"Product Report for Category: {category}");
             report.AppendLine($"Generated at: {DateTime.Now}");
             report.AppendLine();
-            report.AppendLine("Current Weather:");
-            report.AppendLine($"Temperature: {currentWeather.Temperature}°C");
-            report.AppendLine($"Condition: {currentWeather.Condition}");
-            report.AppendLine($"Humidity: {currentWeather.Humidity}%");
-            report.AppendLine($"Wind Speed: {currentWeather.WindSpeed} km/h");
+            report.AppendLine($"Total Products: {products.Count()}");
+            report.AppendLine($"Products on Sale: {productsOnSale.Count()}");
             report.AppendLine();
-            report.AppendLine("5-Day Forecast:");
-            
-            foreach (var day in forecast)
+            report.AppendLine("Product Details:");
+
+            foreach (var product in products)
             {
-                report.AppendLine($"{day.Timestamp.ToShortDateString()}: {day.Condition}, {day.Temperature}°C");
+                var isOnSale = productsOnSale.Any(p => p.Id == product.Id);
+                var saleIndicator = isOnSale ? " (ON SALE)" : "";
+                report.AppendLine($"- {product.Name}: ${product.Price:F2}{saleIndicator}");
             }
-            
+
             // Write report to file
-            await _fileService.WriteReportAsync(reportPath, report.ToString());
-            
-            _logger.LogInformation("Weather report generated successfully at {ReportPath}", reportPath);
-            
+            await _reportService.WriteReportAsync(reportPath, report.ToString());
+
+            _logger.LogInformation("Product report generated successfully at {ReportPath}", reportPath);
+
             return report.ToString();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating weather report for {City}", city);
+            _logger.LogError(ex, "Error generating product report for category {Category}", category);
             throw;
         }
     }
 
-    public async Task<IEnumerable<WeatherData>> GetHistoricalDataAsync(string city, DateTime from, DateTime to)
+    public async Task<IEnumerable<PriceHistory>> GetPriceHistoryAsync(int productId, int days)
     {
-        if (string.IsNullOrWhiteSpace(city))
+        if (productId <= 0)
         {
-            throw new ArgumentException("City name cannot be empty", nameof(city));
-        }
-
-        if (from > to)
-        {
-            throw new ArgumentException("From date must be before to date");
-        }
-
-        try
-        {
-            _logger.LogInformation("Fetching historical data for {City} from {From} to {To}", city, from, to);
-            return await _repository.GetHistoricalDataAsync(city, from, to);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting historical data for {City}", city);
-            throw;
-        }
-    }
-
-    public async Task<WeatherAnalysis> AnalyzeWeatherTrendsAsync(string city, int days)
-    {
-        if (string.IsNullOrWhiteSpace(city))
-        {
-            throw new ArgumentException("City name cannot be empty", nameof(city));
+            throw new ArgumentException("Product ID must be positive", nameof(productId));
         }
 
         if (days <= 0)
@@ -233,154 +232,188 @@ public class WeatherForecastService
 
         try
         {
-            _logger.LogInformation("Analyzing weather trends for {City} over {Days} days", city, days);
-            
-            var from = DateTime.UtcNow.AddDays(-days);
-            var to = DateTime.UtcNow;
-            
-            var historicalData = await _repository.GetHistoricalDataAsync(city, from, to);
-            
-            if (!historicalData.Any())
+            _logger.LogInformation("Fetching price history for product {ProductId} for {Days} days", productId, days);
+            return await _pricingClient.GetPriceHistoryAsync(productId, days);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting price history for product {ProductId}", productId);
+            throw;
+        }
+    }
+
+    public async Task<ProductAnalysis> AnalyzePriceTrendsAsync(int productId, int days)
+    {
+        if (productId <= 0)
+        {
+            throw new ArgumentException("Product ID must be positive", nameof(productId));
+        }
+
+        if (days <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(days), "Days must be positive");
+        }
+
+        try
+        {
+            _logger.LogInformation("Analyzing price trends for product {ProductId} over {Days} days", productId, days);
+
+            var priceHistory = await _pricingClient.GetPriceHistoryAsync(productId, days);
+
+            if (!priceHistory.Any())
             {
-                _logger.LogWarning("No historical data available for {City}", city);
-                return new WeatherAnalysis
+                _logger.LogWarning("No price history available for product {ProductId}", productId);
+                return new ProductAnalysis
                 {
-                    City = city,
-                    AverageTemperature = 0,
-                    MinTemperature = 0,
-                    MaxTemperature = 0,
-                    DominantCondition = "Unknown",
+                    ProductId = productId,
+                    AveragePrice = 0,
+                    MinPrice = 0,
+                    MaxPrice = 0,
+                    PriceVariance = 0,
                     DataPoints = 0
                 };
             }
-            
-            var analysis = new WeatherAnalysis
+
+            var prices = priceHistory.Select(p => p.Price).ToList();
+            var analysis = new ProductAnalysis
             {
-                City = city,
-                AverageTemperature = historicalData.Average(d => d.Temperature),
-                MinTemperature = historicalData.Min(d => d.Temperature),
-                MaxTemperature = historicalData.Max(d => d.Temperature),
-                DominantCondition = historicalData
-                    .GroupBy(d => d.Condition)
-                    .OrderByDescending(g => g.Count())
-                    .First()
-                    .Key,
-                DataPoints = historicalData.Count()
+                ProductId = productId,
+                AveragePrice = prices.Average(),
+                MinPrice = prices.Min(),
+                MaxPrice = prices.Max(),
+                PriceVariance = CalculateVariance(prices),
+                DataPoints = prices.Count
             };
-            
-            _logger.LogInformation("Weather trend analysis completed for {City}", city);
-            
+
+            _logger.LogInformation("Price trend analysis completed for product {ProductId}", productId);
+
             return analysis;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing weather trends for {City}", city);
+            _logger.LogError(ex, "Error analyzing price trends for product {ProductId}", productId);
             throw;
         }
     }
+
+    private static decimal CalculateVariance(IEnumerable<decimal> values)
+    {
+        var average = values.Average();
+        var sumOfSquares = values.Sum(v => (v - average) * (v - average));
+        return sumOfSquares / values.Count();
+    }
 }
 
-public class WeatherAnalysis
+public class ProductAnalysis
 {
-    public string City { get; set; }
-    public double AverageTemperature { get; set; }
-    public double MinTemperature { get; set; }
-    public double MaxTemperature { get; set; }
-    public string DominantCondition { get; set; }
+    public int ProductId { get; set; }
+    public decimal AveragePrice { get; set; }
+    public decimal MinPrice { get; set; }
+    public decimal MaxPrice { get; set; }
+    public decimal PriceVariance { get; set; }
     public int DataPoints { get; set; }
 }
 ```
 
 ### 2. Write Unit Tests with Mocks
 
-Create a test project and write unit tests for each method in the `WeatherForecastService` class:
+Create a test project and write unit tests for each method in the `ProductCatalogService` class:
 
 1. Test the constructor with null parameters:
 ```csharp
-public class WeatherForecastServiceTests
+public class ProductCatalogServiceTests
 {
-    private readonly Mock<IWeatherApiClient> _mockApiClient;
-    private readonly Mock<IWeatherRepository> _mockRepository;
-    private readonly Mock<IFileService> _mockFileService;
-    private readonly Mock<ILogger<WeatherForecastService>> _mockLogger;
+    private readonly Mock<IPricingApiClient> _mockPricingClient;
+    private readonly Mock<IProductRepository> _mockRepository;
+    private readonly Mock<IReportService> _mockReportService;
+    private readonly Mock<ILogger<ProductCatalogService>> _mockLogger;
 
-    public WeatherForecastServiceTests()
+    public ProductCatalogServiceTests()
     {
-        _mockApiClient = new Mock<IWeatherApiClient>();
-        _mockRepository = new Mock<IWeatherRepository>();
-        _mockFileService = new Mock<IFileService>();
-        _mockLogger = new Mock<ILogger<WeatherForecastService>>();
+        _mockPricingClient = new Mock<IPricingApiClient>();
+        _mockRepository = new Mock<IProductRepository>();
+        _mockReportService = new Mock<IReportService>();
+        _mockLogger = new Mock<ILogger<ProductCatalogService>>();
     }
 
     [Fact]
-    public void Constructor_WithNullApiClient_ThrowsArgumentNullException()
+    public void Constructor_WithNullPricingClient_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new WeatherForecastService(
+        var exception = Assert.Throws<ArgumentNullException>(() => new ProductCatalogService(
             null,
             _mockRepository.Object,
-            _mockFileService.Object,
+            _mockReportService.Object,
             _mockLogger.Object
         ));
-        
-        Assert.Equal("apiClient", exception.ParamName);
+
+        Assert.Equal("pricingClient", exception.ParamName);
     }
 
     // Add similar tests for other constructor parameters
 }
 ```
 
-2. Test `GetCurrentWeatherAsync` with various scenarios:
+2. Test `GetProductWithCurrentPriceAsync` with various scenarios:
 ```csharp
 [Fact]
-public async Task GetCurrentWeatherAsync_WithEmptyCity_ThrowsArgumentException()
+public async Task GetProductWithCurrentPriceAsync_WithInvalidProductId_ThrowsArgumentException()
 {
     // Arrange
-    var service = new WeatherForecastService(
-        _mockApiClient.Object,
+    var service = new ProductCatalogService(
+        _mockPricingClient.Object,
         _mockRepository.Object,
-        _mockFileService.Object,
+        _mockReportService.Object,
         _mockLogger.Object
     );
-    
+
     // Act & Assert
-    var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
-        service.GetCurrentWeatherAsync(""));
-    
-    Assert.Equal("city", exception.ParamName);
+    var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+        service.GetProductWithCurrentPriceAsync(0));
+
+    Assert.Equal("productId", exception.ParamName);
 }
 
 [Fact]
-public async Task GetCurrentWeatherAsync_WithCachedRecentData_ReturnsCachedData()
+public async Task GetProductWithCurrentPriceAsync_WithValidProductId_ReturnsProductWithUpdatedPrice()
 {
     // Arrange
-    var city = "London";
-    var cachedData = new WeatherData
+    var productId = 1;
+    var originalProduct = new Product
     {
-        City = city,
-        Temperature = 20,
-        Condition = "Sunny",
-        Timestamp = DateTime.UtcNow.AddMinutes(-15) // 15 minutes old (less than 30)
+        Id = productId,
+        Name = "Test Product",
+        Price = 10.00m,
+        Category = "Electronics"
     };
-    
-    _mockRepository.Setup(r => r.GetLatestWeatherDataAsync(city))
-        .ReturnsAsync(cachedData);
-    
-    var service = new WeatherForecastService(
-        _mockApiClient.Object,
+
+    var currentPrice = 12.50m;
+
+    _mockRepository.Setup(r => r.GetProductByIdAsync(productId))
+        .ReturnsAsync(originalProduct);
+
+    _mockPricingClient.Setup(p => p.GetCurrentPriceAsync(productId))
+        .ReturnsAsync(currentPrice);
+
+    var service = new ProductCatalogService(
+        _mockPricingClient.Object,
         _mockRepository.Object,
-        _mockFileService.Object,
+        _mockReportService.Object,
         _mockLogger.Object
     );
-    
+
     // Act
-    var result = await service.GetCurrentWeatherAsync(city);
-    
+    var result = await service.GetProductWithCurrentPriceAsync(productId);
+
     // Assert
-    Assert.Equal(cachedData, result);
-    
-    // Verify the API client was NOT called
-    _mockApiClient.Verify(a => a.GetCurrentWeatherAsync(It.IsAny<string>()), Times.Never);
+    Assert.Equal(currentPrice, result.Price);
+    Assert.Equal(originalProduct.Name, result.Name);
+
+    // Verify the pricing client was called
+    _mockPricingClient.Verify(p => p.GetCurrentPriceAsync(productId), Times.Once);
+
+    // Verify the repository save was called
+    _mockRepository.Verify(r => r.SaveProductAsync(It.IsAny<Product>()), Times.Once);
 }
 
 [Fact]

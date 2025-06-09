@@ -166,20 +166,22 @@ if ($Preview) {
 # Check prerequisites
 Write-Info "Checking prerequisites..."
 
-# Check Docker
-if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-    Write-Error "Docker is not installed. Please install Docker Desktop."
-    exit 1
-}
-
-# Check Azure CLI
+# Check Azure CLI (Required)
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-    Write-Warning "Azure CLI is not installed. Some exercises may require it."
+    Write-Error "Azure CLI is not installed. Please install Azure CLI from: https://docs.microsoft.com/cli/azure/install-azure-cli"
+    exit 1
 }
 
 # Check .NET SDK
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Write-Error ".NET SDK is not installed. Please install .NET 8.0 SDK."
+    exit 1
+}
+
+# Verify Azure login
+$azAccount = az account show 2>$null
+if (-not $azAccount) {
+    Write-Warning "Not logged into Azure. Please run 'az login' before continuing."
     exit 1
 }
 
@@ -212,13 +214,13 @@ switch ($ExerciseName) {
     "exercise01" {
         # Exercise 1: Basic Containerization
 
-        Explain-Concept "Docker Containerization for ASP.NET Core" @"
-Containerization packages your application with all its dependencies into a portable, lightweight container:
-• Consistent runtime environment across development, testing, and production
-• Isolation from host system and other applications
-• Efficient resource utilization and fast startup times
-• Easy scaling and deployment across different environments
-• Version control for your entire application stack
+        Explain-Concept "Azure Container Apps for ASP.NET Core" @"
+Azure Container Apps provides serverless container hosting without requiring Docker locally:
+• Cloud-native build service - Azure builds your containers from source code
+• Automatic scaling - Scale from zero to thousands based on demand
+• Managed infrastructure - No cluster or VM management required
+• Built-in features - Load balancing, HTTPS, and traffic splitting included
+• No Docker required - Focus on code, not container tooling
 "@
 
         if (-not $SkipProjectCreation) {
@@ -241,60 +243,29 @@ Containerization packages your application with all its dependencies into a port
             # We're already in the project directory from the check above
         }
 
-        Explain-Concept "Multi-Stage Docker Builds" @"
-Multi-stage builds optimize container images by separating build and runtime environments:
-• Build stage: Contains SDK and build tools (larger image)
-• Runtime stage: Contains only runtime and application (smaller image)
-• Reduces final image size by 70-80%
-• Improves security by excluding build tools from production
-• Faster deployment and reduced attack surface
+        Explain-Concept "Cloud Build Process" @"
+Azure Container Registry builds your containers in the cloud:
+• No local Docker installation needed
+• Consistent build environment
+• Secure build process in Azure
+• Automatic image optimization
+• Direct integration with Container Apps
 "@
 
-        # Create optimized Dockerfile
+        # Create simple Dockerfile for Azure
         Create-FileInteractive "Dockerfile" @'
-# Multi-stage Dockerfile for ASP.NET Core
-# Build stage
+# Simple Dockerfile for Azure Container Apps
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy project file and restore dependencies
-COPY ["ContainerAppsDemo.API/ContainerAppsDemo.API.csproj", "ContainerAppsDemo.API/"]
-RUN dotnet restore "ContainerAppsDemo.API/ContainerAppsDemo.API.csproj"
-
-# Copy source code and build
 COPY . .
-WORKDIR "/src/ContainerAppsDemo.API"
-RUN dotnet build "ContainerAppsDemo.API.csproj" -c Release -o /app/build
+RUN dotnet publish -c Release -o /app
 
-# Publish stage
-FROM build AS publish
-RUN dotnet publish "ContainerAppsDemo.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-
-# Create non-root user for security
-RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
-USER appuser
-
-# Copy published application
-COPY --from=publish /app/publish .
-
-# Configure health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Expose port
-EXPOSE 8080
-
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
-ENV ASPNETCORE_ENVIRONMENT=Production
-
-# Start application
+COPY --from=build /app .
+EXPOSE 80
 ENTRYPOINT ["dotnet", "ContainerAppsDemo.API.dll"]
-'@ "Optimized multi-stage Dockerfile with security best practices"
+'@ "Simple Dockerfile for Azure Container Registry build"
 
         # Create health check controller
         Create-FileInteractive "ContainerAppsDemo.API/Controllers/HealthController.cs" @'
@@ -409,44 +380,61 @@ public class Product
 }
 '@ "Sample Products API controller for testing"
 
-        # Create Docker Compose for local development
-        Create-FileInteractive "docker-compose.yml" @'
-version: '3.8'
+        # Create Azure deployment script
+        Create-FileInteractive "deploy-to-azure.ps1" @'
+#!/usr/bin/env pwsh
 
-services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: containerappsdemo-api
-    ports:
-      - "8080:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
+# Azure Container Apps Deployment Script
+Write-Host "🚀 Deploying to Azure Container Apps..." -ForegroundColor Cyan
 
-  nginx:
-    image: nginx:alpine
-    container_name: containerappsdemo-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
+# Set variables
+$RESOURCE_GROUP="rg-containerapp-training"
+$LOCATION="eastus"
+$ENVIRONMENT="containerapp-env"
+$ACR_NAME="acr$(Get-Random -Minimum 10000 -Maximum 99999)"
+$APP_NAME="containerappsdemo"
 
-volumes:
-  app_data:
-'@ "Docker Compose configuration for local development and testing"
+# Create resource group
+Write-Host "Creating resource group..." -ForegroundColor Yellow
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Create Container Registry
+Write-Host "Creating Container Registry..." -ForegroundColor Yellow
+az acr create --resource-group $RESOURCE_GROUP --name $ACR_NAME --sku Basic --admin-enabled true
+
+# Build image in ACR (no Docker needed!)
+Write-Host "Building container image in Azure..." -ForegroundColor Yellow
+az acr build --registry $ACR_NAME --image $APP_NAME:v1 .
+
+# Create Container Apps environment
+Write-Host "Creating Container Apps environment..." -ForegroundColor Yellow
+az containerapp env create --name $ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION
+
+# Get ACR credentials
+$ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+$ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+$ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query passwords[0].value -o tsv)
+
+# Deploy to Container Apps
+Write-Host "Deploying to Container Apps..." -ForegroundColor Yellow
+az containerapp create `
+  --name $APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --environment $ENVIRONMENT `
+  --image "$ACR_LOGIN_SERVER/${APP_NAME}:v1" `
+  --registry-server $ACR_LOGIN_SERVER `
+  --registry-username $ACR_USERNAME `
+  --registry-password $ACR_PASSWORD `
+  --target-port 80 `
+  --ingress external `
+  --min-replicas 0 `
+  --max-replicas 5
+
+# Get app URL
+$APP_URL=$(az containerapp show --name $APP_NAME --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv)
+Write-Host "✅ Deployment complete!" -ForegroundColor Green
+Write-Host "App URL: https://$APP_URL" -ForegroundColor Cyan
+'@ "Azure deployment script without Docker"
 
         # Create Nginx configuration
         Create-FileInteractive "nginx.conf" @'
@@ -921,10 +909,10 @@ Write-Info "📋 Next steps based on exercise:"
 
 switch ($ExerciseName) {
     "exercise01" {
-        Write-Host "1. Build the container: docker build -t containerappsdemo ." -ForegroundColor Cyan
-        Write-Host "2. Run locally: docker run -p 8080:8080 containerappsdemo" -ForegroundColor Cyan
-        Write-Host "3. Test health check: curl http://localhost:8080/health" -ForegroundColor Cyan
-        Write-Host "4. Use Docker Compose: docker-compose up" -ForegroundColor Cyan
+        Write-Host "1. Login to Azure: az login" -ForegroundColor Cyan
+        Write-Host "2. Run deployment script: .\\deploy-to-azure.ps1" -ForegroundColor Cyan
+        Write-Host "3. Test the deployed app via the provided URL" -ForegroundColor Cyan
+        Write-Host "4. Check logs: az containerapp logs show --name containerappsdemo --resource-group rg-containerapp-training" -ForegroundColor Cyan
     }
     "exercise02" {
         Write-Host "1. Login to Azure: az login" -ForegroundColor Cyan

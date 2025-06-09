@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (web)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/bin/Debug/net8.0/DebuggingDemo.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s/swagger"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5006",
+                "DOTNET_USE_POLLING_FILE_WATCHER": "true",
+                "ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS": "true"
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            },
+            "justMyCode": false,
+            "enableStepFiltering": false,
+            "suppressJITOptimizations": true,
+            "requireExactSource": false,
+            "logging": {
+                "moduleLoad": false,
+                "diagnosticsLog": {
+                    "protocolMessages": false
+                },
+                "trace": false,
+                "traceResponse": false
+            }
+        }
+    ]
+}

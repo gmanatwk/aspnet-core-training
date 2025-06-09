@@ -1,38 +1,17 @@
-# Multi-stage Dockerfile for ASP.NET Core
-# Build stage
+# Simple Dockerfile for Azure Container Apps
+# This file is used by Azure Container Registry to build your image in the cloud
+# You don't need Docker installed locally!
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy project file and restore dependencies
-COPY ["ContainerAppsDemo.csproj", "./"]
-RUN dotnet restore "ContainerAppsDemo.csproj"
-
-# Copy source code and build
 COPY . .
-RUN dotnet build "ContainerAppsDemo.csproj" -c Release -o /app/build
+RUN dotnet publish -c Release -o /app
 
-# Publish stage
-FROM build AS publish
-RUN dotnet publish "ContainerAppsDemo.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+COPY --from=build /app .
 
-# Create non-root user for security
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
-RUN chown -R appuser:appgroup /app
-USER appuser
+# Azure Container Apps sets the PORT environment variable
+EXPOSE 80
 
-# Copy published application
-COPY --from=publish /app/publish .
-
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl --fail http://localhost:8080/health || exit 1
-
-# Entry point
 ENTRYPOINT ["dotnet", "ContainerAppsDemo.dll"]

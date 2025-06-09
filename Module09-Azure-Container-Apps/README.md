@@ -1,20 +1,26 @@
-# Module 9: Deploying to Azure Container Apps (No Docker Required)
+# Module 9: Azure Container Apps - Cloud-Native Deployment Without Docker
 
 ## 🎯 Learning Objectives
 By the end of this module, you will be able to:
-- Understand Azure Container Apps as a serverless platform
-- Deploy ASP.NET Core applications directly to Azure without Docker
-- Use Azure Container Registry build tasks to create containers in the cloud
-- Configure scaling, networking, and security for your applications
-- Implement CI/CD pipelines with GitHub Actions
-- Monitor applications using Application Insights
-- Manage environment variables and secrets with Azure Key Vault
-- Set up custom domains and SSL certificates
-- Implement deployment strategies without local containers
-- Integrate with Azure services seamlessly
+- Deploy ASP.NET Core applications to Azure Container Apps without Docker Desktop
+- Build container images directly in Azure Container Registry
+- Configure serverless container hosting with automatic scaling
+- Implement production-ready deployments with zero local container tools
+- Set up CI/CD pipelines that build in the cloud
+- Monitor and manage containerized applications in Azure
+- Implement security best practices for cloud-native apps
+- Configure advanced features like custom domains and traffic splitting
+- Integrate seamlessly with Azure services
+- Understand the benefits of cloud-first container development
 
 ## 📚 Module Overview
-This module covers deployment of ASP.NET Core applications to Azure Container Apps without requiring Docker Desktop or local containerization. You'll learn how to use Azure's build services to create containers in the cloud, deploy them to the serverless platform, and manage them in production.
+This module teaches you how to deploy ASP.NET Core applications to Azure Container Apps without requiring Docker Desktop or any local container runtime. You'll learn to leverage Azure's cloud build services to create and deploy containers entirely in the cloud, focusing on a true cloud-native development experience.
+
+### Why No Docker?
+- **Simplified Development**: Focus on code, not container tooling
+- **No Licensing Issues**: Avoid Docker Desktop licensing requirements
+- **Cloud-First Approach**: Build where you deploy for consistency
+- **Lower Barrier to Entry**: Perfect for teams new to containers
 
 ## 🕒 Estimated Duration: 2 hours
 
@@ -193,24 +199,24 @@ Module09-Azure-Container-Apps/
 
 ## 📋 Hands-On Exercises
 
-### Exercise 1: Preparing for Azure Deployment (30 minutes)
-**Objective**: Prepare an ASP.NET Core application for Azure Container Apps
+### Exercise 1: Application Preparation for Azure (30 minutes)
+**Objective**: Prepare an ASP.NET Core application for Azure Container Apps without Docker
 
 **Tasks**:
 - Create a cloud-ready ASP.NET Core API
-- Configure for Azure deployment settings
-- Set up Azure Container Registry
-- Use ACR build tasks to create images
-- Configure health checks for Azure
+- Set up Azure resources (Resource Group, ACR, Environment)
+- Configure health checks for Azure monitoring
+- Create a minimal Dockerfile for ACR builds
+- Build and deploy using Azure Container Registry
 
 **Key Learning Points**:
-- Dockerfile best practices for .NET applications
-- Container image layering and caching
-- Running containers with proper port mapping
-- Environment variable configuration
-- Container debugging techniques
+- Cloud-native application patterns
+- Azure Container Registry build tasks
+- Health check implementation
+- Environment configuration for Azure
+- Deployment without local containers
 
-**✅ Complete Solution Available**: `Exercises/Solutions/Exercise01-Containerization-Solution/`
+**✅ Complete Solution Available**: `Exercises/Solutions/Exercise01-Application-Preparation-Solution/`
 
 ### Exercise 2: Azure Deployment (45 minutes)
 **Objective**: Deploy the containerized application to Azure Container Apps

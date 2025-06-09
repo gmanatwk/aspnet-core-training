@@ -42,12 +42,11 @@ builder.Services.AddSwaggerGen(c =>
 // Add Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
 
-// Add Entity Framework (using InMemory for demo purposes)
+// Add Entity Framework
 builder.Services.AddDbContext<DebuggingContext>(options =>
     options.UseInMemoryDatabase("DebuggingDatabase"));
 
 // Add custom services
-builder.Services.AddScoped<IExternalApiService, ExternalApiService>();
 builder.Services.AddScoped<DiagnosticService>();
 
 // Add HTTP Client for external API calls
@@ -62,7 +61,6 @@ builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: new[] { "db", "ready" })
     .AddCheck<ExternalApiHealthCheck>("external-api", tags: new[] { "external", "ready" })
     .AddCheck<CustomHealthCheck>("custom-service", tags: new[] { "custom", "ready" });
-    // .AddUrlGroup(new Uri("https://www.google.com"), "google", tags: new[] { "external" });
 
 // Add Health Checks UI
 builder.Services.AddHealthChecksUI()
@@ -105,11 +103,7 @@ app.MapControllers();
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 // Map Health Checks
-app.MapHealthChecks("/health", new HealthCheckOptions()
-{
-    Predicate = _ => true,
-    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-});
+app.MapHealthChecks("/health");
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions()
 {
@@ -136,7 +130,12 @@ using (var scope = app.Services.CreateScope())
 try
 {
     Log.Information("Starting web application");
-    app.Run();
+    await app.RunAsync();
+}
+catch (OperationCanceledException)
+{
+    // This is normal when the application is shutting down
+    Log.Information("Application shutdown requested");
 }
 catch (Exception ex)
 {

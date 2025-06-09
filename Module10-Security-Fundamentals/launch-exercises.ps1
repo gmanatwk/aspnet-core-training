@@ -306,6 +306,10 @@ HTTP Security Headers provide defense-in-depth protection:
             Write-Info "Creating new ASP.NET Core Web API project..."
             dotnet new webapi -n $ProjectName --framework net8.0
             Set-Location $ProjectName
+
+            # Remove default WeatherForecast files
+            Remove-Item -Path "WeatherForecast.cs" -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "Controllers/WeatherForecastController.cs" -Force -ErrorAction SilentlyContinue
         }
 
         # Create security headers middleware
@@ -403,6 +407,120 @@ public static class SecurityHeadersMiddlewareExtensions
     }
 }
 '@ "Comprehensive security headers middleware implementation"
+
+        # Create a security-focused controller instead of WeatherForecast
+        Create-FileInteractive "Controllers/SecurityTestController.cs" @'
+using Microsoft.AspNetCore.Mvc;
+
+namespace SecurityDemo.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class SecurityTestController : ControllerBase
+{
+    private readonly ILogger<SecurityTestController> _logger;
+
+    public SecurityTestController(ILogger<SecurityTestController> logger)
+    {
+        _logger = logger;
+    }
+
+    [HttpGet("headers")]
+    public IActionResult GetSecurityHeaders()
+    {
+        _logger.LogInformation("Security headers test endpoint called");
+
+        return Ok(new
+        {
+            Message = "Check the response headers to see security headers in action",
+            Timestamp = DateTime.UtcNow,
+            Headers = new
+            {
+                ContentSecurityPolicy = "Prevents XSS attacks",
+                XFrameOptions = "Prevents clickjacking",
+                XContentTypeOptions = "Prevents MIME sniffing",
+                StrictTransportSecurity = "Enforces HTTPS",
+                ReferrerPolicy = "Controls referrer information"
+            }
+        });
+    }
+
+    [HttpGet("test-csp")]
+    public IActionResult TestContentSecurityPolicy()
+    {
+        return Content(@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSP Test</title>
+</head>
+<body>
+    <h1>Content Security Policy Test</h1>
+    <p>This page tests CSP headers. Check browser console for CSP violations.</p>
+    <script>
+        console.log('This inline script should be blocked by CSP if configured properly');
+    </script>
+</body>
+</html>", "text/html");
+    }
+
+    [HttpGet("secure-info")]
+    public IActionResult GetSecureInformation()
+    {
+        return Ok(new
+        {
+            ApplicationName = "Security Demo API",
+            SecurityFeatures = new[]
+            {
+                "Security Headers Middleware",
+                "HTTPS Enforcement",
+                "Input Validation",
+                "CSRF Protection",
+                "Data Encryption"
+            },
+            SecurityTip = "Always validate input, encode output, and use HTTPS in production"
+        });
+    }
+}
+'@ "Security-focused test controller for demonstrating security headers"
+
+        # Update Program.cs to remove WeatherForecast and add security middleware
+        Create-FileInteractive "Program.cs" @'
+using SecurityDemo.Middleware;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configure HTTPS
+builder.Services.AddHttpsRedirection(options =>
+{
+    options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+    options.HttpsPort = 5001;
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Security middleware - order matters!
+app.UseSecurityHeaders(); // Custom security headers middleware
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+'@ "Updated Program.cs with security middleware and no WeatherForecast"
 
         Write-Success "✅ Exercise 1: Security Headers Implementation completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow

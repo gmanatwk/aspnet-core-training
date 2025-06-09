@@ -25,10 +25,13 @@ public class RequestLoggingMiddleware
         using (LogContext.PushProperty("UserAgent", userAgent))
         {
             // Log request start
-            _logger.LogInformation("Request started: {Method} {Path} {QueryString}", 
-                context.Request.Method, 
-                context.Request.Path, 
+            _logger.LogInformation("Request started: {Method} {Path} {QueryString}",
+                context.Request.Method,
+                context.Request.Path,
                 context.Request.QueryString);
+
+            // Console output for debugging
+            Console.WriteLine($"[MIDDLEWARE DEBUG] {context.Request.Method} {context.Request.Path}{context.Request.QueryString}");
 
             // Log request headers in development
             if (_logger.IsEnabled(LogLevel.Debug))

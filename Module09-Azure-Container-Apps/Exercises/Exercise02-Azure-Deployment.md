@@ -1,15 +1,15 @@
-# Exercise 2: Azure Deployment
+# Exercise 2: Advanced Azure Container Apps Deployment
 
 ## 🎯 Objective
-Deploy your containerized ASP.NET Core application to Azure Container Apps and configure it for production use. This exercise covers Azure resource creation, container deployment, and basic configuration.
+Deploy and configure your ASP.NET Core application for production use in Azure Container Apps. This exercise covers advanced deployment scenarios, configuration management, and production best practices.
 
 ## ⏱️ Estimated Time: 45 minutes
 
 ## 📋 Prerequisites
-- Completed Exercise 1 (Basic Containerization)
-- Azure subscription (free tier is sufficient)
+- Completed Exercise 1 (Application Preparation)
+- Azure subscription with resources from Exercise 1
 - Azure CLI installed and authenticated
-- Docker image from Exercise 1
+- Application code from Exercise 1
 
 ## 🎓 Learning Goals
 - Create Azure Container Apps environment
@@ -112,48 +112,50 @@ az acr create \
 ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query loginServer --output tsv)
 ```
 
-### Task 2: Prepare and Push Container Image (10 minutes)
+### Task 2: Build and Deploy New Version (10 minutes)
 
-#### 2.1 Tag and Push Image to ACR
+#### 2.1 Build Image in Azure (No Docker Required)
 ```bash
-# Login to ACR
-az acr login --name $ACR_NAME
+# Use the existing ACR from Exercise 1
+ACR_NAME=$(az acr list --resource-group $RESOURCE_GROUP --query "[0].name" -o tsv)
+ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
 
-# Tag your local image
-docker tag productapi:v2-optimized $ACR_LOGIN_SERVER/productapi:v1.0
+# Build directly in ACR (no Docker needed!)
+az acr build --registry $ACR_NAME --image productapi:v2.0 .
 
-# Push to ACR
-docker push $ACR_LOGIN_SERVER/productapi:v1.0
-
-# Alternative: Build directly in ACR
-az acr build --registry $ACR_NAME --image productapi:v1.0 .
+# List images to verify
+az acr repository show-tags --name $ACR_NAME --repository productapi --output table
 ```
 
-#### 2.2 Enable Admin Access (for demo purposes)
+#### 2.2 Get ACR Credentials
 ```bash
-# Get ACR credentials
+# Get ACR credentials for Container Apps
 ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username --output tsv)
 ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query passwords[0].value --output tsv)
 ```
 
 ### Task 3: Deploy to Container Apps (15 minutes)
 
-#### 3.1 Create Container App with External Ingress
+#### 3.1 Deploy New Version with Advanced Configuration
 ```bash
+# Deploy with production-ready settings
 az containerapp create \
     --name $CONTAINER_APP_NAME \
     --resource-group $RESOURCE_GROUP \
     --environment $ENVIRONMENT \
-    --image $ACR_LOGIN_SERVER/productapi:v1.0 \
+    --image $ACR_LOGIN_SERVER/productapi:v2.0 \
     --registry-server $ACR_LOGIN_SERVER \
     --registry-username $ACR_USERNAME \
     --registry-password $ACR_PASSWORD \
-    --target-port 8080 \
+    --target-port 80 \
     --ingress external \
-    --cpu 0.25 \
-    --memory 0.5Gi \
-    --min-replicas 1 \
-    --max-replicas 3
+    --cpu 0.5 \
+    --memory 1.0Gi \
+    --min-replicas 2 \
+    --max-replicas 10 \
+    --scale-rule-name http-rule \
+    --scale-rule-type http \
+    --scale-rule-metadata concurrentRequests=20
 ```
 
 #### 3.2 Get Application URL
@@ -308,17 +310,18 @@ az monitor metrics list \
 
 After completing this exercise, you should have:
 
-1. **Running Application**: Your ASP.NET Core app deployed and accessible via HTTPS
-2. **Scalable Configuration**: Auto-scaling based on HTTP requests
-3. **Secure Configuration**: Environment variables and secrets properly configured
-4. **Container Registry**: Private registry for your container images
-5. **Monitoring Setup**: Access to logs and basic metrics
+1. **Production Deployment**: Application running with production configuration
+2. **Advanced Scaling**: Auto-scaling based on multiple metrics
+3. **Secure Configuration**: Environment variables and secrets properly managed
+4. **Cloud Build Pipeline**: Images built in Azure without local Docker
+5. **Monitoring Setup**: Comprehensive logging and metrics
 
 ### Performance Expectations
-- **Cold start**: ~2-3 seconds for first request
-- **Scaling**: 0-5 replicas based on demand
-- **Availability**: 99.9% uptime SLA
+- **Cold start**: ~1-2 seconds with warm instances
+- **Scaling**: 2-10 replicas based on demand
+- **Availability**: 99.95% uptime with multiple replicas
 - **SSL**: Automatic HTTPS with managed certificates
+- **Build time**: ~2-3 minutes in ACR
 
 ---
 

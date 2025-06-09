@@ -14,8 +14,8 @@ public class TestController : ControllerBase
     private readonly ILogger<TestController> _logger;
 
     public TestController(
-        IExternalApiService externalApiService, 
-        DebuggingContext context, 
+        IExternalApiService externalApiService,
+        DebuggingContext context,
         ILogger<TestController> logger)
     {
         _externalApiService = externalApiService;
@@ -24,20 +24,52 @@ public class TestController : ControllerBase
     }
 
     /// <summary>
+    /// Simple test endpoint - should hit breakpoint
+    /// </summary>
+    [HttpGet("debug-test")]
+    public ActionResult<string> DebugTest()
+    {
+        // BREAKPOINT: Set breakpoint on this line
+        var message = "Debug test endpoint hit!";
+
+        // Force debugger break (uncomment if breakpoints don't work)
+        // System.Diagnostics.Debugger.Break();
+
+        // BREAKPOINT: Set breakpoint on this line too
+        _logger.LogInformation("Debug test endpoint called");
+
+        return Ok(message);
+    }
+
+    /// <summary>
     /// Test endpoint that always works - use for basic connectivity testing
     /// </summary>
     [HttpGet("ping")]
     public ActionResult<object> Ping()
     {
-        _logger.LogInformation("Ping endpoint called");
+        // DEBUG: Set breakpoint on the next line - THIS SHOULD HIT!
+        var currentTime = DateTime.UtcNow;
 
-        return Ok(new
+        // Console output for debugging (will appear in debug console)
+        Console.WriteLine($"[DEBUG] Ping endpoint hit at {currentTime}");
+
+        // DEBUG: Set another breakpoint here
+        _logger.LogInformation("Ping endpoint called at {Timestamp}", currentTime);
+
+        // DEBUG: And another one here
+        var debugMessage = "Breakpoint test - if you see this in response, controller is working!";
+
+        var response = new
         {
             Message = "Pong",
-            Timestamp = DateTime.UtcNow,
+            Timestamp = currentTime,
             Server = Environment.MachineName,
-            Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-        });
+            Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            DebugInfo = debugMessage,
+            BreakpointTest = "Controller method executed successfully"
+        };
+
+        return Ok(response);
     }
 
     /// <summary>

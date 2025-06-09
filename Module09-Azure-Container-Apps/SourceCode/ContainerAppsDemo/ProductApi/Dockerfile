@@ -1,39 +1,17 @@
-# Multi-stage build for ASP.NET Core
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
-WORKDIR /app
-EXPOSE 8080
+# Simple Dockerfile for Azure Container Apps
+# This file is used by Azure Container Registry to build your image in the cloud
+# You don't need Docker installed locally!
 
-# Create non-root user for security
-RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -s /bin/sh -D appuser
-USER appuser
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy project file and restore dependencies (better layer caching)
-COPY ["ProductApi.csproj", "."]
-RUN dotnet restore "./ProductApi.csproj" --runtime linux-musl-x64
-
-# Copy source code
 COPY . .
+RUN dotnet publish -c Release -o /app
 
-# Build the application
-RUN dotnet build "ProductApi.csproj" -c Release -o /app/build --runtime linux-musl-x64 --no-restore
-
-FROM build AS publish
-RUN dotnet publish "ProductApi.csproj" -c Release -o /app/publish \
-    --runtime linux-musl-x64 \
-    --self-contained false \
-    --no-restore
-
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+COPY --from=build /app .
 
-# Copy the published application
-COPY --from=publish /app/publish .
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl --fail http://localhost:8080/health || exit 1
+# Azure Container Apps sets the PORT environment variable
+EXPOSE 80
 
 ENTRYPOINT ["dotnet", "ProductApi.dll"]

@@ -9,6 +9,13 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure for Azure Container Apps
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    var port = builder.Configuration.GetValue("PORT", 80);
+    serverOptions.ListenAnyIP(port);
+});
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
