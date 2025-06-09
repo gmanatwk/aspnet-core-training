@@ -355,3 +355,7 @@ test-scripts/
 
 # Live coding snippets for instructor use
 LiveCodingSnippets/
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
