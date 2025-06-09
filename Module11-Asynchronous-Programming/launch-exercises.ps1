@@ -2426,6 +2426,9 @@ Write-Host "✅ Always measure performance to validate improvements" -Foreground
 Write-Host ""
 Write-Host "🚀 You now understand why async concurrency is crucial for scalable applications!" -ForegroundColor Green
 '@ "PowerShell script to test and demonstrate sequential vs concurrent performance"
+
+        # Create timer-based background service
+        Create-FileInteractive "Services/TimerBackgroundService.cs" @'
 namespace AsyncDemo.Services;
 
 public class TimerBackgroundService : BackgroundService
