@@ -845,6 +845,15 @@ Integration tests verify that different parts of the application work together:
         dotnet add package Respawn
         Set-Location ..
 
+        # Add Entity Framework Core packages to API project
+        Write-Info "Adding Entity Framework Core packages to API project..."
+        Set-Location ProductCatalog.API
+        dotnet add package Microsoft.EntityFrameworkCore.InMemory
+        dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+        dotnet add package Microsoft.EntityFrameworkCore.Design
+        dotnet add package Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore
+        Set-Location ..
+
         Explain-Concept "WebApplicationFactory" @"
 WebApplicationFactory provides a test server for integration testing:
 • Creates an in-memory test server
