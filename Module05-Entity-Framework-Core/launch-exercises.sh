@@ -1683,35 +1683,34 @@ After completing this exercise, you should understand:
 elif [[ $EXERCISE_NAME == "exercise03" ]]; then
     # Exercise 3: Repository Pattern and Unit of Work Implementation
 
-    explain_concept "Repository Pattern" \
-"Repository Pattern benefits:
-• Separation of Concerns: Isolate data access logic
-• Testability: Easy to mock repositories for unit testing
-• Maintainability: Centralized data access logic
-• Flexibility: Easy to switch data sources
-• Clean Architecture: Domain logic separated from data access"
-
-    explain_concept "Unit of Work Pattern" \
-"Unit of Work Pattern coordinates multiple repositories:
-• Transaction Management: Ensure data consistency
-• Change Tracking: Manage entity state across operations
-• Performance: Batch database operations
-• Rollback Capability: Handle errors gracefully"
-
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
-        echo -e "${RED}❌ Exercise 3 requires Exercises 1 and 2 to be completed first!${NC}"
-        echo -e "${YELLOW}Please run exercises in order: exercise01, exercise02, exercise03${NC}"
+        echo -e "${RED}❌ Exercise 3 requires Exercise 1 to be completed first!${NC}"
+        echo -e "${CYAN}Please run: ./launch-exercises.sh exercise01${NC}"
         exit 1
     fi
 
-    # Create Generic Repository Interface
+    explain_concept "Repository Pattern" \
+"Repository Pattern provides an abstraction layer between your business logic and data access:
+• Encapsulates data access logic in repository classes
+• Makes code more testable by allowing easy mocking
+• Provides a consistent interface for data operations
+• Enables switching data sources without changing business logic
+• Centralizes query logic for reusability"
+
+    # Create Repositories folder
+    if [ ! -d "Repositories" ]; then
+        mkdir -p Repositories
+    fi
+
+    # Create IRepository interface
     create_file_interactive "Repositories/IRepository.cs" \
 'using System.Linq.Expressions;
 
 namespace EFCoreDemo.Repositories;
 
 /// <summary>
-/// Generic repository interface from Exercise 03 - Repository Pattern
+/// Generic repository interface for common CRUD operations
+/// From Exercise 03 - Repository Pattern
 /// </summary>
 public interface IRepository<T> where T : class
 {
@@ -1721,14 +1720,14 @@ public interface IRepository<T> where T : class
     Task<T> AddAsync(T entity);
     Task<T> UpdateAsync(T entity);
     Task<bool> DeleteAsync(int id);
-
+    
     // Advanced operations
     Task<bool> ExistsAsync(int id);
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
     Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
     Task<int> CountAsync();
     Task<int> CountAsync(Expression<Func<T, bool>> predicate);
-
+    
     // Pagination
     Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
     Task<IEnumerable<T>> GetPagedAsync(
@@ -1737,87 +1736,88 @@ public interface IRepository<T> where T : class
         int page = 1,
         int pageSize = 10);
 }' \
-"Generic repository interface with common CRUD and query operations"
+"Generic repository interface defining common data access operations"
 
-    # Create Generic Repository Implementation
+    # Create Repository base implementation
     create_file_interactive "Repositories/Repository.cs" \
-'using Microsoft.EntityFrameworkCore;
+'using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using EFCoreDemo.Data;
-using System.Linq.Expressions;
 
 namespace EFCoreDemo.Repositories;
 
 /// <summary>
-/// Generic repository implementation from Exercise 03
+/// Generic repository implementation for common CRUD operations
+/// From Exercise 03 - Repository Pattern
 /// </summary>
 public class Repository<T> : IRepository<T> where T : class
 {
     protected readonly BookStoreContext _context;
     protected readonly DbSet<T> _dbSet;
-
+    
     public Repository(BookStoreContext context)
     {
         _context = context;
         _dbSet = context.Set<T>();
     }
-
+    
     public virtual async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbSet.ToListAsync();
     }
-
+    
     public virtual async Task<T?> GetByIdAsync(int id)
     {
         return await _dbSet.FindAsync(id);
     }
-
+    
     public virtual async Task<T> AddAsync(T entity)
     {
         var result = await _dbSet.AddAsync(entity);
         return result.Entity;
     }
-
+    
     public virtual async Task<T> UpdateAsync(T entity)
     {
         _dbSet.Update(entity);
         return entity;
     }
-
+    
     public virtual async Task<bool> DeleteAsync(int id)
     {
         var entity = await GetByIdAsync(id);
         if (entity == null)
             return false;
-
+            
         _dbSet.Remove(entity);
         return true;
     }
-
+    
     public virtual async Task<bool> ExistsAsync(int id)
     {
         return await _dbSet.FindAsync(id) != null;
     }
-
+    
     public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
         return await _dbSet.Where(predicate).ToListAsync();
     }
-
+    
     public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
     {
         return await _dbSet.FirstOrDefaultAsync(predicate);
     }
-
+    
     public virtual async Task<int> CountAsync()
     {
         return await _dbSet.CountAsync();
     }
-
+    
     public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
     {
         return await _dbSet.CountAsync(predicate);
     }
-
+    
     public virtual async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize)
     {
         return await _dbSet
@@ -1825,7 +1825,7 @@ public class Repository<T> : IRepository<T> where T : class
             .Take(pageSize)
             .ToListAsync();
     }
-
+    
     public virtual async Task<IEnumerable<T>> GetPagedAsync(
         Expression<Func<T, bool>>? filter = null,
         Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
@@ -1833,33 +1833,42 @@ public class Repository<T> : IRepository<T> where T : class
         int pageSize = 10)
     {
         IQueryable<T> query = _dbSet;
-
+        
         if (filter != null)
         {
             query = query.Where(filter);
         }
-
+        
         if (orderBy != null)
         {
             query = orderBy(query);
         }
-
+        
         return await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 }' \
-"Generic repository implementation with all CRUD and query operations"
+"Generic repository implementation with pagination and filtering support"
 
-    # Create Book Repository Interface
+    explain_concept "Specific Repositories" \
+"Specific repositories extend the generic repository with domain-specific operations:
+• IBookRepository adds book-specific queries like GetBooksWithPublisher
+• IAuthorRepository adds author-specific queries like GetAuthorsWithBooks
+• Encapsulates complex LINQ queries in meaningful method names
+• Provides a clear API for the business layer
+• Makes testing easier with focused interfaces"
+
+    # Create IBookRepository interface
     create_file_interactive "Repositories/IBookRepository.cs" \
 'using EFCoreDemo.Models;
 
 namespace EFCoreDemo.Repositories;
 
 /// <summary>
-/// Book repository interface from Exercise 03 - Repository Pattern
+/// Book-specific repository interface
+/// From Exercise 03 - Repository Pattern
 /// </summary>
 public interface IBookRepository : IRepository<Book>
 {
@@ -1873,9 +1882,9 @@ public interface IBookRepository : IRepository<Book>
     Task<decimal> GetAveragePriceAsync();
     Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year);
 }' \
-"Book repository interface with book-specific operations"
+"Book-specific repository interface with domain-specific queries"
 
-    # Create Book Repository Implementation
+    # Create BookRepository implementation
     create_file_interactive "Repositories/BookRepository.cs" \
 'using Microsoft.EntityFrameworkCore;
 using EFCoreDemo.Data;
@@ -1884,14 +1893,15 @@ using EFCoreDemo.Models;
 namespace EFCoreDemo.Repositories;
 
 /// <summary>
-/// Book repository implementation from Exercise 03
+/// Book-specific repository implementation
+/// From Exercise 03 - Repository Pattern
 /// </summary>
 public class BookRepository : Repository<Book>, IBookRepository
 {
     public BookRepository(BookStoreContext context) : base(context)
     {
     }
-
+    
     public async Task<IEnumerable<Book>> GetBooksWithPublisherAsync()
     {
         return await _context.Books
@@ -1900,7 +1910,7 @@ public class BookRepository : Repository<Book>, IBookRepository
             .OrderBy(b => b.Title)
             .ToListAsync();
     }
-
+    
     public async Task<Book?> GetBookWithDetailsAsync(int id)
     {
         return await _context.Books
@@ -1909,7 +1919,7 @@ public class BookRepository : Repository<Book>, IBookRepository
                 .ThenInclude(ba => ba.Author)
             .FirstOrDefaultAsync(b => b.Id == id);
     }
-
+    
     public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
     {
         return await _context.Books
@@ -1918,7 +1928,7 @@ public class BookRepository : Repository<Book>, IBookRepository
             .OrderBy(b => b.Title)
             .ToListAsync();
     }
-
+    
     public async Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId)
     {
         return await _context.Books
@@ -1927,7 +1937,7 @@ public class BookRepository : Repository<Book>, IBookRepository
             .OrderBy(b => b.Title)
             .ToListAsync();
     }
-
+    
     public async Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm)
     {
         var term = searchTerm.ToLower();
@@ -1938,51 +1948,49 @@ public class BookRepository : Repository<Book>, IBookRepository
             .Where(b => b.Title.ToLower().Contains(term) ||
                        b.ISBN.Contains(term) ||
                        (b.Publisher != null && b.Publisher.Name.ToLower().Contains(term)) ||
-                       b.BookAuthors.Any(ba =>
+                       b.BookAuthors.Any(ba => 
                            ba.Author.FirstName.ToLower().Contains(term) ||
                            ba.Author.LastName.ToLower().Contains(term)))
             .OrderBy(b => b.Title)
             .ToListAsync();
     }
-
+    
     public async Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice)
     {
         return await _context.Books
             .Include(b => b.Publisher)
-            .Where(b => b.Price >= minPrice && b.Price <= maxPrice && b.IsAvailable)
+            .Where(b => b.Price >= minPrice && b.Price <= maxPrice)
             .OrderBy(b => b.Price)
             .ToListAsync();
     }
-
+    
     public async Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null)
     {
         var query = _context.Books.Where(b => b.ISBN == isbn);
-
+        
         if (excludeBookId.HasValue)
         {
             query = query.Where(b => b.Id != excludeBookId.Value);
         }
-
+        
         return await query.AnyAsync();
     }
-
+    
     public async Task<decimal> GetAveragePriceAsync()
     {
-        return await _context.Books
-            .Where(b => b.IsAvailable)
-            .AverageAsync(b => b.Price);
+        return await _context.Books.AverageAsync(b => b.Price);
     }
-
+    
     public async Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year)
     {
         return await _context.Books
             .Include(b => b.Publisher)
-            .Where(b => b.PublishedDate.Year == year && b.IsAvailable)
+            .Where(b => b.PublishedDate.Year == year)
             .OrderBy(b => b.PublishedDate)
             .ToListAsync();
     }
 }' \
-"Book repository implementation with all book-specific operations"
+"Book repository implementation with all domain-specific queries"
 
     # Create Unit of Work Interface
     create_file_interactive "UnitOfWork/IUnitOfWork.cs" \

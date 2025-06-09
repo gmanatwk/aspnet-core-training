@@ -1,4 +1,7 @@
 using ReactTodoApp.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,12 +20,70 @@ builder.Services.AddSwaggerGen(c =>
 // Register application services
 builder.Services.AddScoped<ITodoService, TodoService>();
 
-// Add CORS for React development
+// Add Authentication & Authorization
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+            ClockSkew = TimeSpan.Zero // Reduce token lifetime tolerance
+        };
+
+        // Enhanced JWT events for security logging
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("JWT Authentication failed: {Error} from IP: {IP}",
+                    context.Exception.Message,
+                    context.HttpContext.Connection.RemoteIpAddress);
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILogger<Program>>();
+                logger.LogInformation("JWT Token validated for user: {User}",
+                    context.Principal?.Identity?.Name ?? "Unknown");
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+// Add Authorization Policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireUser", policy =>
+        policy.RequireAuthenticatedUser());
+
+    options.AddPolicy("RequireAdmin", policy =>
+        policy.RequireRole("Admin"));
+
+    options.AddPolicy("TodoOwner", policy =>
+        policy.RequireAssertion(context =>
+            context.User.Identity!.IsAuthenticated));
+});
+
+// Add CORS for React development and Next.js SSR
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost:3000",  // React SPA (CSR)
+                "http://localhost:5173",  // Vite dev server
+                "http://localhost:3001"   // Next.js SSR app
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -73,6 +134,9 @@ app.UseStaticFiles();
 app.UseSpaStaticFiles();
 
 app.UseRouting();
+
+// Authentication & Authorization middleware (order matters!)
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Map API controllers

@@ -49,6 +49,44 @@ services:
     profiles:
       - react-dev
 
+  # Next.js SSR application (for SSR vs CSR demonstration)
+  nextjs-ssr:
+    build:
+      context: ./NextJsApp
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - API_BASE_URL=http://api-only:80
+    depends_on:
+      - api-only
+    networks:
+      - todo-network
+    profiles:
+      - nextjs-ssr
+
+  # Next.js development server
+  nextjs-dev:
+    build:
+      context: ./NextJsApp
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - API_BASE_URL=http://api-only:80
+    volumes:
+      - ./NextJsApp:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api-only
+    networks:
+      - todo-network
+    profiles:
+      - nextjs-dev
+
   # ASP.NET Core API only (for Exercise 1-3)
   api-only:
     build:

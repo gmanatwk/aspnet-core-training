@@ -1486,7 +1486,1192 @@ public class QueryTestController : ControllerBase
     Write-Host "6. Follow the EXERCISE_02_GUIDE.md for implementation steps" -ForegroundColor White
 
 } elseif ($ExerciseName -eq "exercise03") {
-    Write-Host "[TIP] Great choice! Use the SourceCode version for the best experience." -ForegroundColor Cyan
+    # Exercise 3: Repository Pattern Implementation
+    
+    if (-not $SkipProjectCreation) {
+        Write-Host "[ERROR] Exercise 3 requires Exercise 1 to be completed first!" -ForegroundColor Red
+        Write-Host "Please run: .\launch-exercises.ps1 exercise01" -ForegroundColor Cyan
+        exit 1
+    }
+
+    Show-Concept -ConceptName "Repository Pattern" -Explanation @"
+Repository Pattern provides an abstraction layer between your business logic and data access:
+- Encapsulates data access logic in repository classes
+- Makes code more testable by allowing easy mocking
+- Provides a consistent interface for data operations
+- Enables switching data sources without changing business logic
+- Centralizes query logic for reusability
+"@
+
+    # Create Repositories folder
+    if (-not (Test-Path -Path "Repositories")) {
+        New-Item -ItemType Directory -Path "Repositories" -Force | Out-Null
+    }
+
+    # Create IRepository interface
+    $IRepositoryContent = @'
+using System.Linq.Expressions;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Generic repository interface for common CRUD operations
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public interface IRepository<T> where T : class
+{
+    // Basic CRUD operations
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T?> GetByIdAsync(int id);
+    Task<T> AddAsync(T entity);
+    Task<T> UpdateAsync(T entity);
+    Task<bool> DeleteAsync(int id);
+    
+    // Advanced operations
+    Task<bool> ExistsAsync(int id);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+    Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
+    Task<int> CountAsync();
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+    
+    // Pagination
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
+    Task<IEnumerable<T>> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        int page = 1,
+        int pageSize = 10);
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\IRepository.cs" -Content $IRepositoryContent -Description "Generic repository interface defining common data access operations"
+
+    # Create Repository base implementation
+    $RepositoryContent = @'
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Generic repository implementation for common CRUD operations
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public class Repository<T> : IRepository<T> where T : class
+{
+    protected readonly BookStoreContext _context;
+    protected readonly DbSet<T> _dbSet;
+    
+    public Repository(BookStoreContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<T>();
+    }
+    
+    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+    
+    public virtual async Task<T?> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+    
+    public virtual async Task<T> AddAsync(T entity)
+    {
+        var result = await _dbSet.AddAsync(entity);
+        return result.Entity;
+    }
+    
+    public virtual async Task<T> UpdateAsync(T entity)
+    {
+        _dbSet.Update(entity);
+        return entity;
+    }
+    
+    public virtual async Task<bool> DeleteAsync(int id)
+    {
+        var entity = await GetByIdAsync(id);
+        if (entity == null)
+            return false;
+            
+        _dbSet.Remove(entity);
+        return true;
+    }
+    
+    public virtual async Task<bool> ExistsAsync(int id)
+    {
+        return await _dbSet.FindAsync(id) != null;
+    }
+    
+    public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.Where(predicate).ToListAsync();
+    }
+    
+    public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.FirstOrDefaultAsync(predicate);
+    }
+    
+    public virtual async Task<int> CountAsync()
+    {
+        return await _dbSet.CountAsync();
+    }
+    
+    public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.CountAsync(predicate);
+    }
+    
+    public virtual async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize)
+    {
+        return await _dbSet
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+    
+    public virtual async Task<IEnumerable<T>> GetPagedAsync(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        int page = 1,
+        int pageSize = 10)
+    {
+        IQueryable<T> query = _dbSet;
+        
+        if (filter != null)
+        {
+            query = query.Where(filter);
+        }
+        
+        if (orderBy != null)
+        {
+            query = orderBy(query);
+        }
+        
+        return await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\Repository.cs" -Content $RepositoryContent -Description "Generic repository implementation with pagination and filtering support"
+
+    Show-Concept -ConceptName "Specific Repositories" -Explanation @"
+Specific repositories extend the generic repository with domain-specific operations:
+- IBookRepository adds book-specific queries like GetBooksWithPublisher
+- IAuthorRepository adds author-specific queries like GetAuthorsWithBooks
+- Encapsulates complex LINQ queries in meaningful method names
+- Provides a clear API for the business layer
+- Makes testing easier with focused interfaces
+"@
+
+    # Create IBookRepository interface
+    $IBookRepositoryContent = @'
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Book-specific repository interface
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public interface IBookRepository : IRepository<Book>
+{
+    Task<IEnumerable<Book>> GetBooksWithPublisherAsync();
+    Task<Book?> GetBookWithDetailsAsync(int id);
+    Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId);
+    Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId);
+    Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm);
+    Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice);
+    Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null);
+    Task<decimal> GetAveragePriceAsync();
+    Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year);
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\IBookRepository.cs" -Content $IBookRepositoryContent -Description "Book-specific repository interface with domain-specific queries"
+
+    # Create BookRepository implementation
+    $BookRepositoryContent = @'
+using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Book-specific repository implementation
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public class BookRepository : Repository<Book>, IBookRepository
+{
+    public BookRepository(BookStoreContext context) : base(context)
+    {
+    }
+    
+    public async Task<IEnumerable<Book>> GetBooksWithPublisherAsync()
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+    
+    public async Task<Book?> GetBookWithDetailsAsync(int id)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .FirstOrDefaultAsync(b => b.Id == id);
+    }
+    
+    public async Task<IEnumerable<Book>> GetBooksByAuthorAsync(int authorId)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.BookAuthors.Any(ba => ba.AuthorId == authorId))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+    
+    public async Task<IEnumerable<Book>> GetBooksByPublisherAsync(int publisherId)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.PublisherId == publisherId && b.IsAvailable)
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+    
+    public async Task<IEnumerable<Book>> SearchBooksAsync(string searchTerm)
+    {
+        var term = searchTerm.ToLower();
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.BookAuthors)
+                .ThenInclude(ba => ba.Author)
+            .Where(b => b.Title.ToLower().Contains(term) ||
+                       b.ISBN.Contains(term) ||
+                       (b.Publisher != null && b.Publisher.Name.ToLower().Contains(term)) ||
+                       b.BookAuthors.Any(ba => 
+                           ba.Author.FirstName.ToLower().Contains(term) ||
+                           ba.Author.LastName.ToLower().Contains(term)))
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+    }
+    
+    public async Task<IEnumerable<Book>> GetBooksByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.Price >= minPrice && b.Price <= maxPrice)
+            .OrderBy(b => b.Price)
+            .ToListAsync();
+    }
+    
+    public async Task<bool> IsbnExistsAsync(string isbn, int? excludeBookId = null)
+    {
+        var query = _context.Books.Where(b => b.ISBN == isbn);
+        
+        if (excludeBookId.HasValue)
+        {
+            query = query.Where(b => b.Id != excludeBookId.Value);
+        }
+        
+        return await query.AnyAsync();
+    }
+    
+    public async Task<decimal> GetAveragePriceAsync()
+    {
+        return await _context.Books.AverageAsync(b => b.Price);
+    }
+    
+    public async Task<IEnumerable<Book>> GetBooksPublishedInYearAsync(int year)
+    {
+        return await _context.Books
+            .Include(b => b.Publisher)
+            .Where(b => b.PublishedDate.Year == year)
+            .OrderBy(b => b.PublishedDate)
+            .ToListAsync();
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\BookRepository.cs" -Content $BookRepositoryContent -Description "Book repository implementation with all domain-specific queries"
+
+    # Create IAuthorRepository interface
+    $IAuthorRepositoryContent = @'
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Author-specific repository interface
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public interface IAuthorRepository : IRepository<Author>
+{
+    Task<IEnumerable<Author>> GetAuthorsWithBooksAsync();
+    Task<Author?> GetAuthorWithBooksAsync(int id);
+    Task<IEnumerable<Author>> SearchAuthorsAsync(string searchTerm);
+    Task<bool> EmailExistsAsync(string email, int? excludeAuthorId = null);
+    Task<IEnumerable<Author>> GetAuthorsByCountryAsync(string country);
+    Task<int> GetBookCountForAuthorAsync(int authorId);
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\IAuthorRepository.cs" -Content $IAuthorRepositoryContent -Description "Author-specific repository interface"
+
+    # Create AuthorRepository implementation
+    $AuthorRepositoryContent = @'
+using Microsoft.EntityFrameworkCore;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.Repositories;
+
+/// <summary>
+/// Author-specific repository implementation
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public class AuthorRepository : Repository<Author>, IAuthorRepository
+{
+    public AuthorRepository(BookStoreContext context) : base(context)
+    {
+    }
+    
+    public async Task<IEnumerable<Author>> GetAuthorsWithBooksAsync()
+    {
+        return await _context.Authors
+            .Include(a => a.BookAuthors)
+                .ThenInclude(ba => ba.Book)
+            .OrderBy(a => a.LastName)
+            .ThenBy(a => a.FirstName)
+            .ToListAsync();
+    }
+    
+    public async Task<Author?> GetAuthorWithBooksAsync(int id)
+    {
+        return await _context.Authors
+            .Include(a => a.BookAuthors)
+                .ThenInclude(ba => ba.Book)
+                    .ThenInclude(b => b.Publisher)
+            .FirstOrDefaultAsync(a => a.Id == id);
+    }
+    
+    public async Task<IEnumerable<Author>> SearchAuthorsAsync(string searchTerm)
+    {
+        var term = searchTerm.ToLower();
+        return await _context.Authors
+            .Include(a => a.BookAuthors)
+                .ThenInclude(ba => ba.Book)
+            .Where(a => a.FirstName.ToLower().Contains(term) ||
+                       a.LastName.ToLower().Contains(term) ||
+                       a.Email.ToLower().Contains(term))
+            .OrderBy(a => a.LastName)
+            .ThenBy(a => a.FirstName)
+            .ToListAsync();
+    }
+    
+    public async Task<bool> EmailExistsAsync(string email, int? excludeAuthorId = null)
+    {
+        var query = _context.Authors.Where(a => a.Email == email);
+        
+        if (excludeAuthorId.HasValue)
+        {
+            query = query.Where(a => a.Id != excludeAuthorId.Value);
+        }
+        
+        return await query.AnyAsync();
+    }
+    
+    public async Task<IEnumerable<Author>> GetAuthorsByCountryAsync(string country)
+    {
+        return await _context.Authors
+            .Where(a => a.Country == country)
+            .OrderBy(a => a.LastName)
+            .ThenBy(a => a.FirstName)
+            .ToListAsync();
+    }
+    
+    public async Task<int> GetBookCountForAuthorAsync(int authorId)
+    {
+        return await _context.BookAuthors
+            .Where(ba => ba.AuthorId == authorId)
+            .CountAsync();
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Repositories\AuthorRepository.cs" -Content $AuthorRepositoryContent -Description "Author repository implementation with book relationships"
+
+    Show-Concept -ConceptName "Unit of Work Pattern" -Explanation @"
+Unit of Work pattern coordinates multiple repositories in a single transaction:
+- Manages database transactions across multiple repositories
+- Ensures all changes are saved together or rolled back
+- Provides a single point of control for SaveChanges
+- Prevents partial updates to the database
+- Simplifies complex business operations that span multiple entities
+"@
+
+    # Create UnitOfWork folder
+    if (-not (Test-Path -Path "UnitOfWork")) {
+        New-Item -ItemType Directory -Path "UnitOfWork" -Force | Out-Null
+    }
+
+    # Create IUnitOfWork interface
+    $IUnitOfWorkContent = @'
+using EFCoreDemo.Repositories;
+using EFCoreDemo.Models;
+
+namespace EFCoreDemo.UnitOfWork;
+
+/// <summary>
+/// Unit of Work interface to coordinate multiple repositories
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public interface IUnitOfWork : IDisposable
+{
+    IBookRepository Books { get; }
+    IAuthorRepository Authors { get; }
+    IRepository<Publisher> Publishers { get; }
+    
+    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
+}
+'@
+
+    New-FileInteractive -FilePath "UnitOfWork\IUnitOfWork.cs" -Content $IUnitOfWorkContent -Description "Unit of Work interface for transaction management"
+
+    # Create UnitOfWork implementation
+    $UnitOfWorkContent = @'
+using Microsoft.EntityFrameworkCore.Storage;
+using EFCoreDemo.Data;
+using EFCoreDemo.Models;
+using EFCoreDemo.Repositories;
+
+namespace EFCoreDemo.UnitOfWork;
+
+/// <summary>
+/// Unit of Work implementation to coordinate multiple repositories
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly BookStoreContext _context;
+    private IDbContextTransaction? _transaction;
+    
+    public IBookRepository Books { get; }
+    public IAuthorRepository Authors { get; }
+    public IRepository<Publisher> Publishers { get; }
+    
+    public UnitOfWork(BookStoreContext context)
+    {
+        _context = context;
+        Books = new BookRepository(_context);
+        Authors = new AuthorRepository(_context);
+        Publishers = new Repository<Publisher>(_context);
+    }
+    
+    public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+    
+    public async Task BeginTransactionAsync()
+    {
+        _transaction = await _context.Database.BeginTransactionAsync();
+    }
+    
+    public async Task CommitTransactionAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.CommitAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+    
+    public async Task RollbackTransactionAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.RollbackAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+    
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        _context.Dispose();
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "UnitOfWork\UnitOfWork.cs" -Content $UnitOfWorkContent -Description "Unit of Work implementation with transaction support"
+
+    # Update Program.cs to register repositories and unit of work
+    Write-Host "Updating Program.cs to register repositories and unit of work..." -ForegroundColor Cyan
+    if (Test-Path -Path "Program.cs") {
+        $ProgramContent = Get-Content -Path "Program.cs" -Raw
+        
+        # Find the line after the BookQueryService registration
+        if ($ProgramContent -match "(builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>\(\);)") {
+            $RegistrationCode = @"
+$1
+
+// Register Repository Pattern and Unit of Work (Exercise 3)
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+"@
+            
+            $UpdatedContent = $ProgramContent -replace "(builder\.Services\.AddScoped<EFCoreDemo\.Services\.BookQueryService>\(\);)", $RegistrationCode
+            
+            # Add using statements at the top
+            $UpdatedContent = $UpdatedContent -replace "(using EFCoreDemo\.Data;)", @"
+$1
+using EFCoreDemo.Repositories;
+using EFCoreDemo.UnitOfWork;
+"@
+            
+            $UpdatedContent | Out-File -FilePath "Program.cs" -Encoding UTF8
+            Write-Host "✅ Updated Program.cs with repository and unit of work registrations" -ForegroundColor Green
+        } else {
+            Write-Host "⚠️  Manual registration may be needed - check Program.cs" -ForegroundColor Yellow
+        }
+    }
+
+    Show-Concept -ConceptName "Refactoring Controllers" -Explanation @"
+Controllers should use repositories instead of direct DbContext access:
+- Inject IUnitOfWork instead of DbContext
+- Use repository methods for data access
+- Leverage Unit of Work for transaction management
+- Keep controllers focused on HTTP concerns
+- Move complex business logic to service layers
+"@
+
+    # Create refactored BooksController with repository pattern
+    $RefactoredBooksControllerContent = @'
+using Microsoft.AspNetCore.Mvc;
+using EFCoreDemo.Models;
+using EFCoreDemo.Models.DTOs;
+using EFCoreDemo.UnitOfWork;
+
+namespace EFCoreDemo.Controllers;
+
+/// <summary>
+/// Books Controller refactored to use Repository Pattern
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class BooksV2Controller : ControllerBase
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<BooksV2Controller> _logger;
+    
+    public BooksV2Controller(IUnitOfWork unitOfWork, ILogger<BooksV2Controller> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+    
+    /// <summary>
+    /// Get all books with publisher information
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<BookDto>>> GetBooks()
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving all books using repository pattern");
+            
+            var books = await _unitOfWork.Books.GetBooksWithPublisherAsync();
+            
+            var bookDtos = books.Select(b => new BookDto
+            {
+                Id = b.Id,
+                Title = b.Title,
+                Author = b.Author,
+                ISBN = b.ISBN,
+                Price = b.Price,
+                PublishedDate = b.PublishedDate,
+                IsAvailable = b.IsAvailable,
+                PublisherName = b.Publisher?.Name,
+                Authors = b.BookAuthors.Select(ba => ba.Author.FullName).ToList()
+            });
+            
+            return Ok(bookDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving books");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Get book by ID with full details
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<BookDto>> GetBook(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving book with ID: {BookId}", id);
+            
+            var book = await _unitOfWork.Books.GetBookWithDetailsAsync(id);
+            
+            if (book == null)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+            
+            var bookDto = new BookDto
+            {
+                Id = book.Id,
+                Title = book.Title,
+                Author = book.Author,
+                ISBN = book.ISBN,
+                Price = book.Price,
+                PublishedDate = book.PublishedDate,
+                IsAvailable = book.IsAvailable,
+                PublisherName = book.Publisher?.Name,
+                Authors = book.BookAuthors.Select(ba => ba.Author.FullName).ToList()
+            };
+            
+            return Ok(bookDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving book {BookId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Search books across multiple fields
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<BookDto>>> SearchBooks([FromQuery] string term)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return BadRequest("Search term is required");
+            }
+            
+            _logger.LogInformation("Searching books with term: {SearchTerm}", term);
+            
+            var books = await _unitOfWork.Books.SearchBooksAsync(term);
+            
+            var bookDtos = books.Select(b => new BookDto
+            {
+                Id = b.Id,
+                Title = b.Title,
+                Author = b.Author,
+                ISBN = b.ISBN,
+                Price = b.Price,
+                PublishedDate = b.PublishedDate,
+                IsAvailable = b.IsAvailable,
+                PublisherName = b.Publisher?.Name,
+                Authors = b.BookAuthors.Select(ba => ba.Author.FullName).ToList()
+            });
+            
+            return Ok(bookDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching books with term: {Term}", term);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Create a new book with transaction support
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult<BookDto>> CreateBook(CreateBookDto createBookDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            
+            _logger.LogInformation("Creating new book: {BookTitle}", createBookDto.Title);
+            
+            // Start transaction
+            await _unitOfWork.BeginTransactionAsync();
+            
+            try
+            {
+                // Validate ISBN uniqueness
+                if (await _unitOfWork.Books.IsbnExistsAsync(createBookDto.ISBN))
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return Conflict($"Book with ISBN '{createBookDto.ISBN}' already exists");
+                }
+                
+                // Validate publisher exists if provided
+                if (createBookDto.PublisherId.HasValue)
+                {
+                    var publisherExists = await _unitOfWork.Publishers.ExistsAsync(createBookDto.PublisherId.Value);
+                    if (!publisherExists)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return BadRequest($"Publisher with ID {createBookDto.PublisherId} does not exist");
+                    }
+                }
+                
+                var book = new Book
+                {
+                    Title = createBookDto.Title,
+                    Author = createBookDto.Author,
+                    ISBN = createBookDto.ISBN,
+                    Price = createBookDto.Price,
+                    PublishedDate = createBookDto.PublishedDate,
+                    IsAvailable = createBookDto.IsAvailable,
+                    PublisherId = createBookDto.PublisherId
+                };
+                
+                var createdBook = await _unitOfWork.Books.AddAsync(book);
+                await _unitOfWork.SaveChangesAsync();
+                
+                // Commit transaction
+                await _unitOfWork.CommitTransactionAsync();
+                
+                var bookDto = new BookDto
+                {
+                    Id = createdBook.Id,
+                    Title = createdBook.Title,
+                    Author = createdBook.Author,
+                    ISBN = createdBook.ISBN,
+                    Price = createdBook.Price,
+                    PublishedDate = createdBook.PublishedDate,
+                    IsAvailable = createdBook.IsAvailable
+                };
+                
+                return CreatedAtAction(nameof(GetBook), new { id = createdBook.Id }, bookDto);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating book");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Update an existing book
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateBook(int id, UpdateBookDto updateBookDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            
+            var book = await _unitOfWork.Books.GetByIdAsync(id);
+            if (book == null)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+            
+            // Check if ISBN is being changed and if it conflicts
+            if (book.ISBN != updateBookDto.ISBN)
+            {
+                if (await _unitOfWork.Books.IsbnExistsAsync(updateBookDto.ISBN, id))
+                {
+                    return Conflict($"Book with ISBN '{updateBookDto.ISBN}' already exists");
+                }
+            }
+            
+            // Validate publisher exists if provided
+            if (updateBookDto.PublisherId.HasValue)
+            {
+                var publisherExists = await _unitOfWork.Publishers.ExistsAsync(updateBookDto.PublisherId.Value);
+                if (!publisherExists)
+                {
+                    return BadRequest($"Publisher with ID {updateBookDto.PublisherId} does not exist");
+                }
+            }
+            
+            book.Title = updateBookDto.Title;
+            book.Author = updateBookDto.Author;
+            book.ISBN = updateBookDto.ISBN;
+            book.Price = updateBookDto.Price;
+            book.PublishedDate = updateBookDto.PublishedDate;
+            book.IsAvailable = updateBookDto.IsAvailable;
+            book.PublisherId = updateBookDto.PublisherId;
+            
+            await _unitOfWork.Books.UpdateAsync(book);
+            await _unitOfWork.SaveChangesAsync();
+            
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating book {BookId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Delete a book
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteBook(int id)
+    {
+        try
+        {
+            var deleted = await _unitOfWork.Books.DeleteAsync(id);
+            if (!deleted)
+            {
+                return NotFound($"Book with ID {id} not found");
+            }
+            
+            await _unitOfWork.SaveChangesAsync();
+            
+            _logger.LogInformation("Deleted book with ID: {BookId}", id);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting book {BookId}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Get books by price range
+    /// </summary>
+    [HttpGet("price-range")]
+    public async Task<ActionResult<IEnumerable<BookDto>>> GetBooksByPriceRange(
+        [FromQuery] decimal minPrice,
+        [FromQuery] decimal maxPrice)
+    {
+        try
+        {
+            if (minPrice < 0 || maxPrice < minPrice)
+            {
+                return BadRequest("Invalid price range");
+            }
+            
+            var books = await _unitOfWork.Books.GetBooksByPriceRangeAsync(minPrice, maxPrice);
+            
+            var bookDtos = books.Select(b => new BookDto
+            {
+                Id = b.Id,
+                Title = b.Title,
+                Author = b.Author,
+                ISBN = b.ISBN,
+                Price = b.Price,
+                PublishedDate = b.PublishedDate,
+                IsAvailable = b.IsAvailable,
+                PublisherName = b.Publisher?.Name
+            });
+            
+            return Ok(bookDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting books by price range");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+    
+    /// <summary>
+    /// Get average book price
+    /// </summary>
+    [HttpGet("average-price")]
+    public async Task<ActionResult<object>> GetAveragePrice()
+    {
+        try
+        {
+            var averagePrice = await _unitOfWork.Books.GetAveragePriceAsync();
+            return Ok(new { AveragePrice = averagePrice });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating average price");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+}
+'@
+
+    New-FileInteractive -FilePath "Controllers\BooksV2Controller.cs" -Content $RefactoredBooksControllerContent -Description "Refactored Books controller using Repository Pattern and Unit of Work"
+
+    # Create exercise guide for Exercise 3
+    $Exercise3GuideContent = @'
+# Exercise 3: Repository Pattern and Unit of Work Implementation
+
+## 🎯 Objective
+Refactor direct Entity Framework Core usage to implement the Repository Pattern and Unit of Work Pattern for better separation of concerns, testability, and maintainability.
+
+## ⏱️ Time Allocation
+**Total Time**: 35 minutes
+- Generic Repository Implementation: 12 minutes
+- Specific Repository Implementation: 10 minutes
+- Unit of Work Pattern: 8 minutes
+- Controller Refactoring: 5 minutes
+
+## 🚀 Getting Started
+
+### Step 1: Review the Generated Files
+The following files have been created:
+- `Repositories/IRepository.cs` - Generic repository interface
+- `Repositories/Repository.cs` - Generic repository implementation
+- `Repositories/IBookRepository.cs` - Book-specific interface
+- `Repositories/BookRepository.cs` - Book repository implementation
+- `Repositories/IAuthorRepository.cs` - Author-specific interface
+- `Repositories/AuthorRepository.cs` - Author repository implementation
+- `UnitOfWork/IUnitOfWork.cs` - Unit of Work interface
+- `UnitOfWork/UnitOfWork.cs` - Unit of Work implementation
+- `Controllers/BooksV2Controller.cs` - Refactored controller
+
+### Step 2: Verify Dependency Injection
+Check that Program.cs has been updated with:
+```csharp
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped<IAuthorRepository, AuthorRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+```
+
+### Step 3: Test the Implementation
+1. Run: `dotnet run`
+2. Navigate to: http://localhost:5000/swagger
+3. Test the new BooksV2 endpoints
+
+## ✅ Success Criteria
+- [ ] Generic repository interface and implementation are complete
+- [ ] Specific repositories are implemented with domain-specific methods
+- [ ] Unit of Work pattern is properly implemented
+- [ ] Transaction management works correctly
+- [ ] Controllers are refactored to use repositories
+- [ ] Proper error handling and logging are in place
+- [ ] All repository methods work correctly
+- [ ] Dependency injection is configured properly
+
+## 🔧 Testing Your Implementation
+
+### Test Repository Methods
+```bash
+# Search books
+curl -X GET "http://localhost:5000/api/booksv2/search?term=programming"
+
+# Get books by price range
+curl -X GET "http://localhost:5000/api/booksv2/price-range?minPrice=20&maxPrice=50"
+
+# Get average price
+curl -X GET "http://localhost:5000/api/booksv2/average-price"
+```
+
+### Test Transaction Support
+```bash
+# Create a book (will use transaction)
+curl -X POST "http://localhost:5000/api/booksv2" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Repository Pattern Guide",
+    "author": "Martin Fowler",
+    "isbn": "978-1234567899",
+    "price": 55.99,
+    "publishedDate": "2023-01-01",
+    "isAvailable": true,
+    "publisherId": 1
+  }'
+```
+
+## 💡 Key Concepts Demonstrated
+
+### Repository Pattern Benefits:
+1. **Separation of Concerns**: Business logic separated from data access
+2. **Testability**: Easy to mock repositories for unit testing
+3. **Consistency**: Standardized data access patterns
+4. **Flexibility**: Can switch data access technologies
+5. **Maintainability**: Centralized data access logic
+
+### Unit of Work Benefits:
+1. **Transaction Management**: Coordinate multiple operations
+2. **Consistency**: Ensure all-or-nothing updates
+3. **Performance**: Batch database operations
+4. **Simplicity**: Single point for SaveChanges
+
+## 🎯 Learning Outcomes
+After completing this exercise, you should understand:
+- How to implement the Repository Pattern with EF Core
+- Generic vs specific repository implementations
+- Unit of Work pattern for transaction management
+- Dependency injection configuration for repositories
+- Benefits of abstraction layers in data access
+- How to refactor existing code to use repositories
+
+## 📚 Additional Challenges
+1. Add caching to the repository layer
+2. Implement soft delete functionality
+3. Add audit logging to track changes
+4. Create integration tests for repositories
+5. Implement specification pattern for complex queries
+'@
+
+    New-FileInteractive -FilePath "EXERCISE_03_GUIDE.md" -Content $Exercise3GuideContent -Description "Complete exercise guide for Repository Pattern implementation"
+
+    # Create a simple test file to verify repository implementation
+    $RepositoryTestContent = @'
+using EFCoreDemo.Data;
+using EFCoreDemo.Repositories;
+using EFCoreDemo.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace EFCoreDemo.Tests;
+
+/// <summary>
+/// Simple test class to verify repository implementation
+/// From Exercise 03 - Repository Pattern
+/// </summary>
+public class RepositoryTests
+{
+    private readonly IServiceProvider _serviceProvider;
+    
+    public RepositoryTests()
+    {
+        var services = new ServiceCollection();
+        
+        // Configure in-memory database for testing
+        services.AddDbContext<BookStoreContext>(options =>
+            options.UseInMemoryDatabase("TestDatabase"));
+        
+        // Register repositories and unit of work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IBookRepository, BookRepository>();
+        services.AddScoped<IAuthorRepository, AuthorRepository>();
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        
+        // Add logging
+        services.AddLogging();
+        
+        _serviceProvider = services.BuildServiceProvider();
+    }
+    
+    public async Task RunTests()
+    {
+        Console.WriteLine("Running Repository Pattern Tests...\n");
+        
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            
+            // Test 1: Add a new book
+            Console.WriteLine("Test 1: Adding a new book");
+            var newBook = new Models.Book
+            {
+                Title = "Test Book",
+                Author = "Test Author",
+                ISBN = "978-0000000001",
+                Price = 29.99m,
+                PublishedDate = DateTime.Now,
+                IsAvailable = true
+            };
+            
+            await unitOfWork.Books.AddAsync(newBook);
+            await unitOfWork.SaveChangesAsync();
+            Console.WriteLine("✅ Book added successfully\n");
+            
+            // Test 2: Search for books
+            Console.WriteLine("Test 2: Searching for books");
+            var searchResults = await unitOfWork.Books.SearchBooksAsync("Test");
+            Console.WriteLine($"✅ Found {searchResults.Count()} books\n");
+            
+            // Test 3: Get books by price range
+            Console.WriteLine("Test 3: Getting books by price range");
+            var priceRangeBooks = await unitOfWork.Books.GetBooksByPriceRangeAsync(20, 40);
+            Console.WriteLine($"✅ Found {priceRangeBooks.Count()} books in price range\n");
+            
+            // Test 4: Check ISBN exists
+            Console.WriteLine("Test 4: Checking if ISBN exists");
+            var isbnExists = await unitOfWork.Books.IsbnExistsAsync("978-0000000001");
+            Console.WriteLine($"✅ ISBN exists: {isbnExists}\n");
+            
+            // Test 5: Transaction test
+            Console.WriteLine("Test 5: Testing transaction rollback");
+            await unitOfWork.BeginTransactionAsync();
+            
+            var transactionBook = new Models.Book
+            {
+                Title = "Transaction Test Book",
+                Author = "Transaction Author",
+                ISBN = "978-0000000002",
+                Price = 39.99m,
+                PublishedDate = DateTime.Now,
+                IsAvailable = true
+            };
+            
+            await unitOfWork.Books.AddAsync(transactionBook);
+            await unitOfWork.SaveChangesAsync();
+            
+            // Rollback instead of commit
+            await unitOfWork.RollbackTransactionAsync();
+            
+            var rollbackCheck = await unitOfWork.Books.IsbnExistsAsync("978-0000000002");
+            Console.WriteLine($"✅ Transaction rolled back successfully. Book exists: {rollbackCheck}\n");
+        }
+        
+        Console.WriteLine("All tests completed successfully! 🎉");
+    }
+}
+
+// To run tests, add this to Program.cs:
+// var tests = new RepositoryTests();
+// await tests.RunTests();
+'@
+
+    New-FileInteractive -FilePath "Tests\RepositoryTests.cs" -Content $RepositoryTestContent -Description "Simple test class to verify repository implementation"
+
+    Write-Host "🎉 Exercise 3 template created successfully!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "[OVERVIEW] Next steps:" -ForegroundColor Yellow
+    Write-Host "1. Repository pattern and Unit of Work have been registered ✅" -ForegroundColor White
+    Write-Host "2. Run: dotnet run" -ForegroundColor Cyan
+    Write-Host "3. Test the new BooksV2 endpoints in Swagger" -ForegroundColor Cyan
+    Write-Host "4. Compare BooksController vs BooksV2Controller implementations" -ForegroundColor White
+    Write-Host "5. Follow the EXERCISE_03_GUIDE.md for detailed instructions" -ForegroundColor White
+    Write-Host ""
+    Write-Host "[TIP] Benefits of Repository Pattern:" -ForegroundColor Magenta
+    Write-Host "  - Better testability with mocked repositories" -ForegroundColor White
+    Write-Host "  - Cleaner separation of concerns" -ForegroundColor White
+    Write-Host "  - Centralized query logic" -ForegroundColor White
+    Write-Host "  - Transaction support via Unit of Work" -ForegroundColor White
+    Write-Host "  - Easier to switch data providers" -ForegroundColor White
 }
 
 Write-Host ""
