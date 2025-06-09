@@ -310,6 +310,37 @@ HTTP Security Headers provide defense-in-depth protection:
             # Remove default WeatherForecast files
             Remove-Item -Path "WeatherForecast.cs" -Force -ErrorAction SilentlyContinue
             Remove-Item -Path "Controllers/WeatherForecastController.cs" -Force -ErrorAction SilentlyContinue
+            
+            # Configure HTTPS properly in launchSettings.json
+            Write-Info "Configuring HTTPS settings..."
+            $launchSettings = @'
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:5001;http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+'@
+            Set-Content -Path "Properties/launchSettings.json" -Value $launchSettings -Encoding UTF8
         }
 
         # Create security headers middleware
@@ -525,12 +556,15 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure HTTPS
+// Configure HTTPS redirection properly
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
     options.HttpsPort = 5001;
 });
+
+// Add controllers for API endpoints
+builder.Services.AddControllers();
 
 var app = builder.Build();
 

@@ -331,6 +331,36 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
         echo_info "Creating new ASP.NET Core Web API project..."
         dotnet new webapi -n "$PROJECT_NAME" --framework net8.0
         cd "$PROJECT_NAME"
+        
+        # Configure HTTPS properly in launchSettings.json
+        echo_info "Configuring HTTPS settings..."
+        cat > Properties/launchSettings.json << 'EOF'
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:5001;http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+EOF
     fi
 
     # Create security headers middleware
