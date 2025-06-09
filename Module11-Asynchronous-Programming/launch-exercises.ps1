@@ -966,6 +966,68 @@ public class BackgroundTaskService
     }
 }
 '@ "Background task service for Exercise 3"
+
+        Write-Success "✅ Exercise 3: Background Services and Tasks - COMPLETE!"
+        Write-Host ""
+        Write-Host "🧪 NOW TEST BACKGROUND PROCESSING:" -ForegroundColor Green
+        Write-Host "1. Build and run: dotnet run" -ForegroundColor Cyan
+        Write-Host "2. Watch background tasks running concurrently" -ForegroundColor Yellow
+        Write-Host "3. Test graceful shutdown with Ctrl+C" -ForegroundColor Green
+        Write-Host "4. See proper task coordination and cleanup" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "🎯 LEARNING OBJECTIVES ACHIEVED:" -ForegroundColor Yellow
+        Write-Host "• ✅ Implemented background task processing" -ForegroundColor White
+        Write-Host "• ✅ Added proper task cancellation and cleanup" -ForegroundColor White
+        Write-Host "• ✅ Created task coordination mechanisms" -ForegroundColor White
+        Write-Host "• ✅ Handled background task exceptions" -ForegroundColor White
+    }
+
+    "exercise02" {
+        # Exercise 2: Async API Development
+
+        Explain-Concept "🚨 THE PROBLEM: Async/Sync Deadlocks" @"
+You've inherited a web app that randomly freezes under load - classic deadlock scenario!
+
+CURRENT ISSUES:
+• Controllers call .Result on async methods (DEADLY!)
+• SynchronizationContext deadlocks in ASP.NET
+• App becomes completely unresponsive
+• No clear error messages - just hangs forever
+
+YOUR MISSION:
+• Identify the deadlock patterns
+• Fix blocking async calls
+• Understand ConfigureAwait(false)
+• Make the app truly async all the way down
+"@
+
+        if (-not $SkipProjectCreation) {
+            Write-Info "Creating async web API application..."
+            Write-Info "This will demonstrate deadlock scenarios and solutions!"
+            dotnet new webapi -n AsyncDemo --framework net8.0
+            Set-Location AsyncDemo
+        }
+
+        # Create User model for the API
+        Create-FileInteractive "Models/User.cs" @'
+namespace AsyncDemo.Models;
+
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public class WeatherData
+{
+    public string City { get; set; } = string.Empty;
+    public int Temperature { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+'@ "Models for the async API demonstration"
+
+        # Create async data service interface
         Create-FileInteractive "Data/IAsyncDataService.cs" @'
 using AsyncDemo.Models;
 
