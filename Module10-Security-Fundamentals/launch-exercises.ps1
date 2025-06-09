@@ -313,26 +313,29 @@ HTTP Security Headers provide defense-in-depth protection:
             
             # Configure HTTPS properly in launchSettings.json
             Write-Info "Configuring HTTPS settings..."
+            # Note: Using ports 7080/7081 to avoid conflicts with common services
+            # Port 5000/5001 conflicts with Control Center on macOS and other dev tools
+            # IMPORTANT: HTTPS profile is listed FIRST to make it the default when running 'dotnet run'
             $launchSettings = @'
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "http": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "launchUrl": "swagger",
-      "applicationUrl": "http://localhost:5050",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://localhost:5051;http://localhost:5050",
+      "applicationUrl": "https://localhost:7081;http://localhost:7080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "http://localhost:7080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -517,7 +520,7 @@ public class SecurityTestController : ControllerBase
 
         # Create updated .http file with correct security endpoints
         Create-FileInteractive "SecurityDemo.http" @'
-@SecurityDemo_HostAddress = https://localhost:5051
+@SecurityDemo_HostAddress = https://localhost:7081
 
 ### Test Security Headers
 GET {{SecurityDemo_HostAddress}}/api/SecurityTest/headers
@@ -560,7 +563,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 5051;
+    options.HttpsPort = 7081;
 });
 
 // Add controllers for API endpoints
@@ -595,9 +598,13 @@ app.Run();
 
         Write-Success "✅ Exercise 1: Security Headers Implementation completed!"
         Write-Host "🚀 Next steps:" -ForegroundColor Yellow
-        Write-Host "1. Add middleware to Program.cs: app.UseSecurityHeaders();" -ForegroundColor Cyan
-        Write-Host "2. Test security headers with browser dev tools" -ForegroundColor Cyan
-        Write-Host "3. Run security header analysis tools" -ForegroundColor Cyan
+        Write-Host "1. Run the application: " -NoNewline -ForegroundColor Cyan
+        Write-Host "dotnet run" -ForegroundColor White
+        Write-Host "2. Navigate to: " -NoNewline -ForegroundColor Cyan
+        Write-Host "https://localhost:7081" -ForegroundColor White
+        Write-Host "3. Test security headers with browser dev tools" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Note: HTTPS is enabled by default. The app redirects / to /swagger" -ForegroundColor Gray
     }
 
     "exercise02" {
@@ -1070,7 +1077,7 @@ builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 builder.Services.AddHttpsRedirection(options =>
 {
     options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
-    options.HttpsPort = 5051;
+    options.HttpsPort = 7081;
 });
 
 var app = builder.Build();
