@@ -1111,7 +1111,7 @@ builder.Services.AddDbContext<ProductCatalogContext>(options =>
     }
     else
     {
-        options.UseInMemoryDatabase("ProductCatalog");
+        options.UseSqlite("Data Source=products.db");
     }
 });
 

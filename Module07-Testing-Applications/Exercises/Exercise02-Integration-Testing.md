@@ -176,8 +176,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddDbContext<BlogDbContext>(options =>
 {
-    // Use SQL Server in production, but for this exercise we'll use InMemory
-    options.UseInMemoryDatabase("BlogDb");
+    // Use SQLite for this exercise (easy to set up, no installation required)
+    options.UseSqlite("Data Source=blog.db");
 });
 
 builder.Services.AddEndpointsApiExplorer();

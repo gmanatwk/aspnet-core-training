@@ -1643,6 +1643,11 @@ Write-Host "• Use async/await all the way down"
 Write-Host "• If you must call async from sync, use ConfigureAwait(false)"
 Write-Host "• Deadlocks are silent killers - they just hang forever"
 '@ "PowerShell script to test and demonstrate deadlock scenarios"
+
+        # Create the async API service for Exercise 2
+        Create-FileInteractive "Services/AsyncApiService.cs" @'
+using AsyncDemo.Models;
+
 namespace AsyncDemo.Services;
 
 public interface IAsyncApiService

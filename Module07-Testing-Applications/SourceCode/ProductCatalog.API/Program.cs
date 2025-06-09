@@ -23,14 +23,15 @@ builder.Services.AddDbContext<ProductCatalogContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     
-    if (builder.Environment.IsDevelopment())
+    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
     {
         // Use InMemory database for development and testing
         options.UseInMemoryDatabase("ProductCatalogDb");
     }
     else
     {
-        options.UseSqlServer(connectionString);
+        // Use SQLite for production (in this training scenario)
+        options.UseSqlite(connectionString ?? "Data Source=products.db");
     }
     
     options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
@@ -123,7 +124,7 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-        // Apply migrations for SQL Server
+        // Apply migrations for SQLite
         context.Database.Migrate();
     }
 }
