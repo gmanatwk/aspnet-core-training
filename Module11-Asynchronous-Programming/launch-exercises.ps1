@@ -18,7 +18,7 @@ param(
 )
 
 # Configuration
-$ProjectName = "AsyncDemo"
+$ProjectName = "AsyncExercise01"  # Match exercise naming
 $InteractiveMode = -not $Auto
 
 # Function to display colored output
@@ -53,16 +53,16 @@ function Show-LearningObjectives {
 
     switch ($Exercise) {
         "exercise01" {
-            Write-Host "🚨 PROBLEM: Slow File Processing API" -ForegroundColor Red
-            Write-Host "  🐌 Current API blocks threads reading large files"
-            Write-Host "  📊 Only handles 10 concurrent users before timing out"
-            Write-Host "  🎯 GOAL: Scale to 100+ concurrent users"
+            Write-Host "🚨 PROBLEM: Sequential Data Processing" -ForegroundColor Red
+            Write-Host "  🐌 Processing URLs one by one takes forever"
+            Write-Host "  📊 3 URLs taking 6+ seconds when they could take 2 seconds"
+            Write-Host "  🎯 GOAL: Learn async/await fundamentals with real scenarios"
             Write-Host ""
-            Write-Host "You'll learn by fixing:" -ForegroundColor Yellow
-            Write-Host "  • Why blocking I/O kills scalability"
-            Write-Host "  • How to convert File.ReadAllText to async"
-            Write-Host "  • Measuring thread pool usage before/after"
-            Write-Host "  • When async helps vs hurts performance"
+            Write-Host "You'll learn by building:" -ForegroundColor Yellow
+            Write-Host "  • Download/Process/Save async workflow"
+            Write-Host "  • Sequential vs concurrent processing"
+            Write-Host "  • Retry logic with exponential backoff"
+            Write-Host "  • Proper exception handling in async code"
         }
         "exercise02" {
             Write-Host "🚨 PROBLEM: Deadlocking Web App" -ForegroundColor Red
@@ -100,11 +100,12 @@ function Show-CreationOverview {
 
     switch ($Exercise) {
         "exercise01" {
-            Write-Host "• Basic async service implementations"
-            Write-Host "• Task-based method examples"
-            Write-Host "• Exception handling patterns"
-            Write-Host "• Performance comparison demos"
-            Write-Host "• ConfigureAwait examples"
+            Write-Host "• Console application with async Main"
+            Write-Host "• DownloadDataAsync, ProcessDataAsync, SaveDataAsync methods"
+            Write-Host "• ProcessedData model class"
+            Write-Host "• Sequential vs concurrent processing comparison"
+            Write-Host "• Retry logic with exponential backoff"
+            Write-Host "• Comprehensive exception handling"
         }
         "exercise02" {
             Write-Host "• Async API controllers"
@@ -247,260 +248,304 @@ switch ($ExerciseName) {
     "exercise01" {
         # Exercise 1: Basic Async/Await Fundamentals
 
-        Explain-Concept "🚨 THE PROBLEM: Blocking I/O Kills Scalability" @"
-You've inherited a file processing API that works fine for 1 user but crashes under load:
+        Explain-Concept "🚨 THE PROBLEM: Sequential Processing is Slow" @"
+You need to build a data processing system that downloads, processes, and saves data:
 
-CURRENT ISSUES:
-• File.ReadAllText() blocks threads while reading large files
-• Thread pool gets exhausted with just 10 concurrent users
-• Response times increase exponentially under load
-• Server becomes unresponsive
+CURRENT CHALLENGE:
+• Processing 3 URLs sequentially takes 6+ seconds
+• Each operation waits for the previous one to complete
+• No retry logic when downloads fail
+• Poor exception handling
 
 YOUR MISSION:
-• Convert blocking file operations to async
-• Measure thread usage before and after
-• Scale from 10 to 100+ concurrent users
-• Understand WHY async helps here
+• Build async download/process/save workflow
+• Compare sequential vs concurrent processing
+• Implement retry logic with exponential backoff
+• Handle exceptions properly in async code
 "@
 
         if (-not $SkipProjectCreation) {
-            Write-Info "Creating the BROKEN file processing API..."
-            Write-Warning "This API will demonstrate blocking I/O problems!"
-            dotnet new webapi -n $ProjectName --framework net8.0
+            Write-Info "Creating async console application..."
+            Write-Info "This matches Exercise 1 requirements exactly!"
+            dotnet new console -n $ProjectName --framework net8.0
             Set-Location $ProjectName
         }
 
-        # Create sample files for processing
-        Write-Info "Creating sample files to demonstrate the problem..."
-        Create-FileInteractive "SampleFiles/large-file-1.txt" @'
-This is a large file that simulates real-world file processing scenarios.
-When this file is read synchronously using File.ReadAllText(), it blocks the thread.
-Under load, this blocking behavior causes thread pool starvation.
-The goal is to convert this to async file operations to improve scalability.
+        # Create the ProcessedData model class as required by exercise
+        Create-FileInteractive "Models/ProcessedData.cs" @'
+namespace AsyncExercise01.Models;
 
-[Simulated large content - imagine this is a 10MB+ file]
-Line 1000: Processing data...
-Line 2000: More data processing...
-Line 3000: Even more data...
-[This represents thousands of lines that take time to read from disk]
-'@ "Sample file 1 for demonstrating blocking I/O"
-
-        Create-FileInteractive "SampleFiles/large-file-2.txt" @'
-Another large file for concurrent processing tests.
-This file helps demonstrate the difference between:
-1. Sequential processing (slow)
-2. Concurrent processing (fast)
-
-When processed synchronously, each file blocks a thread.
-When processed asynchronously, threads are freed while I/O completes.
-
-[Simulated large content continues...]
-'@ "Sample file 2 for demonstrating concurrent processing"
-
-        # Create the BROKEN file processing controller
-        Create-FileInteractive "Controllers/FileProcessingController.cs" @'
-using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-
-namespace AsyncDemo.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class FileProcessingController : ControllerBase
+/// <summary>
+/// Data model for processed information - matches Exercise 1 requirements
+/// </summary>
+public class ProcessedData
 {
-    private readonly ILogger<FileProcessingController> _logger;
+    public string Summary { get; set; } = string.Empty;
+    public int CharacterCount { get; set; }
+    public DateTime ProcessedAt { get; set; }
 
-    public FileProcessingController(ILogger<FileProcessingController> logger)
+    public override string ToString()
     {
-        _logger = logger;
+        return $"Summary: {Summary}, Characters: {CharacterCount}, Processed: {ProcessedAt:HH:mm:ss}";
     }
+}
+'@ "ProcessedData model class matching exercise requirements"
 
-    /// <summary>
-    /// 🚨 BROKEN: This method blocks threads and kills scalability!
-    /// Try calling this endpoint with 10+ concurrent requests - it will fail!
-    /// </summary>
-    [HttpGet("process-sync/{fileName}")]
-    public IActionResult ProcessFileSync(string fileName)
+        # Create Program.cs with the exact methods required by Exercise 1
+        Create-FileInteractive "Program.cs" @'
+using System.Diagnostics;
+using AsyncExercise01.Models;
+
+namespace AsyncExercise01;
+
+class Program
+{
+    static async Task Main(string[] args)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var threadId = Thread.CurrentThread.ManagedThreadId;
+        Console.WriteLine("=== Exercise 1: Basic Async Programming ===\n");
 
-        _logger.LogInformation("SYNC: Processing {FileName} on thread {ThreadId}", fileName, threadId);
-
-        try
+        // Test URLs with different delays (as specified in exercise)
+        var urls = new List<string>
         {
-            // 🚨 PROBLEM: This blocks the thread while reading the file!
-            var filePath = Path.Combine("SampleFiles", fileName);
-            var content = File.ReadAllText(filePath); // BLOCKING I/O!
-
-            // Simulate some processing time
-            Thread.Sleep(100); // More blocking!
-
-            var result = new
-            {
-                FileName = fileName,
-                ContentLength = content.Length,
-                ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
-                ThreadId = threadId,
-                Method = "SYNCHRONOUS (BLOCKING)"
-            };
-
-            _logger.LogInformation("SYNC: Completed {FileName} in {ElapsedMs}ms on thread {ThreadId}",
-                fileName, stopwatch.ElapsedMilliseconds, threadId);
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "SYNC: Failed to process {FileName}", fileName);
-            return StatusCode(500, $"Error processing file: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// ✅ FIXED: This method uses async I/O and scales much better!
-    /// Compare this with the sync version under load.
-    /// </summary>
-    [HttpGet("process-async/{fileName}")]
-    public async Task<IActionResult> ProcessFileAsync(string fileName)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var threadId = Thread.CurrentThread.ManagedThreadId;
-
-        _logger.LogInformation("ASYNC: Processing {FileName} on thread {ThreadId}", fileName, threadId);
-
-        try
-        {
-            // ✅ SOLUTION: This doesn't block the thread while reading!
-            var filePath = Path.Combine("SampleFiles", fileName);
-            var content = await File.ReadAllTextAsync(filePath); // NON-BLOCKING I/O!
-
-            // Simulate some processing time (but don't block the thread)
-            await Task.Delay(100); // Non-blocking delay!
-
-            var result = new
-            {
-                FileName = fileName,
-                ContentLength = content.Length,
-                ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
-                ThreadId = threadId,
-                Method = "ASYNCHRONOUS (NON-BLOCKING)"
-            };
-
-            _logger.LogInformation("ASYNC: Completed {FileName} in {ElapsedMs}ms on thread {ThreadId}",
-                fileName, stopwatch.ElapsedMilliseconds, threadId);
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ASYNC: Failed to process {FileName}", fileName);
-            return StatusCode(500, $"Error processing file: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 🚨 BROKEN: Processes multiple files sequentially (slow!)
-    /// </summary>
-    [HttpPost("process-multiple-sync")]
-    public IActionResult ProcessMultipleFilesSync([FromBody] List<string> fileNames)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var results = new List<object>();
-
-        _logger.LogInformation("SYNC: Processing {Count} files sequentially", fileNames.Count);
-
-        foreach (var fileName in fileNames)
-        {
-            try
-            {
-                var filePath = Path.Combine("SampleFiles", fileName);
-                var content = File.ReadAllText(filePath); // Blocking for each file!
-                Thread.Sleep(100); // More blocking!
-
-                results.Add(new
-                {
-                    FileName = fileName,
-                    ContentLength = content.Length,
-                    Status = "Success"
-                });
-            }
-            catch (Exception ex)
-            {
-                results.Add(new
-                {
-                    FileName = fileName,
-                    Status = "Failed",
-                    Error = ex.Message
-                });
-            }
-        }
-
-        var response = new
-        {
-            TotalFiles = fileNames.Count,
-            ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
-            Method = "SEQUENTIAL (SLOW)",
-            Results = results
+            "https://api1.example.com", // 1000ms delay
+            "https://api2.example.com", // 1500ms delay
+            "https://api3.example.com"  // 800ms delay
         };
 
-        _logger.LogInformation("SYNC: Completed {Count} files in {ElapsedMs}ms",
-            fileNames.Count, stopwatch.ElapsedMilliseconds);
+        Console.WriteLine("🚀 Testing Sequential vs Concurrent Processing\n");
 
-        return Ok(response);
+        // Part 1: Sequential Processing
+        await TestSequentialProcessing(urls);
+
+        Console.WriteLine();
+
+        // Part 2: Concurrent Processing
+        await TestConcurrentProcessing(urls);
+
+        Console.WriteLine();
+
+        // Part 3: Retry Logic Test
+        await TestRetryLogic();
+
+        Console.WriteLine("\nPress any key to exit...");
+        Console.ReadKey();
     }
 
     /// <summary>
-    /// ✅ FIXED: Processes multiple files concurrently (fast!)
+    /// Method that simulates downloading data from a web service
+    /// Matches Exercise 1 requirements exactly
     /// </summary>
-    [HttpPost("process-multiple-async")]
-    public async Task<IActionResult> ProcessMultipleFilesAsync([FromBody] List<string> fileNames)
+    static async Task<string> DownloadDataAsync(string url, int delayMs)
     {
+        Console.WriteLine($"Downloading from {url}...");
+
+        // Simulate network delay
+        await Task.Delay(delayMs);
+
+        // Return simulated data
+        return $"Data from {url} (simulated {delayMs}ms download)";
+    }
+
+    /// <summary>
+    /// Method that processes downloaded data
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    static async Task<ProcessedData> ProcessDataAsync(string rawData)
+    {
+        Console.WriteLine($"Processing data from {ExtractUrlFromData(rawData)}...");
+
+        // Simulate processing time (500ms as specified)
+        await Task.Delay(500);
+
+        // Return ProcessedData object with summary
+        return new ProcessedData
+        {
+            Summary = $"Processed: {ExtractUrlFromData(rawData)}",
+            CharacterCount = rawData.Length,
+            ProcessedAt = DateTime.Now
+        };
+    }
+
+    /// <summary>
+    /// Method that saves processed data
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    static async Task SaveDataAsync(ProcessedData data, string fileName)
+    {
+        Console.WriteLine($"Saving data to {fileName}...");
+
+        // Simulate file I/O (300ms as specified)
+        await Task.Delay(300);
+
+        // In real scenario, would save to file
+        // For demo, just simulate the operation
+        Console.WriteLine($"Data saved to {fileName}");
+    }
+
+    /// <summary>
+    /// Sequential processing method - processes URLs one by one
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    static async Task TestSequentialProcessing(List<string> urls)
+    {
+        Console.WriteLine("=== Sequential Processing ===");
         var stopwatch = Stopwatch.StartNew();
 
-        _logger.LogInformation("ASYNC: Processing {Count} files concurrently", fileNames.Count);
-
-        // ✅ SOLUTION: Process all files concurrently!
-        var tasks = fileNames.Select(async fileName =>
+        foreach (var url in urls)
         {
-            try
-            {
-                var filePath = Path.Combine("SampleFiles", fileName);
-                var content = await File.ReadAllTextAsync(filePath); // Non-blocking!
-                await Task.Delay(100); // Non-blocking delay!
+            var delay = GetDelayForUrl(url);
+            var rawData = await DownloadDataAsync(url, delay);
+            var processedData = await ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await SaveDataAsync(processedData, fileName);
+        }
 
-                return new
-                {
-                    FileName = fileName,
-                    ContentLength = content.Length,
-                    Status = "Success"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new
-                {
-                    FileName = fileName,
-                    Status = "Failed",
-                    Error = ex.Message
-                };
-            }
+        stopwatch.Stop();
+        Console.WriteLine($"Sequential processing completed in {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    /// <summary>
+    /// Concurrent processing method - processes all URLs concurrently
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    static async Task TestConcurrentProcessing(List<string> urls)
+    {
+        Console.WriteLine("=== Concurrent Processing ===");
+        var stopwatch = Stopwatch.StartNew();
+
+        // Process all URLs concurrently using Task.WhenAll
+        var tasks = urls.Select(async url =>
+        {
+            var delay = GetDelayForUrl(url);
+            var rawData = await DownloadDataAsync(url, delay);
+            var processedData = await ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await SaveDataAsync(processedData, fileName);
+            return processedData;
         });
 
-        var results = await Task.WhenAll(tasks); // Wait for all to complete!
+        var results = await Task.WhenAll(tasks);
 
-        var response = new
+        stopwatch.Stop();
+        Console.WriteLine($"Concurrent processing completed in {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    /// <summary>
+    /// Retry logic test - implements exponential backoff as required by Exercise 1
+    /// </summary>
+    static async Task TestRetryLogic()
+    {
+        Console.WriteLine("=== Retry Logic Test ===");
+
+        try
         {
-            TotalFiles = fileNames.Count,
-            ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
-            Method = "CONCURRENT (FAST)",
-            Results = results
+            var result = await DownloadWithRetryAsync("https://unreliable-api.example.com");
+            Console.WriteLine($"Download successful: {result}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Download failed after all retries: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Download with retry logic - implements exponential backoff
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    static async Task<string> DownloadWithRetryAsync(string url)
+    {
+        const int maxRetries = 3;
+        var random = new Random();
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting download (try {attempt}/{maxRetries})...");
+
+                // Simulate 50% chance of failure
+                if (random.NextDouble() < 0.5)
+                {
+                    throw new HttpRequestException($"Simulated network failure for {url}");
+                }
+
+                // Simulate successful download
+                await Task.Delay(500);
+                Console.WriteLine("Download successful!");
+                return $"Data from {url}";
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                // Exponential backoff: 1s, 2s, 4s delays
+                var delayMs = (int)Math.Pow(2, attempt - 1) * 1000;
+                Console.WriteLine($"Download failed, retrying in {delayMs}ms...");
+                await Task.Delay(delayMs);
+            }
+        }
+
+        throw new Exception($"Failed to download from {url} after {maxRetries} attempts");
+    }
+
+    /// <summary>
+    /// Helper method to get delay for specific URLs (as specified in exercise)
+    /// </summary>
+    static int GetDelayForUrl(string url)
+    {
+        return url switch
+        {
+            "https://api1.example.com" => 1000, // 1000ms delay
+            "https://api2.example.com" => 1500, // 1500ms delay
+            "https://api3.example.com" => 800,  // 800ms delay
+            _ => 1000 // default delay
         };
+    }
 
-        _logger.LogInformation("ASYNC: Completed {Count} files in {ElapsedMs}ms",
-            fileNames.Count, stopwatch.ElapsedMilliseconds);
+    /// <summary>
+    /// Helper method to extract URL from data string
+    /// </summary>
+    static string ExtractUrlFromData(string data)
+    {
+        // Extract URL from the data string
+        var parts = data.Split(' ');
+        return parts.Length > 2 ? parts[2] : "unknown";
+    }
 
-        return Ok(response);
+    /// <summary>
+    /// Helper method to extract API name from URL
+    /// </summary>
+    static string ExtractApiName(string url)
+    {
+        return url switch
+        {
+            "https://api1.example.com" => "api1",
+            "https://api2.example.com" => "api2",
+            "https://api3.example.com" => "api3",
+            _ => "unknown"
+        };
+    }
+}
+'@ "Console application implementing Exercise 1 requirements exactly"
+
+        Write-Success "✅ Exercise 1: Basic Async Programming - COMPLETE!"
+        Write-Host ""
+        Write-Host "🧪 NOW TEST YOUR ASYNC SKILLS:" -ForegroundColor Green
+        Write-Host "1. Build and run: dotnet run" -ForegroundColor Cyan
+        Write-Host "2. Watch sequential processing take 6+ seconds" -ForegroundColor Yellow
+        Write-Host "3. See concurrent processing finish in ~2 seconds" -ForegroundColor Green
+        Write-Host "4. Observe retry logic with exponential backoff" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "🎯 LEARNING OBJECTIVES ACHIEVED:" -ForegroundColor Yellow
+        Write-Host "• ✅ Implemented DownloadDataAsync, ProcessDataAsync, SaveDataAsync" -ForegroundColor White
+        Write-Host "• ✅ Created ProcessedData model with required properties" -ForegroundColor White
+        Write-Host "• ✅ Built sequential vs concurrent processing comparison" -ForegroundColor White
+        Write-Host "• ✅ Added retry logic with exponential backoff" -ForegroundColor White
+        Write-Host "• ✅ Proper exception handling in async methods" -ForegroundColor White
+        Write-Host ""
+        Write-Host "📚 WHAT YOU LEARNED:" -ForegroundColor Blue
+        Write-Host "• How async/await improves performance for I/O operations" -ForegroundColor White
+        Write-Host "• Task.WhenAll for concurrent operations" -ForegroundColor White
+        Write-Host "• Proper exception handling in async code" -ForegroundColor White
+        Write-Host "• Retry patterns with exponential backoff" -ForegroundColor White
     }
 
     /// <summary>

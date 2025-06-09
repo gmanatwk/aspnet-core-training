@@ -458,6 +458,24 @@ Write-Host "\nEstimated monthly cost: ~$30 (minimal usage)" -ForegroundColor Yel
 3. Set up cost alerts in Azure Portal
 4. Review and optimize regularly
 '@ -Description "Azure cost estimation guide"
+        
+        Write-Host ""
+        Write-Success "Exercise 01 setup complete!"
+        Write-Host ""
+        Write-Host "🚨 IMPORTANT NEXT STEP:" -ForegroundColor Yellow
+        Write-Host "You MUST run the setup script to create Azure resources:" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  .\setup-azure.ps1" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "This script will:" -ForegroundColor White
+        Write-Host "  • Create Azure Resource Group" -ForegroundColor Gray
+        Write-Host "  • Create Container Registry" -ForegroundColor Gray
+        Write-Host "  • Create Container Apps Environment" -ForegroundColor Gray
+        Write-Host "  • Create SQL Server and databases" -ForegroundColor Gray
+        Write-Host "  • Create Application Insights" -ForegroundColor Gray
+        Write-Host "  • Generate azure-config.ps1 (required for other exercises)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "After running setup-azure.ps1, you can proceed to exercise02." -ForegroundColor Green
     }
     
     "exercise02" {

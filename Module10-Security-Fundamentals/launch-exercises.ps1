@@ -605,10 +605,8 @@ Encryption protects sensitive data at rest and in transit:
 
         # Install encryption packages
         Write-Host "📦 Installing encryption packages..." -ForegroundColor Cyan
-        Set-Location "SecurityDemo"
         dotnet add package Azure.Security.KeyVault.Secrets --version 4.5.0
         dotnet add package Azure.Identity --version 1.10.4
-        Set-Location ".."
 
         # Create encryption service
         Create-FileInteractive "Services/EncryptionService.cs" @'
