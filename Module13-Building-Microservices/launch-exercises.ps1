@@ -347,16 +347,30 @@ Azure Container Apps - Serverless Microservices:
 
 Write-Host "🚀 Setting up Azure resources for microservices..." -ForegroundColor Cyan
 
+# Prompt for Student ID
+Write-Host "Please enter your Student ID (this will be used to create unique Azure resources):" -ForegroundColor Cyan
+$STUDENT_ID = Read-Host "Student ID"
+if ([string]::IsNullOrWhiteSpace($STUDENT_ID)) {
+    Write-Error "Student ID cannot be empty!"
+    exit 1
+}
+
+# Sanitize student ID for Azure naming (lowercase, alphanumeric only)
+$STUDENT_ID_CLEAN = ($STUDENT_ID -replace '[^a-zA-Z0-9]', '').ToLower()
+if ($STUDENT_ID_CLEAN.Length -gt 20) {
+    $STUDENT_ID_CLEAN = $STUDENT_ID_CLEAN.Substring(0, 20)
+}
+
 # Variables
-$RESOURCE_GROUP = "rg-microservices-demo"
+$RESOURCE_GROUP = "rg-microservices-$STUDENT_ID_CLEAN"
 $LOCATION = "eastus"
 $RANDOM_SUFFIX = Get-Random -Minimum 1000 -Maximum 9999
-$ACR_NAME = "acrmicroservices$RANDOM_SUFFIX"
-$ENVIRONMENT = "microservices-env"
-$SQL_SERVER = "sql-microservices-$RANDOM_SUFFIX"
+$ACR_NAME = "acrms$STUDENT_ID_CLEAN$RANDOM_SUFFIX"
+$ENVIRONMENT = "ms-env-$STUDENT_ID_CLEAN"
+$SQL_SERVER = "sql-ms-$STUDENT_ID_CLEAN-$RANDOM_SUFFIX"
 $SQL_ADMIN = "sqladmin"
 $SQL_PASSWORD = "P@ssw0rd$RANDOM_SUFFIX!"
-$APP_INSIGHTS = "appi-microservices"
+$APP_INSIGHTS = "appi-ms-$STUDENT_ID_CLEAN"
 
 # Check Azure CLI
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
@@ -371,7 +385,8 @@ if (-not $account) {
     az login
 }
 
-Write-Host "Creating resource group..." -ForegroundColor Yellow
+Write-Host "Creating resource group for Student: $STUDENT_ID..." -ForegroundColor Yellow
+Write-Host "Resource Group Name: $RESOURCE_GROUP" -ForegroundColor Cyan
 az group create --name $RESOURCE_GROUP --location $LOCATION
 
 Write-Host "Creating Container Registry..." -ForegroundColor Yellow
@@ -416,6 +431,8 @@ az monitor app-insights component create `
 # Save configuration
 $config = @"
 # Azure Configuration
+`$STUDENT_ID="$STUDENT_ID"
+`$STUDENT_ID_CLEAN="$STUDENT_ID_CLEAN"
 `$RESOURCE_GROUP="$RESOURCE_GROUP"
 `$ACR_NAME="$ACR_NAME"
 `$ENVIRONMENT="$ENVIRONMENT"
@@ -653,7 +670,13 @@ Deploying to Azure Container Apps:
         if (Test-Path "azure-config.ps1") {
             . .\azure-config.ps1
         } else {
-            Write-Error "Azure configuration not found. Please run exercise01 first!"
+            Write-Error "Azure configuration not found!"
+            Write-Host ""
+            Write-Host "Please ensure you have:" -ForegroundColor Yellow
+            Write-Host "1. Run exercise01: .\launch-exercises.ps1 exercise01" -ForegroundColor White
+            Write-Host "2. Run the setup script: .\setup-azure.ps1" -ForegroundColor White
+            Write-Host ""
+            Write-Host "The setup-azure.ps1 script creates the azure-config.ps1 file needed for this exercise." -ForegroundColor Cyan
             exit 1
         }
         

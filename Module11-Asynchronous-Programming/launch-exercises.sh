@@ -14,10 +14,19 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-# Configuration
-PROJECT_NAME="AsyncDemo"
+# Configuration - Match exercise requirements exactly
 INTERACTIVE_MODE=true
 SKIP_PROJECT_CREATION=false
+
+# Project names must match exercise requirements
+get_project_name() {
+    case $1 in
+        "exercise01") echo "AsyncExercise01" ;;
+        "exercise02") echo "AsyncApiExercise" ;;
+        "exercise03") echo "BackgroundTasksExercise" ;;
+        *) echo "AsyncDemo" ;;
+    esac
+}
 
 # Function to display colored output
 echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
@@ -251,23 +260,19 @@ fi
 echo_success "Prerequisites check completed"
 echo ""
 
+# Get the correct project name for this exercise
+PROJECT_NAME=$(get_project_name $EXERCISE_NAME)
+
 # Check if project exists in current directory
 if [ -d "$PROJECT_NAME" ]; then
-    if [[ $EXERCISE_NAME == "exercise02" ]] || [[ $EXERCISE_NAME == "exercise03" ]]; then
-        echo_success "Found existing $PROJECT_NAME from previous exercise"
-        echo_info "This exercise will build on your existing work"
-        cd "$PROJECT_NAME"
-        SKIP_PROJECT_CREATION=true
-    else
-        echo_warning "Project '$PROJECT_NAME' already exists!"
-        echo -n "Do you want to overwrite it? (y/N): "
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            exit 1
-        fi
-        rm -rf "$PROJECT_NAME"
-        SKIP_PROJECT_CREATION=false
+    echo_warning "Project '$PROJECT_NAME' already exists!"
+    echo -n "Do you want to overwrite it? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        exit 1
     fi
+    rm -rf "$PROJECT_NAME"
+    SKIP_PROJECT_CREATION=false
 else
     SKIP_PROJECT_CREATION=false
 fi
@@ -285,294 +290,403 @@ if [[ $EXERCISE_NAME == "exercise01" ]]; then
 • Exception Handling: Proper async exception management"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
-        echo_info "Creating new ASP.NET Core Web API project..."
-        dotnet new webapi -n "$PROJECT_NAME" --framework net8.0
+        echo_info "Creating console application for Exercise 1..."
+        echo_info "This matches the exercise requirements exactly!"
+        dotnet new console -n "$PROJECT_NAME" --framework net8.0
         cd "$PROJECT_NAME"
     fi
 
-    # Create User model first
-    create_file_interactive "Models/User.cs" \
-'namespace AsyncDemo.Models;
+    # Create ProcessedData model as required by Exercise 1
+    create_file_interactive "Models/ProcessedData.cs" \
+'namespace AsyncExercise01.Models;
 
-public class User
+/// <summary>
+/// Data model for processed information - matches Exercise 1 requirements exactly
+/// </summary>
+public class ProcessedData
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public string Summary { get; set; } = string.Empty;
+    public int CharacterCount { get; set; }
+    public DateTime ProcessedAt { get; set; }
+
+    public override string ToString()
+    {
+        return $"Summary: {Summary}, Characters: {CharacterCount}, Processed: {ProcessedAt:HH:mm:ss}";
+    }
 }' \
-"User model for async data operations"
+"ProcessedData model class matching Exercise 1 requirements exactly"
 
-    # Create async data service interface
-    create_file_interactive "Data/IAsyncDataService.cs" \
-'using AsyncDemo.Models;
+    # Create Program.cs with the exact methods required by Exercise 1
+    create_file_interactive "Program.cs" \
+'using System.Diagnostics;
+using AsyncExercise01.Models;
 
-namespace AsyncDemo.Data;
+namespace AsyncExercise01;
 
-public interface IAsyncDataService
+class Program
 {
-    Task<List<User>> GetAllUsersAsync();
-    Task<User?> GetUserByIdAsync(int id);
-    Task<User> CreateUserAsync(string name, string email);
-    Task<object> GetExternalUserDataAsync(int userId);
-}' \
-"Interface for async data operations"
-
-    # Create async data service implementation
-    create_file_interactive "Data/AsyncDataService.cs" \
-'using AsyncDemo.Models;
-using System.Text.Json;
-
-namespace AsyncDemo.Data;
-
-public class AsyncDataService : IAsyncDataService
-{
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<AsyncDataService> _logger;
-    private static readonly List<User> _users = new()
+    static async Task Main(string[] args)
     {
-        new User { Id = 1, Name = "John Doe", Email = "john@example.com" },
-        new User { Id = 2, Name = "Jane Smith", Email = "jane@example.com" }
-    };
+        Console.WriteLine("=== Exercise 1: Basic Async Programming ===\n");
 
-    public AsyncDataService(HttpClient httpClient, ILogger<AsyncDataService> logger)
-    {
-        _httpClient = httpClient;
-        _logger = logger;
-    }
-
-    public async Task<List<User>> GetAllUsersAsync()
-    {
-        _logger.LogInformation("Fetching all users");
-        await Task.Delay(100);
-        return _users.ToList();
-    }
-
-    public async Task<User?> GetUserByIdAsync(int id)
-    {
-        _logger.LogInformation("Fetching user with ID: {UserId}", id);
-        await Task.Delay(50);
-        return _users.FirstOrDefault(u => u.Id == id);
-    }
-
-    public async Task<User> CreateUserAsync(string name, string email)
-    {
-        _logger.LogInformation("Creating user: {Name}, {Email}", name, email);
-        await Task.Delay(200);
-
-        var user = new User
+        // Test URLs with different delays (as specified in exercise)
+        var urls = new List<string>
         {
-            Id = _users.Count + 1,
-            Name = name,
-            Email = email
+            "https://api1.example.com", // 1000ms delay
+            "https://api2.example.com", // 1500ms delay
+            "https://api3.example.com"  // 800ms delay
         };
 
-        _users.Add(user);
-        return user;
+        Console.WriteLine("🚀 Testing Sequential vs Concurrent Processing\n");
+
+        // Part 1: Sequential Processing
+        await ProcessingMethods.ProcessUrlsSequentiallyAsync(urls);
+
+        Console.WriteLine();
+
+        // Part 2: Concurrent Processing
+        await ProcessingMethods.ProcessUrlsConcurrentlyAsync(urls);
+
+        Console.WriteLine();
+
+        // Part 3: Retry Logic Test
+        await TestRetryLogic();
+
+        Console.WriteLine("\nPress any key to exit...");
+        Console.ReadKey();
     }
 
-    public async Task<object> GetExternalUserDataAsync(int userId)
+    /// <summary>
+    /// Retry logic test - implements exponential backoff as required by Exercise 1
+    /// </summary>
+    static async Task TestRetryLogic()
     {
-        _logger.LogInformation("Fetching external data for user: {UserId}", userId);
+        Console.WriteLine("=== Retry Logic Test ===");
 
         try
         {
-            var response = await _httpClient.GetAsync($"https://jsonplaceholder.typicode.com/users/{userId}");
-
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<object>(content) ?? new { message = "No data" };
-            }
-
-            return new { message = "External service unavailable" };
+            var result = await AsyncMethods.DownloadWithRetryAsync("https://unreliable-api.example.com");
+            Console.WriteLine($"Download successful: {result}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch external data");
-            return new { message = "Error fetching external data" };
+            Console.WriteLine($"Download failed after all retries: {ex.Message}");
         }
     }
 }' \
-"Implementation of async data service with mock data"
+"Complete Program.cs with all required methods for Exercise 1"
 
-    # Create basic async service
-    create_file_interactive "Services/AsyncBasicsService.cs" \
+    # Add the required async methods to Program.cs
+    create_file_interactive "AsyncMethods.cs" \
 'using System.Diagnostics;
+using AsyncExercise01.Models;
 
-namespace AsyncDemo.Services;
+namespace AsyncExercise01;
 
-public interface IAsyncBasicsService
+public static class AsyncMethods
 {
-    Task<string> GetDataAsync();
-    Task<List<string>> GetMultipleDataAsync();
-    Task<string> GetDataWithDelayAsync(int delayMs);
-    Task<string> GetDataWithTimeoutAsync(int timeoutMs);
-    Task<T> GetGenericDataAsync<T>(T data);
-    ValueTask<int> GetCachedValueAsync(string key);
-}
-
-public class AsyncBasicsService : IAsyncBasicsService
-{
-    private readonly ILogger<AsyncBasicsService> _logger;
-    private readonly HttpClient _httpClient;
-    private readonly Dictionary<string, int> _cache = new();
-
-    public AsyncBasicsService(ILogger<AsyncBasicsService> logger, HttpClient httpClient)
+    /// <summary>
+    /// Method that simulates downloading data from a web service
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    public static async Task<string> DownloadDataAsync(string url, int delayMs)
     {
-        _logger = logger;
-        _httpClient = httpClient;
+        Console.WriteLine($"Downloading from {url}...");
+
+        // Simulate network delay using Task.Delay
+        await Task.Delay(delayMs);
+
+        // Return simulated data
+        return $"Data from {url} (simulated {delayMs}ms download)";
     }
 
     /// <summary>
-    /// Basic async method returning Task<string>
+    /// Method that processes downloaded data
+    /// Matches Exercise 1 requirements exactly
     /// </summary>
-    public async Task<string> GetDataAsync()
+    public static async Task<ProcessedData> ProcessDataAsync(string rawData)
     {
-        _logger.LogInformation("Starting async data retrieval");
+        Console.WriteLine($"Processing data from {ExtractUrlFromData(rawData)}...");
 
-        // Simulate async work
-        await Task.Delay(100);
+        // Simulate processing time (500ms)
+        await Task.Delay(500);
 
-        var result = $"Data retrieved at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
-        _logger.LogInformation("Async data retrieval completed");
-
-        return result;
-    }
-
-    /// <summary>
-    /// Async method with multiple concurrent operations
-    /// </summary>
-    public async Task<List<string>> GetMultipleDataAsync()
-    {
-        _logger.LogInformation("Starting multiple async operations");
-
-        var tasks = new List<Task<string>>();
-
-        // Create multiple async tasks
-        for (int i = 0; i < 5; i++)
+        // Return ProcessedData object with summary
+        return new ProcessedData
         {
-            int index = i; // Capture loop variable
-            tasks.Add(GetDataWithDelayAsync(100 + (index * 50)));
+            Summary = $"Processed: {ExtractUrlFromData(rawData)}",
+            CharacterCount = rawData.Length,
+            ProcessedAt = DateTime.Now
+        };
+    }
+
+    /// <summary>
+    /// Method that saves processed data
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    public static async Task SaveDataAsync(ProcessedData data, string fileName)
+    {
+        Console.WriteLine($"Saving data to {fileName}...");
+
+        // Simulate file I/O (300ms)
+        await Task.Delay(300);
+
+        // Log completion
+        Console.WriteLine($"Data saved to {fileName}");
+    }
+
+    /// <summary>
+    /// Download with retry logic - implements exponential backoff
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    public static async Task<string> DownloadWithRetryAsync(string url)
+    {
+        const int maxRetries = 3;
+        var random = new Random();
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting download (try {attempt}/{maxRetries})...");
+
+                // Simulate 50% chance of failure
+                if (random.NextDouble() < 0.5)
+                {
+                    throw new HttpRequestException($"Simulated network failure for {url}");
+                }
+
+                // Simulate successful download
+                await Task.Delay(500);
+                Console.WriteLine("Download successful!");
+                return $"Data from {url}";
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                // Exponential backoff: 1s, 2s, 4s delays
+                var delayMs = (int)Math.Pow(2, attempt - 1) * 1000;
+                Console.WriteLine($"Download failed, retrying in {delayMs}ms...");
+                await Task.Delay(delayMs);
+            }
         }
 
-        // Wait for all tasks to complete
-        var results = await Task.WhenAll(tasks);
-
-        _logger.LogInformation("All async operations completed");
-        return results.ToList();
+        throw new Exception($"Failed to download from {url} after {maxRetries} attempts");
     }
 
     /// <summary>
-    /// Async method with configurable delay
+    /// Helper method to extract URL from data string
     /// </summary>
-    public async Task<string> GetDataWithDelayAsync(int delayMs)
+    public static string ExtractUrlFromData(string data)
     {
-        _logger.LogInformation("Starting async operation with {Delay}ms delay", delayMs);
+        if (data.Contains("api1.example.com")) return "https://api1.example.com";
+        if (data.Contains("api2.example.com")) return "https://api2.example.com";
+        if (data.Contains("api3.example.com")) return "https://api3.example.com";
+        return "unknown";
+    }
+}' \
+"Async methods required by Exercise 1 - DownloadDataAsync, ProcessDataAsync, SaveDataAsync, DownloadWithRetryAsync"
 
+    # Add sequential and concurrent processing methods
+    create_file_interactive "ProcessingMethods.cs" \
+'using System.Diagnostics;
+using AsyncExercise01.Models;
+
+namespace AsyncExercise01;
+
+public static class ProcessingMethods
+{
+    /// <summary>
+    /// Sequential processing method - processes URLs one by one
+    /// Matches Exercise 1 requirements exactly
+    /// </summary>
+    public static async Task ProcessUrlsSequentiallyAsync(List<string> urls)
+    {
+        Console.WriteLine("=== Sequential Processing ===");
         var stopwatch = Stopwatch.StartNew();
 
-        // Use ConfigureAwait(false) for library code
-        await Task.Delay(delayMs).ConfigureAwait(false);
+        foreach (var url in urls)
+        {
+            var delay = GetDelayForUrl(url);
+            var rawData = await AsyncMethods.DownloadDataAsync(url, delay);
+            var processedData = await AsyncMethods.ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await AsyncMethods.SaveDataAsync(processedData, fileName);
+        }
 
         stopwatch.Stop();
-
-        var result = $"Operation completed in {stopwatch.ElapsedMilliseconds}ms";
-        _logger.LogInformation("Async operation with delay completed");
-
-        return result;
+        Console.WriteLine($"Sequential processing completed in {stopwatch.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
-    /// Async method with timeout handling
+    /// Concurrent processing method - processes all URLs concurrently
+    /// Matches Exercise 1 requirements exactly
     /// </summary>
-    public async Task<string> GetDataWithTimeoutAsync(int timeoutMs)
+    public static async Task ProcessUrlsConcurrentlyAsync(List<string> urls)
     {
-        _logger.LogInformation("Starting async operation with {Timeout}ms timeout", timeoutMs);
+        Console.WriteLine("=== Concurrent Processing ===");
+        var stopwatch = Stopwatch.StartNew();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+        // Process all URLs concurrently using Task.WhenAll
+        var tasks = urls.Select(async url =>
+        {
+            var delay = GetDelayForUrl(url);
+            var rawData = await AsyncMethods.DownloadDataAsync(url, delay);
+            var processedData = await AsyncMethods.ProcessDataAsync(rawData);
+            var fileName = $"{ExtractApiName(url)}_data.txt";
+            await AsyncMethods.SaveDataAsync(processedData, fileName);
+            return processedData;
+        });
 
-        try
-        {
-            // Simulate work that might take longer than timeout
-            await Task.Delay(timeoutMs + 100, cts.Token).ConfigureAwait(false);
-            return "Operation completed successfully";
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("Operation timed out after {Timeout}ms", timeoutMs);
-            throw new TimeoutException($"Operation timed out after {timeoutMs}ms");
-        }
+        var results = await Task.WhenAll(tasks);
+
+        stopwatch.Stop();
+        Console.WriteLine($"Concurrent processing completed in {stopwatch.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
-    /// Generic async method
+    /// Helper method to get delay for specific URLs (as specified in exercise)
     /// </summary>
-    public async Task<T> GetGenericDataAsync<T>(T data)
+    public static int GetDelayForUrl(string url)
     {
-        _logger.LogInformation("Processing generic data of type {Type}", typeof(T).Name);
-
-        // Simulate async processing
-        await Task.Delay(50).ConfigureAwait(false);
-
-        return data;
+        return url switch
+        {
+            "https://api1.example.com" => 1000, // 1000ms delay
+            "https://api2.example.com" => 1500, // 1500ms delay
+            "https://api3.example.com" => 800,  // 800ms delay
+            _ => 1000 // default delay
+        };
     }
 
     /// <summary>
-    /// ValueTask example for performance optimization
+    /// Helper method to extract API name from URL
     /// </summary>
-    public ValueTask<int> GetCachedValueAsync(string key)
+    public static string ExtractApiName(string url)
     {
-        // If value is cached, return synchronously
-        if (_cache.TryGetValue(key, out var cachedValue))
+        return url switch
         {
-            _logger.LogDebug("Cache hit for key: {Key}", key);
-            return ValueTask.FromResult(cachedValue);
-        }
-
-        // Cache miss: compute asynchronously
-        return ComputeAndCacheAsync(key);
-    }
-
-    private async ValueTask<int> ComputeAndCacheAsync(string key)
-    {
-        _logger.LogInformation("Cache miss - computing value for key: {Key}", key);
-
-        // Simulate expensive computation
-        await Task.Delay(200).ConfigureAwait(false);
-
-        var value = key.GetHashCode() & 0x7FFFFFFF; // Simple hash-based value
-        _cache[key] = value;
-
-        return value;
+            "https://api1.example.com" => "api1",
+            "https://api2.example.com" => "api2",
+            "https://api3.example.com" => "api3",
+            _ => "api"
+        };
     }
 }' \
-"Comprehensive async service demonstrating fundamental async/await patterns"
+"Sequential and concurrent processing methods matching Exercise 1 requirements"
 
 elif [[ $EXERCISE_NAME == "exercise02" ]]; then
     # Exercise 2: Async API Development
 
-    explain_concept "Async API Development" \
-"Async API Development Patterns:
-• Async Controllers: Non-blocking request handling
-• Async Middleware: Pipeline components with async operations
-• Entity Framework Async: Database operations without blocking
-• HttpClient Async: External API calls with proper async patterns
-• Async Testing: Unit testing async methods effectively"
+    explain_concept "Async Web API Development" \
+"🚨 THE PROBLEM: Building Async Web APIs
+You need to build a complete async Web API that demonstrates real-world patterns:
+
+EXERCISE 2 REQUIREMENTS:
+• Order management system with async CRUD operations
+• Entity Framework Core with async database operations
+• External API calls with proper async patterns
+• Background processing integration
+• Bulk operations and streaming responses
+• Comprehensive error handling and cancellation
+
+YOUR MISSION:
+• Create AsyncApiExercise Web API project
+• Implement Order/OrderItem models with EF Core
+• Build async controllers with proper patterns
+• Add external service integrations
+• Implement background task queuing"
 
     if [ "$SKIP_PROJECT_CREATION" = false ]; then
-        echo_error "Exercise 2 requires Exercise 1 to be completed first!"
-        echo_info "Please run: ./launch-exercises.sh exercise01"
-        exit 1
+        echo_info "Creating ASP.NET Core Web API project for Exercise 2..."
+        echo_info "This matches Exercise 2 requirements exactly!"
+        dotnet new webapi -n "$PROJECT_NAME" --framework net8.0
+        cd "$PROJECT_NAME"
     fi
 
-    # Add Entity Framework packages
+    # Add required packages for Exercise 2
     dotnet add package Microsoft.EntityFrameworkCore.InMemory
     dotnet add package Microsoft.EntityFrameworkCore.Tools
+    dotnet add package Swashbuckle.AspNetCore
+    dotnet add package System.Text.Json
+
+    # Create Order model as required by Exercise 2
+    create_file_interactive "Models/Order.cs" \
+'namespace AsyncApiExercise.Models;
+
+public class Order
+{
+    public int Id { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public List<OrderItem> Items { get; set; } = new();
+    public decimal TotalAmount { get; set; }
+    public OrderStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ProcessedAt { get; set; }
+}
+
+public class OrderItem
+{
+    public int Id { get; set; }
+    public int OrderId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal TotalPrice => Quantity * UnitPrice;
+}
+
+public enum OrderStatus
+{
+    Pending,
+    Processing,
+    Completed,
+    Cancelled
+}
+
+public class ExternalApiResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public object? Data { get; set; }
+}' \
+"Order models matching Exercise 2 requirements exactly"
+
+    # Create OrderContext as required by Exercise 2
+    create_file_interactive "Data/OrderContext.cs" \
+'using Microsoft.EntityFrameworkCore;
+using AsyncApiExercise.Models;
+
+namespace AsyncApiExercise.Data;
+
+public class OrderContext : DbContext
+{
+    public OrderContext(DbContextOptions<OrderContext> options) : base(options) { }
+
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderItem> OrderItems { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Configure Order entity
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CustomerName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+            entity.HasMany(e => e.Items).WithOne().HasForeignKey(e => e.OrderId);
+        });
+
+        // Configure OrderItem entity
+        modelBuilder.Entity<OrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProductName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+        });
+    }
+}' \
+"OrderContext with proper EF Core configuration matching Exercise 2 requirements"
 
     # Create async controller
-    create_file_interactive "Controllers/AsyncApiController.cs" \
+    create_file_interactive "Controllers/OrdersController.cs" \
 'using Microsoft.AspNetCore.Mvc;
 using AsyncDemo.Services;
 using AsyncDemo.Models;

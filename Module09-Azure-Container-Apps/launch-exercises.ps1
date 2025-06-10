@@ -238,6 +238,29 @@ Azure Container Apps provides serverless container hosting without requiring Doc
             Remove-Item -Path "WeatherForecast.cs" -Force -ErrorAction SilentlyContinue
             Remove-Item -Path "Controllers/WeatherForecastController.cs" -Force -ErrorAction SilentlyContinue
 
+            # Update Program.cs to enable controllers
+            @'
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+// Enable Swagger in all environments for Container Apps
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+'@ | Out-File -FilePath "Program.cs" -Encoding UTF8
+
             Set-Location ".."
         } else {
             # We're already in the project directory from the check above
@@ -257,13 +280,15 @@ Azure Container Registry builds your containers in the cloud:
 # Simple Dockerfile for Azure Container Apps
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY . .
+COPY ContainerAppsDemo.API/ ./ContainerAppsDemo.API/
+WORKDIR /src/ContainerAppsDemo.API
 RUN dotnet publish -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
-EXPOSE 80
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
 ENTRYPOINT ["dotnet", "ContainerAppsDemo.API.dll"]
 '@ "Simple Dockerfile for Azure Container Registry build"
 
@@ -387,12 +412,42 @@ public class Product
 # Azure Container Apps Deployment Script
 Write-Host "🚀 Deploying to Azure Container Apps..." -ForegroundColor Cyan
 
-# Set variables
-$RESOURCE_GROUP="rg-containerapp-training"
+# Prompt for Student ID
+Write-Host "Please enter your Student ID (this will be used to create unique Azure resources):" -ForegroundColor Cyan
+$STUDENT_ID = Read-Host "Student ID"
+if ([string]::IsNullOrWhiteSpace($STUDENT_ID)) {
+    Write-Error "Student ID cannot be empty!"
+    exit 1
+}
+
+# Sanitize student ID for Azure naming (lowercase, alphanumeric only)
+$STUDENT_ID_CLEAN = ($STUDENT_ID -replace '[^a-zA-Z0-9]', '').ToLower()
+if ($STUDENT_ID_CLEAN.Length -gt 20) {
+    $STUDENT_ID_CLEAN = $STUDENT_ID_CLEAN.Substring(0, 20)
+}
+
+# Set variables with student ID
+$RESOURCE_GROUP="rg-containerapp-$STUDENT_ID_CLEAN"
 $LOCATION="eastus"
-$ENVIRONMENT="containerapp-env"
-$ACR_NAME="acr$(Get-Random -Minimum 10000 -Maximum 99999)"
-$APP_NAME="containerappsdemo"
+$ENVIRONMENT="containerapp-env-$STUDENT_ID_CLEAN"
+$RANDOM_SUFFIX = Get-Random -Minimum 1000 -Maximum 9999
+$ACR_NAME="acrcad$STUDENT_ID_CLEAN$RANDOM_SUFFIX"
+$APP_NAME="containerapp-$STUDENT_ID_CLEAN"
+
+Write-Host ""
+Write-Host "Resources will be created for Student: $STUDENT_ID" -ForegroundColor Cyan
+Write-Host "Resource Group: $RESOURCE_GROUP" -ForegroundColor Yellow
+Write-Host ""
+
+# Install Container Apps extension
+Write-Host "Installing Azure Container Apps extension..." -ForegroundColor Yellow
+az extension add --name containerapp --upgrade
+
+# Register required resource providers
+Write-Host "Registering required resource providers..." -ForegroundColor Yellow
+az provider register -n Microsoft.App --wait
+az provider register -n Microsoft.OperationalInsights --wait
+Write-Host "Resource providers registered successfully!" -ForegroundColor Green
 
 # Create resource group
 Write-Host "Creating resource group..." -ForegroundColor Yellow
@@ -406,9 +461,60 @@ az acr create --resource-group $RESOURCE_GROUP --name $ACR_NAME --sku Basic --ad
 Write-Host "Building container image in Azure..." -ForegroundColor Yellow
 az acr build --registry $ACR_NAME --image $APP_NAME:v1 .
 
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to build container image in ACR"
+    exit 1
+}
+
+# Create Log Analytics workspace for Container Apps
+Write-Host "Creating Log Analytics workspace..." -ForegroundColor Yellow
+$WORKSPACE_NAME = "law-$STUDENT_ID_CLEAN-$(Get-Random -Minimum 100 -Maximum 999)"
+$WORKSPACE_ID = az monitor log-analytics workspace create `
+    --resource-group $RESOURCE_GROUP `
+    --workspace-name $WORKSPACE_NAME `
+    --location $LOCATION `
+    --query customerId `
+    --output tsv
+
+$WORKSPACE_KEY = az monitor log-analytics workspace get-shared-keys `
+    --resource-group $RESOURCE_GROUP `
+    --workspace-name $WORKSPACE_NAME `
+    --query primarySharedKey `
+    --output tsv
+
 # Create Container Apps environment
 Write-Host "Creating Container Apps environment..." -ForegroundColor Yellow
-az containerapp env create --name $ENVIRONMENT --resource-group $RESOURCE_GROUP --location $LOCATION
+az containerapp env create `
+    --name $ENVIRONMENT `
+    --resource-group $RESOURCE_GROUP `
+    --location $LOCATION `
+    --logs-workspace-id $WORKSPACE_ID `
+    --logs-workspace-key $WORKSPACE_KEY
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to create Container Apps environment"
+    exit 1
+}
+
+# Wait for environment to be fully provisioned
+Write-Host "Waiting for Container Apps environment to be ready..." -ForegroundColor Yellow
+$retryCount = 0
+$maxRetries = 30
+while ($retryCount -lt $maxRetries) {
+    $envState = az containerapp env show --name $ENVIRONMENT --resource-group $RESOURCE_GROUP --query "properties.provisioningState" -o tsv 2>$null
+    if ($envState -eq "Succeeded") {
+        Write-Host "Container Apps environment is ready!" -ForegroundColor Green
+        break
+    }
+    Write-Host "Environment state: $envState - waiting..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 10
+    $retryCount++
+}
+
+if ($retryCount -eq $maxRetries) {
+    Write-Error "Container Apps environment failed to provision after $maxRetries retries"
+    exit 1
+}
 
 # Get ACR credentials
 $ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
@@ -425,7 +531,7 @@ az containerapp create `
   --registry-server $ACR_LOGIN_SERVER `
   --registry-username $ACR_USERNAME `
   --registry-password $ACR_PASSWORD `
-  --target-port 80 `
+  --target-port 8080 `
   --ingress external `
   --min-replicas 0 `
   --max-replicas 5
@@ -562,19 +668,31 @@ Azure Container Apps is a fully managed serverless container platform:
 # Azure Container Apps Deployment Script
 param(
     [Parameter(Mandatory=$false)]
-    [string]$ResourceGroupName = "rg-containerappsdemo",
-
-    [Parameter(Mandatory=$false)]
-    [string]$Location = "eastus",
-
-    [Parameter(Mandatory=$false)]
-    [string]$ContainerAppName = "containerappsdemo",
-
-    [Parameter(Mandatory=$false)]
-    [string]$RegistryName = "acrcontainerappsdemo$(Get-Random -Minimum 1000 -Maximum 9999)"
+    [string]$Location = "eastus"
 )
 
+# Prompt for Student ID
+Write-Host "Please enter your Student ID (this will be used to create unique Azure resources):" -ForegroundColor Cyan
+$STUDENT_ID = Read-Host "Student ID"
+if ([string]::IsNullOrWhiteSpace($STUDENT_ID)) {
+    Write-Error "Student ID cannot be empty!"
+    exit 1
+}
+
+# Sanitize student ID for Azure naming (lowercase, alphanumeric only)
+$STUDENT_ID_CLEAN = ($STUDENT_ID -replace '[^a-zA-Z0-9]', '').ToLower()
+if ($STUDENT_ID_CLEAN.Length -gt 20) {
+    $STUDENT_ID_CLEAN = $STUDENT_ID_CLEAN.Substring(0, 20)
+}
+
+# Generate unique resource names with student ID
+$ResourceGroupName = "rg-containerappsdemo-$STUDENT_ID_CLEAN"
+$ContainerAppName = "containerapp-$STUDENT_ID_CLEAN"
+$RANDOM_SUFFIX = Get-Random -Minimum 1000 -Maximum 9999
+$RegistryName = "acrcad$STUDENT_ID_CLEAN$RANDOM_SUFFIX"
+
 Write-Host "🚀 Starting Azure Container Apps deployment..." -ForegroundColor Cyan
+Write-Host "Student: $STUDENT_ID" -ForegroundColor Cyan
 Write-Host "Resource Group: $ResourceGroupName" -ForegroundColor Yellow
 Write-Host "Location: $Location" -ForegroundColor Yellow
 Write-Host "Container App: $ContainerAppName" -ForegroundColor Yellow
@@ -601,8 +719,15 @@ Write-Host "Logged in as: $loginStatus" -ForegroundColor Green
 Write-Host "Installing Azure Container Apps extension..." -ForegroundColor Yellow
 az extension add --name containerapp --upgrade
 
+# Register required resource providers
+Write-Host "Registering required resource providers..." -ForegroundColor Yellow
+az provider register -n Microsoft.App --wait
+az provider register -n Microsoft.OperationalInsights --wait
+Write-Host "Resource providers registered successfully!" -ForegroundColor Green
+
 # Create resource group
-Write-Host "Creating resource group..." -ForegroundColor Yellow
+Write-Host "Creating resource group for Student: $STUDENT_ID..." -ForegroundColor Yellow
+Write-Host "Resource Group Name: $ResourceGroupName" -ForegroundColor Cyan
 az group create --name $ResourceGroupName --location $Location
 
 # Create Azure Container Registry
@@ -617,10 +742,31 @@ Write-Host "ACR Login Server: $acrLoginServer" -ForegroundColor Green
 Write-Host "Building and pushing container image..." -ForegroundColor Yellow
 az acr build --registry $RegistryName --image containerappsdemo:latest .
 
+# Create Log Analytics workspace for Container Apps
+Write-Host "Creating Log Analytics workspace..." -ForegroundColor Yellow
+$workspaceName = "law-$STUDENT_ID_CLEAN-$(Get-Random -Minimum 100 -Maximum 999)"
+$workspaceId = az monitor log-analytics workspace create `
+    --resource-group $ResourceGroupName `
+    --workspace-name $workspaceName `
+    --location $Location `
+    --query customerId `
+    --output tsv
+
+$workspaceKey = az monitor log-analytics workspace get-shared-keys `
+    --resource-group $ResourceGroupName `
+    --workspace-name $workspaceName `
+    --query primarySharedKey `
+    --output tsv
+
 # Create Container Apps environment
 Write-Host "Creating Container Apps environment..." -ForegroundColor Yellow
-$environmentName = "$ContainerAppName-env"
-az containerapp env create --name $environmentName --resource-group $ResourceGroupName --location $Location
+$environmentName = "cae-$STUDENT_ID_CLEAN-env"
+az containerapp env create `
+    --name $environmentName `
+    --resource-group $ResourceGroupName `
+    --location $Location `
+    --logs-workspace-id $workspaceId `
+    --logs-workspace-key $workspaceKey
 
 # Get ACR credentials
 $acrUsername = az acr credential show --name $RegistryName --query username --output tsv
@@ -663,6 +809,7 @@ Write-Host "Delete resources: az group delete --name $ResourceGroupName --yes --
 $deploymentInfo = @"
 # Azure Container Apps Deployment Information
 Generated: $(Get-Date)
+Student ID: $STUDENT_ID
 
 ## Resources Created
 - Resource Group: $ResourceGroupName
